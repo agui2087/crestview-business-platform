@@ -2,13 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Brand } from "@/components/brand";
+import { chatGPTSignInPath, getChatGPTUser } from "@/app/chatgpt-auth";
 import { getDictionary, isLocale } from "@/lib/i18n";
-import { isSupabaseConfigured } from "@/lib/supabase/server";
-import { signIn, signUp } from "./actions";
 
 export const metadata: Metadata = {
   title: "Sign in",
 };
+export const dynamic = "force-dynamic";
 
 export default async function SignInPage({
   params,
@@ -16,7 +16,7 @@ export default async function SignInPage({
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
   const { auth } = getDictionary(locale);
-  const configured = isSupabaseConfigured();
+  const user = await getChatGPTUser();
 
   return (
     <main className="auth-page">
@@ -31,22 +31,16 @@ export default async function SignInPage({
         <div className="auth-card">
           <h1 id="sign-in-title">{auth.title}</h1>
           <p className="auth-card__intro">{auth.body}</p>
-          <div className="notice">{configured ? "Secure account access is connected." : auth.notice}</div>
-          <form action={signIn}>
-            <input type="hidden" name="locale" value={locale} />
-            <div className="field">
-              <label htmlFor="email">{auth.email}</label>
-              <input id="email" name="email" type="email" autoComplete="email" placeholder="you@company.com" disabled={!configured} required />
+          <div className="notice">Secure account access is ready. Crestview uses ChatGPT sign-in so it never stores your password.</div>
+          {user ? (
+            <div className="signed-in-choice">
+              <p>Signed in as <strong>{user.email}</strong></p>
+              <Link className="button button--primary auth-submit" href={`/${locale}/create-account`}>Continue to Crestview</Link>
             </div>
-            <div className="field">
-              <label htmlFor="password">{auth.password}</label>
-              <input id="password" name="password" type="password" autoComplete="current-password" placeholder="••••••••" disabled={!configured} minLength={8} required />
-            </div>
-            <button className="button button--primary auth-submit" type="submit" disabled={!configured}>
-              {auth.submit}
-            </button>
-            <button className="auth-create" formAction={signUp} disabled={!configured} type="submit">Create an account</button>
-          </form>
+          ) : (
+            <a className="button button--primary auth-submit auth-provider" href={chatGPTSignInPath(`/${locale}/create-account`)}>Continue securely with ChatGPT</a>
+          )}
+          <p className="auth-privacy">After signing in, you’ll choose the name shown throughout Crestview and in any broker message drafts you create.</p>
           <Link className="auth-back" href={`/${locale}`}>{auth.back}</Link>
         </div>
       </section>

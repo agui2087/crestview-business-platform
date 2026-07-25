@@ -1,5 +1,8 @@
 import Link from "next/link";
 import { Brand } from "@/components/brand";
+import { UserProvider } from "@/components/user-provider";
+import { chatGPTSignOutPath } from "@/app/chatgpt-auth";
+import { getCrestviewUser } from "@/lib/current-user";
 import type { Locale } from "@/lib/i18n";
 
 const navItems = [
@@ -12,7 +15,7 @@ const navItems = [
   ["settings", "Settings"],
 ] as const;
 
-export function PlatformShell({
+export async function PlatformShell({
   locale,
   active,
   children,
@@ -21,7 +24,16 @@ export function PlatformShell({
   active: (typeof navItems)[number][0];
   children: React.ReactNode;
 }) {
+  const user = await getCrestviewUser(locale);
+  const initials = user.displayName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "CV";
+
   return (
+    <UserProvider user={{ displayName: user.displayName, email: user.email }}>
     <main className="dashboard">
       <aside className="sidebar">
         <Brand locale={locale} />
@@ -52,12 +64,15 @@ export function PlatformShell({
           </div>
           <div className="user-chip">
             <Link href={`/${locale}`}>Website</Link>
-            <span>GF</span>
+            <strong>{user.displayName}</strong>
+            <span title={user.displayName}>{initials}</span>
+            <a href={chatGPTSignOutPath(`/${locale}`)}>Sign out</a>
           </div>
         </header>
         {children}
       </section>
     </main>
+    </UserProvider>
   );
 }
 

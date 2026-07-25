@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useCrestviewUser } from "@/components/user-provider";
 import type { Opportunity } from "@/lib/demo-data";
 
 const stages = [
@@ -20,6 +21,7 @@ function parseNumber(value: string) {
 }
 
 export function AcquisitionPlanner({ opportunity }: { opportunity: Opportunity }) {
+  const user = useCrestviewUser();
   const [started, setStarted] = useState(false);
   const [current, setCurrent] = useState(0);
   const [skipOpen, setSkipOpen] = useState(false);
@@ -56,7 +58,7 @@ export function AcquisitionPlanner({ opportunity }: { opportunity: Opportunity }
   const selectedRequestList = selectedRequestItems.length
     ? ` and provide the following information where available:\n\n${selectedRequestItems.map((item) => `• ${item}`).join("\n")}`
     : "";
-  const brokerRequest = `Hello${opportunity.brokerName ? ` ${opportunity.brokerName}` : ""},\n\nI am interested in listing ${opportunity.sourceId}, “${opportunity.title}.” Please confirm that it is still available${selectedRequestList}.\n\nPlease also share the NDA and supporting documents required for an initial review. I will treat all information as confidential and subject to the applicable NDA.\n\nThank you.`;
+  const brokerRequest = `Hello${opportunity.brokerName ? ` ${opportunity.brokerName}` : ""},\n\nMy name is ${user.displayName}, and I am interested in listing ${opportunity.sourceId}, “${opportunity.title}.” Please confirm that it is still available${selectedRequestList}.\n\nPlease also share the NDA and supporting documents required for an initial review. I will treat all information as confidential and subject to the applicable NDA.\n\nThank you,\n${user.displayName}`;
   function toggleRequestItem(item: string) {
     setSelectedRequestItems((currentItems) =>
       currentItems.includes(item)

@@ -178,7 +178,14 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .field { display: grid; gap: 8px; margin-bottom: 18px; }
 .field label { font-size: .78rem; font-weight: 750; }
 .field input { width: 100%; min-height: 48px; padding: 0 14px; border: 1px solid #cfd7d2; border-radius: 11px; background: white; }
+.field small { color: var(--muted); font-size: .68rem; line-height: 1.5; }
 .auth-submit { width: 100%; }
+.auth-provider { display: flex; margin-top: 18px; }
+.auth-privacy { margin: 16px 0 0; color: var(--muted); font-size: .7rem; line-height: 1.55; }
+.signed-in-choice p { color: var(--muted); font-size: .76rem; }
+.account-note { display: flex; align-items: flex-start; gap: 10px; margin: 6px 0 20px; padding: 13px; border-radius: 10px; background: var(--brand-soft); }
+.account-note span { width: 22px; height: 22px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 50%; background: var(--brand); color: white; font-size: .7rem; font-weight: 800; }
+.account-note p { margin: 0; color: #405249; font-size: .68rem; line-height: 1.5; }
 .auth-create { width: 100%; margin-top: 10px; padding: 10px; border: 0; background: transparent; color: var(--brand); font-size: .76rem; font-weight: 750; cursor: pointer; }
 .auth-create:disabled { color: var(--muted); cursor: not-allowed; }
 .auth-back { display: inline-block; margin-top: 24px; color: var(--muted); font-size: .8rem; font-weight: 650; }
@@ -199,6 +206,8 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .organization { display: flex; align-items: center; gap: 11px; font-size: .8rem; font-weight: 740; }
 .organization__avatar { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 9px; background: var(--brand); color: white; font-size: .72rem; }
 .user-chip { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: .75rem; }
+.user-chip strong { max-width: 150px; overflow: hidden; color: var(--ink); font-size: .7rem; text-overflow: ellipsis; white-space: nowrap; }
+.user-chip > a:last-child { color: var(--muted); font-size: .66rem; font-weight: 700; }
 .user-chip span { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 50%; background: #d7dfda; color: #3e4b45; font-weight: 760; }
 .dashboard-content { padding: 38px 34px 60px; }
 .preview-banner { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 30px; padding: 12px 15px; border: 1px solid #d9dfc4; border-radius: 11px; background: #f7fae9; color: #4e5a25; font-size: .74rem; }

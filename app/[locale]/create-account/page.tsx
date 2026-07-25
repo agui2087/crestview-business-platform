@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { Brand } from "@/components/brand";
-import { getChatGPTUser, chatGPTSignInPath } from "@/app/chatgpt-auth";
+import { getChatGPTUser, chatGPTSignInHref } from "@/app/chatgpt-auth";
 import { isLocale } from "@/lib/i18n";
 import { createProfile } from "./actions";
 
@@ -12,7 +12,7 @@ export default async function CreateAccountPage({ params }: { params: Promise<{ 
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
   const user = await getChatGPTUser();
-  if (!user) redirect(chatGPTSignInPath(`/${locale}/create-account`));
+  if (!user) redirect(await chatGPTSignInHref(`/${locale}/create-account`));
 
   return (
     <main className="auth-page">

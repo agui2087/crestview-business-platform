@@ -11,6 +11,7 @@ const USER_EMAIL_HEADER = "oai-authenticated-user-email";
 const USER_FULL_NAME_HEADER = "oai-authenticated-user-full-name";
 const USER_FULL_NAME_ENCODING_HEADER = "oai-authenticated-user-full-name-encoding";
 const PERCENT_ENCODED_UTF8 = "percent-encoded-utf-8";
+const PRODUCTION_ORIGIN = "https://crestview-business-platform.agui2087.chatgpt.site";
 
 export async function getChatGPTUser(): Promise<ChatGPTUser | null> {
   const requestHeaders = await headers();
@@ -30,11 +31,19 @@ export async function getChatGPTUser(): Promise<ChatGPTUser | null> {
 export async function requireChatGPTUser(returnTo: string): Promise<ChatGPTUser> {
   const user = await getChatGPTUser();
   if (user) return user;
-  redirect(chatGPTSignInPath(returnTo));
+  redirect(await chatGPTSignInHref(returnTo));
 }
 
 export function chatGPTSignInPath(returnTo: string): string {
   return `/signin-with-chatgpt?return_to=${encodeURIComponent(safeRelativeReturnPath(returnTo))}`;
+}
+
+export async function chatGPTSignInHref(returnTo: string): Promise<string> {
+  const requestHeaders = await headers();
+  const host = requestHeaders.get("host")?.toLowerCase() ?? "";
+  const isLocal = host.startsWith("localhost") || host.startsWith("127.0.0.1");
+  const path = chatGPTSignInPath(returnTo);
+  return isLocal ? `${PRODUCTION_ORIGIN}${path}` : path;
 }
 
 export function chatGPTSignOutPath(returnTo = "/"): string {

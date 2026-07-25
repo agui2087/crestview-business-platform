@@ -242,6 +242,12 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .smart-search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font-size: .88rem; }
 .smart-search button { border: 0; background: transparent; color: var(--muted); font-size: .68rem; font-weight: 720; cursor: pointer; }
 .search-help { margin: 8px 3px 18px; color: var(--muted); font-size: .64rem; }
+.opportunity-filters { display: grid; grid-template-columns: 1.3fr 1.2fr 1fr 1fr auto; gap: 10px; align-items: end; margin: 16px 0 10px; }
+.opportunity-filters label,.upload-controls label { display: grid; gap: 6px; color: var(--muted); font-size: .64rem; font-weight: 700; }
+.opportunity-filters select,.opportunity-filters input,.upload-controls select { min-width: 0; height: 42px; border: 1px solid var(--line); border-radius: 9px; background: #fff; padding: 0 11px; color: var(--ink); font: inherit; font-size: .72rem; }
+.opportunity-filters button { height: 42px; border: 1px solid var(--line); border-radius: 9px; background: transparent; padding: 0 14px; color: var(--muted); cursor: pointer; }
+.result-count { margin-bottom: 12px; color: var(--muted); font-size: .7rem; }
+.result-count strong { color: var(--ink); }
 .opportunity-row { display: grid; grid-template-columns: minmax(220px,1.5fr) repeat(3,minmax(80px,.6fr)) 85px 82px; gap: 18px; align-items: center; padding: 19px; border: 1px solid var(--line); border-radius: 14px; background: white; }
 .opportunity-row__main h2 { margin: 7px 0 4px; font-size: .9rem; }
 .opportunity-row__main p { margin: 0; color: var(--muted); font-size: .67rem; }
@@ -299,6 +305,12 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .detail-card h3 { margin: 22px 0 8px; font-size: .75rem; }
 .detail-card p,.detail-card li { color: var(--muted); font-size: .7rem; line-height: 1.6; }
 .detail-card ul { margin: 8px 0 0; padding-left: 18px; }
+.broker-card { display: flex; justify-content: space-between; gap: 24px; align-items: center; margin: 16px 0; padding: 22px; border: 1px solid var(--line); border-radius: 14px; background: #fff; }
+.broker-card span { color: var(--muted); font-size: .61rem; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
+.broker-card h2 { margin: 5px 0; font-size: .95rem; }
+.broker-card p { margin: 0; color: var(--muted); font-size: .7rem; }
+.broker-contact { display: grid; gap: 6px; flex: 0 0 auto; text-align: right; }
+.broker-contact a { color: var(--brand); font-size: .72rem; font-weight: 800; }
 .begin-panel { display: flex; align-items: center; justify-content: space-between; gap: 30px; margin-top: 16px; padding: 28px; border-radius: 17px; background: var(--brand-dark); color: white; }
 .begin-panel > div > span { color: var(--lime); font-size: .6rem; font-weight: 780; letter-spacing: .08em; text-transform: uppercase; }
 .begin-panel h2 { margin: 9px 0; font-size: 1.15rem; }
@@ -322,7 +334,10 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .outreach-card { background: var(--brand-soft); }
 .outreach-card > span { color: var(--brand); font-size: .61rem; font-weight: 780; text-transform: uppercase; }
 .outreach-card p { color: #405249; font-size: .7rem; line-height: 1.6; }
+.outreach-card pre { margin: 12px 0; max-height: 310px; overflow: auto; white-space: pre-wrap; font: inherit; color: #405249; font-size: .68rem; line-height: 1.55; }
 .outreach-card button { padding: 8px 11px; border: 1px solid var(--brand); border-radius: 8px; background: transparent; color: var(--brand); font-size: .64rem; font-weight: 760; }
+.outreach-actions { display: flex; gap: 16px; align-items: center; }
+.outreach-actions a { color: var(--brand); font-size: .64rem; font-weight: 800; }
 .valuation-area { display: grid; grid-template-columns: 1fr .8fr; gap: 12px; }
 .valuation-form { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; }
 .valuation-form label,.stage-notes { display: grid; gap: 7px; color: var(--muted); font-size: .64rem; font-weight: 700; }
@@ -347,6 +362,23 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .confirm-modal p { margin: 0; color: var(--muted); font-size: .7rem; line-height: 1.6; }
 .confirm-modal > div { display: flex; justify-content: center; gap: 9px; margin-top: 22px; }
 
+.documents-workspace { display: grid; gap: 16px; }
+.upload-card { display: grid; grid-template-columns: 1fr 1.5fr; gap: 24px; padding: 24px; border: 1px solid var(--line); border-radius: 15px; background: #fff; }
+.upload-card > div:first-child > span { color: var(--brand); font-size: .61rem; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; }
+.upload-card h2 { margin: 6px 0; font-size: 1.05rem; }
+.upload-card p { margin: 0; color: var(--muted); font-size: .72rem; line-height: 1.5; }
+.upload-controls { display: grid; grid-template-columns: 1fr 1.4fr auto; gap: 10px; align-items: end; }
+.file-picker input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.file-picker span { display: flex; align-items: center; height: 42px; overflow: hidden; border: 1px dashed var(--brand); border-radius: 9px; padding: 0 12px; color: var(--brand); background: var(--brand-soft); cursor: pointer; white-space: nowrap; text-overflow: ellipsis; }
+.upload-message { grid-column: 1 / -1; color: var(--brand) !important; font-weight: 800; }
+.document-list { overflow: hidden; }
+.document-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 14px 18px; border-top: 1px solid var(--line); }
+.document-row > div:first-child { display: grid; gap: 3px; }
+.document-row span,.document-row small { color: var(--muted); font-size: .62rem; }
+.document-row strong { font-size: .76rem; }
+.document-row > div:last-child { display: flex; gap: 16px; }
+.document-row a,.document-row button { border: 0; background: transparent; color: var(--brand); font: inherit; font-size: .68rem; font-weight: 800; cursor: pointer; }
+
 @media (max-width: 900px) {
   .nav { display: none; }
   .hero { padding-top: 62px; }
@@ -362,6 +394,10 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .sidebar { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--line); }
   .sidebar-nav { grid-template-columns: repeat(4,auto); overflow-x: auto; margin-top: 22px; }
   .listing-alert { display: none; }
+  .opportunity-filters { grid-template-columns: 1fr 1fr; }
+  .opportunity-filters button { grid-column: 1 / -1; }
+  .upload-card { grid-template-columns: 1fr; }
+  .upload-controls { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 620px) {
@@ -404,6 +440,9 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .acquisition-steps button { min-width: 150px; }
   .valuation-form { grid-template-columns: 1fr; }
   .stage-actions { align-items: stretch; flex-direction: column; }
+  .opportunity-filters { grid-template-columns: 1fr; }
+  .broker-card,.document-row { align-items: flex-start; flex-direction: column; }
+  .broker-contact { text-align: left; }
 }
 
 @media (prefers-reduced-motion: reduce) {

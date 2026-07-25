@@ -28,6 +28,7 @@ export function AcquisitionPlanner({ opportunity }: { opportunity: Opportunity }
   const [ebitda, setEbitda] = useState(opportunity.ebitdaValue?.toString() ?? "");
   const [debtService, setDebtService] = useState("");
   const [notes, setNotes] = useState("");
+  const [copied, setCopied] = useState(false);
 
   const metrics = useMemo(() => {
     const p = parseNumber(price);
@@ -51,6 +52,24 @@ export function AcquisitionPlanner({ opportunity }: { opportunity: Opportunity }
   }
 
   const requestItems = opportunity.missing;
+  const brokerRequest = `Hello${opportunity.brokerName ? ` ${opportunity.brokerName}` : ""},\n\nI am interested in listing ${opportunity.sourceId}, “${opportunity.title}.” Please confirm that it is still available and provide the following information where available:\n\n${requestItems.map((item) => `• ${item}`).join("\n")}\n\nPlease also share the NDA and supporting documents required for an initial review. I will treat all information as confidential and subject to the applicable NDA.\n\nThank you.`;
+  async function copyBrokerRequest() {
+    try {
+      await navigator.clipboard.writeText(brokerRequest);
+    } catch {
+      const textArea = document.createElement("textarea");
+      textArea.value = brokerRequest;
+      textArea.style.position = "fixed";
+      textArea.style.opacity = "0";
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      document.execCommand("copy");
+      textArea.remove();
+    }
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 2000);
+  }
   const atLastStep = current === stages.length - 1;
 
   return (
@@ -70,7 +89,7 @@ export function AcquisitionPlanner({ opportunity }: { opportunity: Opportunity }
 
         {current === 0 && <div className="check-card"><h3>Initial fit review</h3>{["Matches your preferred industry and geography","Purchase price fits available capital","Required licenses are understood","Owner role and transition expectations are clear"].map((item) => <label key={item}><input type="checkbox" />{item}</label>)}</div>}
 
-        {current === 1 && <div className="request-grid"><div className="check-card"><h3>Information to request</h3>{requestItems.map((item) => <label key={item}><input type="checkbox" />{item}</label>)}</div><div className="outreach-card"><span>Broker request draft</span><p>Please provide the missing information listed for this opportunity, including supporting documents where available. We will treat all information as confidential and subject to the applicable NDA.</p><button type="button">Copy request</button></div></div>}
+        {current === 1 && <div className="request-grid"><div className="check-card"><h3>Information to request</h3>{requestItems.map((item) => <label key={item}><input type="checkbox" />{item}</label>)}</div><div className="outreach-card"><span>Broker request draft</span><pre>{brokerRequest}</pre><div className="outreach-actions"><button type="button" onClick={copyBrokerRequest}>{copied ? "Copied ✓" : "Copy request"}</button>{opportunity.brokerEmail && <a href={`mailto:${opportunity.brokerEmail}?subject=${encodeURIComponent(`Inquiry about listing ${opportunity.sourceId}`)}&body=${encodeURIComponent(brokerRequest)}`}>Open in email</a>}</div></div></div>}
 
         {current === 2 && <div className="valuation-area">
           <div className="valuation-form">

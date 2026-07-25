@@ -31,6 +31,14 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
           <article className="detail-card"><h2>Listing summary</h2><p>{opportunity.description}</p><h3>Public highlights</h3><ul>{opportunity.highlights.map((item) => <li key={item}>{item}</li>)}</ul></article>
           <article className="detail-card detail-card--missing"><h2>Information to request</h2><p>These items were not found in the public listing and should not be assumed.</p><ul>{opportunity.missing.map((item) => <li key={item}>{item}</li>)}</ul></article>
         </div>
+        <article className="broker-card">
+          <div><span>Broker or listing contact</span><h2>{opportunity.brokerName ?? "Contact through the source listing"}</h2><p>Use the original listing when a direct contact was not published. Confirm availability before relying on any figures.</p></div>
+          <div className="broker-contact">
+            {opportunity.brokerPhone && <a href={`tel:${opportunity.brokerPhone}`}>{opportunity.brokerPhone}</a>}
+            {opportunity.brokerEmail && <a href={`mailto:${opportunity.brokerEmail}`}>{opportunity.brokerEmail}</a>}
+            <a href={opportunity.sourceUrl} target="_blank" rel="noreferrer">Contact through listing ↗</a>
+          </div>
+        </article>
         <AcquisitionPlanner opportunity={opportunity} />
       </div>
     </PlatformShell>

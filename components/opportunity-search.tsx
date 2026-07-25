@@ -36,9 +36,38 @@ export function OpportunitySearch({
   storageReady: boolean;
 }) {
   const [query, setQuery] = useState("");
+  const [industry, setIndustry] = useState("All industries");
+  const [source, setSource] = useState("All sources");
+  const [sortBy, setSortBy] = useState("relevance");
+  const [maxPrice, setMaxPrice] = useState("");
+  const industries = useMemo(
+    () => ["All industries", ...Array.from(new Set(items.map((item) => item.industry))).sort()],
+    [items],
+  );
+  const sources = useMemo(
+    () => ["All sources", ...Array.from(new Set(items.map((item) => item.source))).sort()],
+    [items],
+  );
   const results = useMemo(
-    () => items.map((item) => ({ item, rank: score(item, query) })).filter(({ rank }) => rank > 0).sort((a, b) => b.rank - a.rank),
-    [items, query],
+    () => {
+      const ceiling = Number(maxPrice.replace(/[$,\s]/g, ""));
+      const filtered = items
+        .map((item) => ({ item, rank: score(item, query) }))
+        .filter(({ item, rank }) =>
+          rank > 0
+          && (industry === "All industries" || item.industry === industry)
+          && (source === "All sources" || item.source === source)
+          && (!ceiling || (item.priceValue !== null && item.priceValue <= ceiling)),
+        );
+      return filtered.sort((a, b) => {
+        if (sortBy === "price-low") return (a.item.priceValue ?? Number.MAX_SAFE_INTEGER) - (b.item.priceValue ?? Number.MAX_SAFE_INTEGER);
+        if (sortBy === "price-high") return (b.item.priceValue ?? -1) - (a.item.priceValue ?? -1);
+        if (sortBy === "cash-flow") return (b.item.cashFlowValue ?? -1) - (a.item.cashFlowValue ?? -1);
+        if (sortBy === "revenue") return (b.item.revenueValue ?? -1) - (a.item.revenueValue ?? -1);
+        return b.rank - a.rank;
+      });
+    },
+    [items, query, industry, source, sortBy, maxPrice],
   );
 
   return (
@@ -49,6 +78,20 @@ export function OpportunitySearch({
         {query && <button onClick={() => setQuery("")} type="button">Clear</button>}
       </div>
       <p className="search-help">Searches titles, descriptions, industries, locations, and partial word matches. The closest matches appear first.</p>
+      <div className="opportunity-filters" aria-label="Opportunity filters">
+        <label>Industry<select value={industry} onChange={(event) => setIndustry(event.target.value)}>{industries.map((item) => <option key={item}>{item}</option>)}</select></label>
+        <label>Source<select value={source} onChange={(event) => setSource(event.target.value)}>{sources.map((item) => <option key={item}>{item}</option>)}</select></label>
+        <label>Maximum price<input value={maxPrice} onChange={(event) => setMaxPrice(event.target.value)} inputMode="numeric" placeholder="No maximum" /></label>
+        <label>Sort by<select value={sortBy} onChange={(event) => setSortBy(event.target.value)}>
+          <option value="relevance">Closest match</option>
+          <option value="price-low">Price: low to high</option>
+          <option value="price-high">Price: high to low</option>
+          <option value="cash-flow">Highest cash flow</option>
+          <option value="revenue">Highest revenue</option>
+        </select></label>
+        <button type="button" onClick={() => { setIndustry("All industries"); setSource("All sources"); setMaxPrice(""); setSortBy("relevance"); }}>Reset filters</button>
+      </div>
+      <div className="result-count"><strong>{results.length}</strong> opportunities shown</div>
       <div className="opportunity-list">
         {results.map(({ item }) => (
           <article className="opportunity-row" key={item.id}>

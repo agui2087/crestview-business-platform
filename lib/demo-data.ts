@@ -17,12 +17,15 @@ export type Opportunity = {
   sourceUrl: string;
   sourceId: string;
   lastChecked: string;
+  brokerName?: string;
+  brokerEmail?: string;
+  brokerPhone?: string;
   description: string;
   highlights: string[];
   missing: string[];
 };
 
-export const opportunities: Opportunity[] = [
+const featuredOpportunities: Opportunity[] = [
   {
     id: "precision-heat-air",
     title: "Precision Heat & Air",
@@ -157,6 +160,8 @@ export const opportunities: Opportunity[] = [
     sourceUrl: "https://www.tworld.com/locations/california/irvinelongbeach/business-listing-search",
     sourceId: "Broker page listing",
     lastChecked: "July 25, 2026",
+    brokerName: "Transworld Business Advisors of Orange",
+    brokerPhone: "(714) 923-1222",
     description: "California engineering-services opportunity advertised by Transworld with high-end clientele and a seller-disclosed earnings figure.",
     highlights: ["Independent broker source", "High disclosed earnings", "California location"],
     missing: ["Revenue", "Exact location", "Client concentration", "Normalized EBITDA support"],
@@ -180,6 +185,8 @@ export const opportunities: Opportunity[] = [
     sourceUrl: "https://www.tworld.com/locations/california/irvinelongbeach/business-listing-search",
     sourceId: "Broker page listing",
     lastChecked: "July 25, 2026",
+    brokerName: "Transworld Business Advisors of Orange",
+    brokerPhone: "(714) 923-1222",
     description: "Orange County child behavior and therapy business advertised as mostly absentee-run.",
     highlights: ["Independent broker source", "Absentee-run description", "Disclosed seller earnings"],
     missing: ["Revenue", "Payer concentration", "Licensing and credentialing", "Clinician retention"],
@@ -203,10 +210,124 @@ export const opportunities: Opportunity[] = [
     sourceUrl: "https://www.tworld.com/locations/california/irvinelongbeach/business-listing-search",
     sourceId: "Broker page listing",
     lastChecked: "July 25, 2026",
+    brokerName: "Transworld Business Advisors of Orange",
+    brokerPhone: "(714) 923-1222",
     description: "Orange County family medical practice marketed with a seller-reported EBITDA margin.",
     highlights: ["Independent broker source", "Healthcare opportunity", "Disclosed seller earnings"],
     missing: ["Revenue", "Provider dependency", "Payer mix", "Compliance and licensing review"],
   },
+];
+
+const money = (value: number | null, unknownLabel = "Inquire with broker") =>
+  value === null ? unknownLabel : `$${value.toLocaleString("en-US")}`;
+
+const businessTeamListings: Opportunity[] = ([
+  ["litigation-analytics-platform", "High-Margin Litigation Analytics Platform", "Legal technology", "California", 3500000, 1200000, 892849, "11823"],
+  ["general-engineering-company", "Profitable General Engineering Company", "Engineering and construction", "California", null, 3526764, 766666, "IR11227"],
+  ["pipe-lining-coating", "Market-Leading Pipe Lining and Coating Company", "Industrial services", "California", null, 5262975, 618412, "FR11699"],
+  ["bay-area-catering", "Profitable Full-Service Bay Area Catering Business", "Food service and catering", "Bay Area, CA", 1600000, 2882885, 419850, "11757"],
+  ["manufactured-home-brokerage", "Manufactured Home Brokerage", "Real estate services", "California", 625000, 7474300, 325948, "SE11874"],
+  ["mediterranean-market", "Mediterranean Market, Deli, Bakery and Halal Food", "Grocery and food service", "California", 1275000, 2228221, 315529, "11762"],
+  ["sacramento-landscape-installation", "Sacramento Landscape Installation Business", "Landscaping", "Sacramento, CA", 550000, 1899278, 294033, "SA11794"],
+  ["glass-glazing-business", "Very Profitable Glass and Glazing Business", "Glass and construction", "California", 300000, 455973, 287580, "SA11701"],
+  ["transmission-business", "Transmission Business with Positive SDE, Semi-Absentee", "Automotive service", "Northern California", 749000, 771629, 278922, "SA11703"],
+  ["artisan-pizza", "Absentee-Run Quick-Service Artisan Pizza Business", "Restaurant", "California", 700000, 1021449, 268392, "ST11822"],
+  ["san-jose-physical-therapy", "Profitable Physical Therapy Practice in San Jose", "Physical therapy", "San Jose, CA", 1100000, 1011283, 263694, "11680"],
+  ["radiant-heating-contractor", "High-Margin Radiant Heating Contractor", "Specialty contracting", "Los Angeles, CA", 599000, 1001596, 257619, "SF11754"],
+  ["indian-grocery-market", "Highly Profitable Indian Grocery Market", "Grocery", "California", 450000, 651562, 250670, "SF11841"],
+  ["bicycle-shop", "Beloved Bicycle Shop with Growth Potential", "Bicycle retail and service", "California", 365000, 1089899, 128783, "11902"],
+  ["window-coverings", "Profitable Window Covering Business in South Bay", "Home services and retail", "South Bay, CA", 200000, 485554, 123263, "11597"],
+  ["structural-engineering", "Structural Engineering Business", "Engineering services", "California", 300000, 780791, 121742, "SF11515"],
+  ["business-connectivity", "Business Connectivity Services Company", "Telecommunications services", "California", 995000, 1103898, 121305, "SF11728"],
+  ["natural-foods-norcal", "Natural Foods Business Known Locally in Northern California", "Natural foods", "Northern California", 270000, 545299, 119255, "SA11721"],
+  ["bay-area-design-build", "Award-Winning Bay Area Design-Build Firm", "Design and construction", "Bay Area, CA", 4000000, 4176960, 119040, "11316"],
+  ["hvac-home-based", "Home-Based HVAC Business", "HVAC", "Northern California", 215000, 324452, 105622, "SA11896"],
+] satisfies Array<[string, string, string, string, number | null, number | null, number | null, string]>).map(
+  ([id, title, industry, location, price, revenue, cashFlow, sourceId]): Opportunity => ({
+    id,
+    title,
+    publicBusinessName: null,
+    location,
+    industry,
+    price: money(price),
+    priceValue: price,
+    revenue: money(revenue),
+    revenueValue: revenue,
+    cashFlow: money(cashFlow),
+    cashFlowValue: cashFlow,
+    ebitda: "N/A",
+    ebitdaValue: null,
+    status: "Active when checked",
+    source: "Business Team",
+    sourceUrl: "https://www.business-team.com/buy-a-business/search-results.aspx?lid=ca",
+    sourceId,
+    lastChecked: "July 25, 2026",
+    brokerName: "Business Team",
+    description: `${title} listed through Business Team. The public search result reports the figures shown here; additional operating and transaction details require broker inquiry.`,
+    highlights: ["Independent broker listing", `${industry} opportunity`, "Public revenue and adjusted-earnings figures shown when available"],
+    missing: ["EBITDA", "Exact business name", "Customer concentration", "Owner involvement", "Supporting financial records"],
+  }),
+);
+
+const additionalBrokerListings: Opportunity[] = [
+  {
+    id: "awards-apparel-signage",
+    title: "Established Awards, Promotional Products, Custom Apparel and Signage",
+    publicBusinessName: null,
+    location: "Southern California",
+    industry: "Printing, apparel and signage",
+    price: "$690,000",
+    priceValue: 690000,
+    revenue: "$1,287,829",
+    revenueValue: 1287829,
+    cashFlow: "$276,153",
+    cashFlowValue: 276153,
+    ebitda: "N/A",
+    ebitdaValue: null,
+    status: "Active when checked",
+    source: "BizBen / TLG Business Broker",
+    sourceUrl: "https://www.bizben.com/business-for-sale/established-awards-promo-products-custom-apparel-signage-7156398",
+    sourceId: "7156398",
+    lastChecked: "July 25, 2026",
+    brokerName: "Ian Lashley",
+    brokerEmail: "ian@tlgbusinessbroker.com",
+    brokerPhone: "(805) 535-3693",
+    description: "Long-established awards, recognition, custom apparel, signage, and promotional-products company serving Southern California.",
+    highlights: ["SBA prequalified according to listing", "More than 50 years in operation", "Seller reports repeat institutional customers"],
+    missing: ["EBITDA", "Customer concentration schedule", "Normalized owner compensation", "Current lease confirmation"],
+  },
+  {
+    id: "health-insurance-book",
+    title: "Group Health Insurance Agency and Book of Business",
+    publicBusinessName: null,
+    location: "Banning, Riverside County, CA",
+    industry: "Insurance agency",
+    price: "$390,000",
+    priceValue: 390000,
+    revenue: "$130,804",
+    revenueValue: 130804,
+    cashFlow: "$124,247",
+    cashFlowValue: 124247,
+    ebitda: "N/A",
+    ebitdaValue: null,
+    status: "Active when checked",
+    source: "BizBen / First Choice Business Brokers",
+    sourceUrl: "https://www.bizben.com/business-for-sale/life-health-insurance-agency-6849908",
+    sourceId: "6849908",
+    lastChecked: "July 25, 2026",
+    brokerName: "Sarkis Kaladzhyan",
+    brokerEmail: "sarkisk@fcbb.com",
+    brokerPhone: "(818) 634-7778",
+    description: "Owner-operated health-insurance agency established in 1989 with a book concentrated in group medical policies.",
+    highlights: ["Seller financing indicated", "Seller reports established carrier relationships", "Transition support described"],
+    missing: ["EBITDA", "Policy retention history", "Commission statements", "License-transfer plan"],
+  },
+];
+
+export const opportunities: Opportunity[] = [
+  ...featuredOpportunities,
+  ...businessTeamListings,
+  ...additionalBrokerListings,
 ];
 
 export const pipelineColumns = [

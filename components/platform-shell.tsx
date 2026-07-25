@@ -66,7 +66,7 @@ export async function PlatformShell({
             <Link href={`/${locale}`}>Website</Link>
             <strong>{user.displayName}</strong>
             <span title={user.displayName}>{initials}</span>
-            <a href={chatGPTSignOutPath(`/${locale}`)}>Sign out</a>
+            <a href={user.source === "local" ? `/api/local-auth/signout?return_to=/${locale}` : chatGPTSignOutPath(`/${locale}`)}>Sign out</a>
           </div>
         </header>
         {children}

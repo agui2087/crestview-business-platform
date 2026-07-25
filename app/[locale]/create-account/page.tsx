@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { Brand } from "@/components/brand";
-import { getChatGPTUser, chatGPTSignInHref } from "@/app/chatgpt-auth";
+import { LocalAuth } from "@/components/local-auth";
+import { getChatGPTUser, chatGPTSignInHref, isLocalRequest } from "@/app/chatgpt-auth";
 import { isLocale } from "@/lib/i18n";
 import { createProfile } from "./actions";
 
@@ -11,6 +12,25 @@ export const dynamic = "force-dynamic";
 export default async function CreateAccountPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
+  const local = await isLocalRequest();
+  if (local) {
+    return (
+      <main className="auth-page">
+        <aside className="auth-aside">
+          <Brand locale={locale} inverse />
+          <div className="auth-quote"><p>“Build locally. Learn quickly. Keep every decision clear.”</p><span>Crestview local workspace</span></div>
+        </aside>
+        <section className="auth-main" aria-labelledby="local-create-title">
+          <div className="auth-card">
+            <span className="mini-label">Local account</span>
+            <h1 id="local-create-title">Create your Crestview account</h1>
+            <p className="auth-card__intro">This account works on your local Crestview site without ChatGPT.</p>
+            <LocalAuth initialMode="create" returnTo={`/${locale}/dashboard`} />
+          </div>
+        </section>
+      </main>
+    );
+  }
   const user = await getChatGPTUser();
   if (!user) redirect(await chatGPTSignInHref(`/${locale}/create-account`));
 

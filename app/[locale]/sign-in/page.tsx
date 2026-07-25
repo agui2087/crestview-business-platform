@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Brand } from "@/components/brand";
-import { chatGPTSignInHref, getChatGPTUser } from "@/app/chatgpt-auth";
+import { LocalAuth } from "@/components/local-auth";
+import { chatGPTSignInHref, getChatGPTUser, isLocalRequest } from "@/app/chatgpt-auth";
 import { getDictionary, isLocale } from "@/lib/i18n";
 
 export const metadata: Metadata = {
@@ -17,6 +18,7 @@ export default async function SignInPage({
   if (!isLocale(locale)) notFound();
   const { auth } = getDictionary(locale);
   const user = await getChatGPTUser();
+  const local = await isLocalRequest();
   const signInHref = await chatGPTSignInHref(`/${locale}/create-account`);
 
   return (
@@ -32,8 +34,10 @@ export default async function SignInPage({
         <div className="auth-card">
           <h1 id="sign-in-title">{auth.title}</h1>
           <p className="auth-card__intro">{auth.body}</p>
-          <div className="notice">Secure account access is ready. Crestview uses ChatGPT sign-in so it never stores your password.</div>
-          {user ? (
+          <div className="notice">{local ? "Local Crestview accounts stay on this computer and do not use ChatGPT." : "Secure account access is ready. Crestview uses ChatGPT sign-in so it never stores your password."}</div>
+          {local && !user ? (
+            <LocalAuth returnTo={`/${locale}/dashboard`} />
+          ) : user ? (
             <div className="signed-in-choice">
               <p>Signed in as <strong>{user.email}</strong></p>
               <Link className="button button--primary auth-submit" href={`/${locale}/create-account`}>Continue to Crestview</Link>
@@ -41,7 +45,7 @@ export default async function SignInPage({
           ) : (
             <a className="button button--primary auth-submit auth-provider" href={signInHref}>Continue securely with ChatGPT</a>
           )}
-          <p className="auth-privacy">After signing in, you’ll choose the name shown throughout Crestview and in any broker message drafts you create.</p>
+          {!local && <p className="auth-privacy">After signing in, you’ll choose the name shown throughout Crestview and in any broker message drafts you create.</p>}
           <Link className="auth-back" href={`/${locale}`}>{auth.back}</Link>
         </div>
       </section>

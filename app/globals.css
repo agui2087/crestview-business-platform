@@ -182,6 +182,11 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .auth-submit { width: 100%; }
 .auth-provider { display: flex; margin-top: 18px; }
 .auth-privacy { margin: 16px 0 0; color: var(--muted); font-size: .7rem; line-height: 1.55; }
+.local-auth { margin-top: 20px; }
+.auth-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 20px; padding: 4px; border-radius: 11px; background: #e9eeea; }
+.auth-tabs button { min-height: 38px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font: inherit; font-size: .72rem; font-weight: 760; cursor: pointer; }
+.auth-tabs button.is-active { background: white; color: var(--brand); box-shadow: 0 2px 8px rgba(18,47,35,.08); }
+.auth-error { margin: 0 0 14px; padding: 11px 12px; border: 1px solid #e4b5ad; border-radius: 9px; background: #fff3f1; color: #8d392b; font-size: .7rem; line-height: 1.45; }
 .signed-in-choice p { color: var(--muted); font-size: .76rem; }
 .account-note { display: flex; align-items: flex-start; gap: 10px; margin: 6px 0 20px; padding: 13px; border-radius: 10px; background: var(--brand-soft); }
 .account-note span { width: 22px; height: 22px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 50%; background: var(--brand); color: white; font-size: .7rem; font-weight: 800; }

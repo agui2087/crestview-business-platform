@@ -7,6 +7,9 @@ import type { Locale } from "@/lib/i18n";
 
 export async function getCrestviewUser(locale: Locale) {
   const authUser = await requireChatGPTUser(`/${locale}/dashboard`);
+  if (authUser.source === "local") {
+    return { ...authUser, locale };
+  }
   const [profile] = await (await getDb())
     .select()
     .from(profiles)

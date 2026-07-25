@@ -1,20 +1,37 @@
 import { headers } from "next/headers";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 export type ChatGPTUser = {
   displayName: string;
   email: string;
   fullName: string | null;
+  source: "chatgpt" | "local";
 };
 
 const USER_EMAIL_HEADER = "oai-authenticated-user-email";
 const USER_FULL_NAME_HEADER = "oai-authenticated-user-full-name";
 const USER_FULL_NAME_ENCODING_HEADER = "oai-authenticated-user-full-name-encoding";
 const PERCENT_ENCODED_UTF8 = "percent-encoded-utf-8";
-const PRODUCTION_ORIGIN = "https://crestview-business-platform.agui2087.chatgpt.site";
 
 export async function getChatGPTUser(): Promise<ChatGPTUser | null> {
   const requestHeaders = await headers();
+  if (isLocalHost(requestHeaders.get("host"))) {
+    const localCookie = (await cookies()).get("crestview_local_user")?.value;
+    if (!localCookie) return null;
+    try {
+      const parsed = JSON.parse(decodeURIComponent(localCookie)) as { email?: string; fullName?: string };
+      if (!parsed.email || !parsed.fullName) return null;
+      return {
+        displayName: parsed.fullName,
+        email: parsed.email,
+        fullName: parsed.fullName,
+        source: "local",
+      };
+    } catch {
+      return null;
+    }
+  }
   const email = requestHeaders.get(USER_EMAIL_HEADER);
   if (!email) return null;
 
@@ -25,7 +42,7 @@ export async function getChatGPTUser(): Promise<ChatGPTUser | null> {
       ? safeDecodeURIComponent(encodedFullName)
       : null;
 
-  return { displayName: fullName ?? email, email, fullName };
+  return { displayName: fullName ?? email, email, fullName, source: "chatgpt" };
 }
 
 export async function requireChatGPTUser(returnTo: string): Promise<ChatGPTUser> {
@@ -40,10 +57,15 @@ export function chatGPTSignInPath(returnTo: string): string {
 
 export async function chatGPTSignInHref(returnTo: string): Promise<string> {
   const requestHeaders = await headers();
-  const host = requestHeaders.get("host")?.toLowerCase() ?? "";
-  const isLocal = host.startsWith("localhost") || host.startsWith("127.0.0.1");
+  const isLocal = isLocalHost(requestHeaders.get("host"));
   const path = chatGPTSignInPath(returnTo);
-  return isLocal ? `${PRODUCTION_ORIGIN}${path}` : path;
+  if (!isLocal) return path;
+  const locale = safeRelativeReturnPath(returnTo).split("/")[1] === "es" ? "es" : "en";
+  return `/${locale}/sign-in?return_to=${encodeURIComponent(safeRelativeReturnPath(returnTo))}`;
+}
+
+export async function isLocalRequest() {
+  return isLocalHost((await headers()).get("host"));
 }
 
 export function chatGPTSignOutPath(returnTo = "/"): string {
@@ -68,4 +90,9 @@ function safeDecodeURIComponent(value: string): string | null {
   } catch {
     return null;
   }
+}
+
+function isLocalHost(host: string | null) {
+  const normalized = host?.toLowerCase() ?? "";
+  return normalized.startsWith("localhost") || normalized.startsWith("127.0.0.1");
 }

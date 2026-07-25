@@ -30,8 +30,8 @@ export default async function DashboardPage({ params }: PageProps<"/[locale]/das
             <div className="panel__header"><h2>Priority opportunities</h2><Link href={`/${locale}/dashboard/opportunities`}>View all →</Link></div>
             {opportunities.slice(0,3).map((deal) => (
               <div className="deal-row" key={deal.id}>
-                <div className="deal-name"><strong>{deal.name}</strong><span>{deal.location}</span></div>
-                <span>{deal.price}</span><span className="stage">{deal.status}</span><span className="deal-score">{deal.score}</span>
+                <div className="deal-name"><strong>{deal.title}</strong><span>{deal.location}</span></div>
+                <span>{deal.price}</span><span className="stage">{deal.status}</span><span className="deal-score">{deal.source}</span>
               </div>
             ))}
           </section>

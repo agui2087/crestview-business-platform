@@ -36,7 +36,27 @@ export async function PlatformShell({
     <UserProvider user={{ displayName: user.displayName, email: user.email }}>
     <main className="dashboard">
       <aside className="sidebar">
-        <Brand locale={locale} />
+        <div className="sidebar-header">
+          <Brand locale={locale} />
+          <details className="mobile-nav">
+            <summary>
+              <span>Menu</span>
+              <span className="mobile-nav__icon" aria-hidden="true">☰</span>
+            </summary>
+            <nav aria-label="Mobile dashboard navigation">
+              {navItems.map(([slug, label]) => (
+                <Link
+                  className={slug === active ? "is-active" : ""}
+                  href={slug === "overview" ? `/${locale}/dashboard` : `/${locale}/dashboard/${slug}`}
+                  key={slug}
+                >
+                  <span className="nav-dot" aria-hidden="true" />
+                  {label}
+                </Link>
+              ))}
+            </nav>
+          </details>
+        </div>
         <nav className="sidebar-nav" aria-label="Dashboard navigation">
           {navItems.map(([slug, label]) => (
             <Link

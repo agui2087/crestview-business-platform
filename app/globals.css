@@ -14,15 +14,19 @@
 }
 
 * { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
+html { max-width: 100%; overflow-x: hidden; scroll-behavior: smooth; }
 body {
   margin: 0;
+  max-width: 100%;
+  overflow-x: hidden;
   background: var(--paper);
   color: var(--ink);
   font-family: Arial, Helvetica, sans-serif;
 }
 a { color: inherit; text-decoration: none; }
 button, input { font: inherit; }
+img,svg,video,canvas { max-width: 100%; }
+input,select,textarea,button { max-width: 100%; }
 button, a { -webkit-tap-highlight-color: transparent; }
 :focus-visible { outline: 3px solid #6e8f00; outline-offset: 3px; }
 .shell { width: min(1180px, calc(100% - 40px)); margin: 0 auto; }
@@ -410,7 +414,9 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .auth-aside { min-height: 420px; }
   .dashboard { grid-template-columns: 1fr; }
   .sidebar { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--line); }
-  .sidebar-nav { grid-template-columns: repeat(4,auto); overflow-x: auto; margin-top: 22px; }
+  .sidebar { padding: 20px; }
+  .sidebar-nav { grid-template-columns: repeat(4,minmax(120px,1fr)); overflow-x: auto; margin-top: 18px; padding-bottom: 4px; }
+  .sidebar-nav a { white-space: nowrap; }
   .listing-alert { display: none; }
   .opportunity-filters { grid-template-columns: 1fr 1fr; }
   .opportunity-filters button { grid-column: 1 / -1; }
@@ -422,26 +428,48 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .shell { width: min(100% - 28px,1180px); }
   .site-header__inner { min-height: 66px; }
   .header-actions .button { display: none; }
-  .hero h1 { font-size: clamp(3rem,15vw,4.5rem); }
-  .deal-preview { min-height: 405px; }
-  .preview-card--main { width: 90%; }
-  .preview-card--score { width: 70%; }
-  .trust-points { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .site-header__inner { gap: 10px; }
+  .brand { min-width: 0; }
+  .brand > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .header-actions { gap: 7px; }
+  .hero { padding-top: 46px; }
+  .hero h1 { font-size: clamp(2.7rem,14vw,4rem); overflow-wrap: anywhere; }
+  .hero__copy { font-size: 1rem; }
+  .hero__actions .button { width: 100%; }
+  .deal-preview { min-height: 390px; }
+  .deal-preview::before { right: -30px; left: 20px; }
+  .preview-card--main { right: 0; width: 96%; padding: 18px; }
+  .preview-card--score { width: 76%; padding: 15px; }
+  .preview-metrics { grid-template-columns: 1fr; }
+  .preview-metric:nth-child(n+2) { display: none; }
+  .trust-points { width: 100%; display: grid; grid-template-columns: 1fr; gap: 14px; }
   .section { padding: 78px 0; }
   .product-grid,.process-grid,.metric-grid { grid-template-columns: 1fr; }
   .process-step,.process-step:not(:first-child) { min-height: auto; padding: 24px 0; border-right: 0; border-bottom: 1px solid rgba(255,255,255,.16); }
   .process-step h3 { margin-top: 24px; }
-  .cta-panel { padding: 32px; }
+  .product-card { min-height: auto; padding: 26px; }
+  .cta-panel { padding: 28px 22px; }
+  .cta-panel .button { width: 100%; }
   .footer__inner,.dashboard-heading,.preview-banner { align-items: flex-start; flex-direction: column; }
   .auth-aside { min-height: 330px; padding: 32px 24px; }
-  .auth-main { padding: 48px 24px; }
-  .sidebar-nav { grid-template-columns: repeat(2,1fr); }
-  .dashboard-topbar,.dashboard-content { padding-right: 20px; padding-left: 20px; }
+  .auth-main { padding: 40px 18px; }
+  .auth-card h1 { font-size: 1.9rem; overflow-wrap: anywhere; }
+  .auth-tabs { grid-template-columns: 1fr; }
+  .sidebar { padding: 16px 14px; }
+  .sidebar-nav { grid-template-columns: repeat(7,max-content); margin-right: -14px; margin-left: -14px; padding: 0 14px 7px; }
+  .sidebar-nav a { min-height: 40px; padding: 0 12px; }
+  .dashboard-topbar { min-height: auto; align-items: flex-start; flex-direction: column; padding: 16px; }
+  .user-chip { width: 100%; flex-wrap: wrap; }
+  .user-chip strong { max-width: min(160px,45vw); }
+  .dashboard-content { padding: 26px 16px 48px; }
+  .dashboard-heading h1,.workspace-heading h1,.detail-heading h1 { font-size: 1.65rem; overflow-wrap: anywhere; }
+  .panel,.metric-card,.acquisition-stage { padding: 18px; }
   .deal-row { grid-template-columns: 1fr 70px; }
   .deal-row > :nth-child(2),.deal-row > :nth-child(3) { display: none; }
   .workspace-heading,.data-notice { align-items: flex-start; flex-direction: column; }
-  .opportunity-toolbar { display: grid; grid-template-columns: 1fr 1fr; }
+  .opportunity-toolbar { display: grid; grid-template-columns: 1fr; }
   .opportunity-toolbar input { min-width: 0; grid-column: 1 / -1; min-height: 43px; }
+  .opportunity-toolbar .button { width: 100%; }
   .opportunity-row { grid-template-columns: 1fr 70px; }
   .opportunity-row > div:not(.opportunity-row__main):not(.listing-status) { display: none; }
   .opportunity-row .save-button { grid-column: 1 / -1; }
@@ -451,7 +479,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .table-row > :nth-child(2),.table-row > :nth-child(4) { display: none; }
   .workforce-grid,.preference-grid { grid-template-columns: 1fr; }
   .detail-heading,.begin-panel { align-items: flex-start; flex-direction: column; }
-  .detail-metrics { grid-template-columns: repeat(2,1fr); }
+  .detail-metrics { grid-template-columns: 1fr; }
   .detail-grid,.acquisition-workspace,.request-grid,.valuation-area { grid-template-columns: 1fr; }
   .acquisition-steps { display: flex; overflow-x: auto; gap: 5px; }
   .acquisition-steps > p { display: none; }
@@ -460,7 +488,16 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .stage-actions { align-items: stretch; flex-direction: column; }
   .opportunity-filters { grid-template-columns: 1fr; }
   .broker-card,.document-row { align-items: flex-start; flex-direction: column; }
+  .document-row > div:last-child { width: 100%; flex-wrap: wrap; }
   .broker-contact { text-align: left; }
+}
+
+@media (max-width: 380px) {
+  .shell { width: min(100% - 20px,1180px); }
+  .locale-link { min-width: 38px; }
+  .auth-aside { min-height: 280px; padding: 24px 18px; }
+  .auth-quote p { font-size: 1.75rem; }
+  .dashboard-content { padding-right: 12px; padding-left: 12px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

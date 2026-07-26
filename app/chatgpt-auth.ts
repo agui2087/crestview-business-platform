@@ -16,7 +16,7 @@ const PERCENT_ENCODED_UTF8 = "percent-encoded-utf-8";
 
 export async function getChatGPTUser(): Promise<ChatGPTUser | null> {
   const requestHeaders = await headers();
-  if (isLocalHost(requestHeaders.get("host"))) {
+  if (isStandaloneHost(requestHeaders.get("host"))) {
     const localCookie = (await cookies()).get("crestview_local_user")?.value;
     if (!localCookie) return null;
     try {
@@ -57,15 +57,15 @@ export function chatGPTSignInPath(returnTo: string): string {
 
 export async function chatGPTSignInHref(returnTo: string): Promise<string> {
   const requestHeaders = await headers();
-  const isLocal = isLocalHost(requestHeaders.get("host"));
+  const isStandalone = isStandaloneHost(requestHeaders.get("host"));
   const path = chatGPTSignInPath(returnTo);
-  if (!isLocal) return path;
+  if (!isStandalone) return path;
   const locale = safeRelativeReturnPath(returnTo).split("/")[1] === "es" ? "es" : "en";
   return `/${locale}/sign-in?return_to=${encodeURIComponent(safeRelativeReturnPath(returnTo))}`;
 }
 
-export async function isLocalRequest() {
-  return isLocalHost((await headers()).get("host"));
+export async function isStandaloneRequest() {
+  return isStandaloneHost((await headers()).get("host"));
 }
 
 export function chatGPTSignOutPath(returnTo = "/"): string {
@@ -92,7 +92,7 @@ function safeDecodeURIComponent(value: string): string | null {
   }
 }
 
-function isLocalHost(host: string | null) {
+function isStandaloneHost(host: string | null) {
   const normalized = host?.toLowerCase() ?? "";
-  return normalized.startsWith("localhost") || normalized.startsWith("127.0.0.1");
+  return !normalized.endsWith(".chatgpt.site");
 }

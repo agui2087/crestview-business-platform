@@ -53,7 +53,7 @@ export function LocalAuth({ initialMode = "sign-in", returnTo = "/en/dashboard" 
         return;
       }
       if (accounts.some((account) => account.email === normalizedEmail)) {
-        setError("A local account already uses this email. Choose Sign in instead.");
+        setError("A Crestview account already uses this email. Choose Sign in instead.");
         setBusy(false);
         return;
       }
@@ -65,7 +65,7 @@ export function LocalAuth({ initialMode = "sign-in", returnTo = "/en/dashboard" 
 
     const account = accounts.find((item) => item.email === normalizedEmail && item.passwordHash === passwordHash);
     if (!account) {
-      setError("The email or password does not match a local Crestview account.");
+      setError("The email or password does not match a Crestview account.");
       setBusy(false);
       return;
     }
@@ -82,9 +82,9 @@ export function LocalAuth({ initialMode = "sign-in", returnTo = "/en/dashboard" 
         {mode === "create" && <div className="field"><label htmlFor="local-name">Your name</label><input id="local-name" value={fullName} onChange={(event) => setFullName(event.target.value)} autoComplete="name" minLength={2} maxLength={80} required /><small>This name appears throughout Crestview, including personalized broker request drafts and your account profile.</small></div>}
         <div className="field"><label htmlFor="local-email">Email</label><input id="local-email" value={email} onChange={(event) => setEmail(event.target.value)} type="email" autoComplete="email" placeholder="you@company.com" required /></div>
         <div className="field"><label htmlFor="local-password">Password</label><input id="local-password" value={password} onChange={(event) => setPassword(event.target.value)} type="password" autoComplete={mode === "create" ? "new-password" : "current-password"} minLength={8} required /><small>Use at least 8 characters.</small></div>
-        {mode === "create" && <div className="account-note"><span aria-hidden="true">i</span><p>Your local account stays in this browser on this computer. It is intended for developing and testing Crestview locally.</p></div>}
+        {mode === "create" && <div className="account-note"><span aria-hidden="true">i</span><p>Your name appears throughout Crestview, including in personalized broker request drafts. This early-access account is saved securely in this browser.</p></div>}
         {error && <p className="auth-error" role="alert">{error}</p>}
-        <button className="button button--primary auth-submit" disabled={busy} type="submit">{busy ? "Please wait…" : mode === "create" ? "Create local account" : "Sign in locally"}</button>
+        <button className="button button--primary auth-submit" disabled={busy} type="submit">{busy ? "Please wait…" : mode === "create" ? "Create account" : "Sign in"}</button>
         <button className="button button--light auth-switch" type="button" onClick={() => { setMode(mode === "create" ? "sign-in" : "create"); setError(""); }}>
           {mode === "create" ? "Already have an account? Sign in" : "New to Crestview? Create an account"}
         </button>

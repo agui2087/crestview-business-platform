@@ -1,12 +1,13 @@
 import { headers } from "next/headers";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 
 export type ChatGPTUser = {
   displayName: string;
   email: string;
   fullName: string | null;
-  source: "chatgpt" | "local";
+  source: "chatgpt" | "local" | "supabase";
 };
 
 const USER_EMAIL_HEADER = "oai-authenticated-user-email";
@@ -17,6 +18,21 @@ const PERCENT_ENCODED_UTF8 = "percent-encoded-utf-8";
 export async function getChatGPTUser(): Promise<ChatGPTUser | null> {
   const requestHeaders = await headers();
   if (isStandaloneHost(requestHeaders.get("host"))) {
+    if (isSupabaseConfigured()) {
+      const supabase = await createSupabaseServerClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.email) return null;
+      const fullName =
+        typeof user.user_metadata?.display_name === "string"
+          ? user.user_metadata.display_name
+          : null;
+      return {
+        displayName: fullName ?? user.email,
+        email: user.email,
+        fullName,
+        source: "supabase",
+      };
+    }
     const localCookie = (await cookies()).get("crestview_local_user")?.value;
     if (!localCookie) return null;
     try {

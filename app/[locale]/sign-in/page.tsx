@@ -3,8 +3,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Brand } from "@/components/brand";
 import { LocalAuth } from "@/components/local-auth";
+import { SupabaseAuth } from "@/components/supabase-auth";
 import { chatGPTSignInHref, getChatGPTUser, isStandaloneRequest } from "@/app/chatgpt-auth";
 import { getDictionary, isLocale } from "@/lib/i18n";
+import { isSupabaseConfigured } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
   title: "Sign in",
@@ -13,8 +15,10 @@ export const dynamic = "force-dynamic";
 
 export default async function SignInPage({
   params,
+  searchParams,
 }: PageProps<"/[locale]/sign-in">) {
   const { locale } = await params;
+  const query = await searchParams;
   if (!isLocale(locale)) notFound();
   const { auth } = getDictionary(locale);
   const user = await getChatGPTUser();
@@ -35,7 +39,9 @@ export default async function SignInPage({
           <h1 id="sign-in-title">{auth.title}</h1>
           <p className="auth-card__intro">{auth.body}</p>
           <div className="notice">{standalone ? "Create or sign in to your Crestview account to continue." : "Secure account access is ready."}</div>
-          {standalone && !user ? (
+          {standalone && !user && isSupabaseConfigured() ? (
+            <SupabaseAuth locale={locale} error={typeof query.error === "string" ? query.error : undefined} message={typeof query.message === "string" ? query.message : undefined} />
+          ) : standalone && !user ? (
             <LocalAuth returnTo={`/${locale}/dashboard`} />
           ) : user ? (
             <div className="signed-in-choice">

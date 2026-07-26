@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { Brand } from "@/components/brand";
 import { LocalAuth } from "@/components/local-auth";
+import { SupabaseAuth } from "@/components/supabase-auth";
 import { getChatGPTUser, chatGPTSignInHref, isStandaloneRequest } from "@/app/chatgpt-auth";
 import { isLocale } from "@/lib/i18n";
+import { isSupabaseConfigured } from "@/lib/supabase/server";
 import { createProfile } from "./actions";
 
 export const metadata: Metadata = { title: "Create your Crestview account" };
@@ -25,7 +27,7 @@ export default async function CreateAccountPage({ params }: { params: Promise<{ 
             <span className="mini-label">Your account</span>
             <h1 id="local-create-title">Create your Crestview account</h1>
             <p className="auth-card__intro">Create your account directly with Crestview and keep your acquisition workspace connected.</p>
-            <LocalAuth initialMode="create" returnTo={`/${locale}/dashboard`} />
+            {isSupabaseConfigured() ? <SupabaseAuth initialMode="create" locale={locale} /> : <LocalAuth initialMode="create" returnTo={`/${locale}/dashboard`} />}
           </div>
         </section>
       </main>

@@ -1,8 +1,6 @@
-import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { requireChatGPTUser } from "@/app/chatgpt-auth";
-import { getDb } from "@/db";
-import { profiles } from "@/db/schema";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Locale } from "@/lib/i18n";
 
 export async function getCrestviewUser(locale: Locale) {
@@ -10,12 +8,21 @@ export async function getCrestviewUser(locale: Locale) {
   if (authUser.source === "local") {
     return { ...authUser, locale };
   }
-  const [profile] = await (await getDb())
-    .select()
-    .from(profiles)
-    .where(eq(profiles.email, authUser.email))
-    .limit(1);
+  if (authUser.source === "supabase") {
+    const supabase = await createSupabaseServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) redirect(`/${locale}/sign-in`);
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("display_name, locale")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    return {
+      ...authUser,
+      displayName: profile?.display_name ?? authUser.displayName,
+      locale: profile?.locale === "es" ? "es" : locale,
+    };
+  }
 
-  if (!profile) redirect(`/${locale}/create-account`);
-  return { ...authUser, displayName: profile.displayName, locale: profile.locale };
+  redirect(`/${locale}/create-account`);
 }

@@ -7,6 +7,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 const credentialsSchema = z.object({
   email: z.string().email().max(254),
   password: z.string().min(8).max(128),
+  displayName: z.string().trim().min(2).max(80).optional(),
   locale: z.enum(["en", "es"]),
 });
 
@@ -27,6 +28,13 @@ export async function signUp(formData: FormData) {
   const { error } = await supabase.auth.signUp({
     email: input.email,
     password: input.password,
+    options: {
+      data: {
+        display_name: input.displayName,
+        locale: input.locale,
+      },
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"}/${input.locale}/dashboard`,
+    },
   });
   if (error) redirect(`/${input.locale}/sign-in?error=signup`);
   redirect(`/${input.locale}/sign-in?message=check-email`);

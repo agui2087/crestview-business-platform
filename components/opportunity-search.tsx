@@ -80,14 +80,68 @@ function score(item: Opportunity, query: string) {
   return total;
 }
 
+type BuyerPreferences = {
+  industries: string[];
+  locations: string[];
+  maximum_price: number | null;
+  minimum_cash_flow: number | null;
+  seller_financing_preferred: boolean;
+} | null;
+
+function buyerMatch(item: Opportunity, preferences: BuyerPreferences) {
+  if (!preferences) return null;
+  let earned = 0;
+  let possible = 0;
+  const reasons: string[] = [];
+  if (preferences.industries.length) {
+    possible += 30;
+    if (preferences.industries.some((value) => normalize(item.industry).includes(normalize(value)) || normalize(item.title).includes(normalize(value)))) {
+      earned += 30;
+      reasons.push("preferred industry");
+    }
+  }
+  if (preferences.locations.length) {
+    possible += 25;
+    if (preferences.locations.some((value) => normalize(item.location).includes(normalize(value)))) {
+      earned += 25;
+      reasons.push("preferred location");
+    }
+  }
+  if (preferences.maximum_price) {
+    possible += 20;
+    if (item.priceValue !== null && item.priceValue <= preferences.maximum_price) {
+      earned += 20;
+      reasons.push("within budget");
+    }
+  }
+  if (preferences.minimum_cash_flow) {
+    possible += 20;
+    if (item.cashFlowValue !== null && item.cashFlowValue >= preferences.minimum_cash_flow) {
+      earned += 20;
+      reasons.push("cash flow target");
+    }
+  }
+  if (preferences.seller_financing_preferred) {
+    possible += 5;
+    if (item.highlights.some((value) => normalize(value).includes("seller financ"))) {
+      earned += 5;
+      reasons.push("seller financing");
+    }
+  }
+  if (!possible) return null;
+  return { score: Math.round((earned / possible) * 100), reasons };
+}
+
 export function OpportunitySearch({
   items,
   locale,
   storageReady,
+  preferences,
 }: {
   items: Opportunity[];
   locale: string;
   storageReady: boolean;
+  preferences: BuyerPreferences;
 }) {
   const [query, setQuery] = useState("");
   const [industry, setIndustry] = useState("All industries");
@@ -108,7 +162,7 @@ export function OpportunitySearch({
     () => {
       const ceiling = Number(maxPrice.replace(/[$,\s]/g, ""));
       const eligible = items
-        .map((item) => ({ item, rank: score(item, query) }))
+        .map((item) => ({ item, rank: score(item, query), match: buyerMatch(item, preferences) }))
         .filter(({ item, rank }) =>
           rank > 0
           && (industry === "All industries" || item.industry === industry)
@@ -151,11 +205,12 @@ export function OpportunitySearch({
           const bRegional = requested.region && normalize(b.item.location).includes(requested.region) ? 1 : 0;
           if (aRegional !== bRegional) return bRegional - aRegional;
         }
+        if (a.match?.score !== b.match?.score) return (b.match?.score ?? -1) - (a.match?.score ?? -1);
         return b.rank - a.rank;
       });
       return { results: sorted, exactCount, regionalCount, expansion };
     },
-    [items, query, industry, source, sortBy, maxPrice, location],
+    [items, query, industry, source, sortBy, maxPrice, location, preferences],
   );
   const { results, exactCount, regionalCount, expansion } = searchResult;
   const pageCount = Math.max(1, Math.ceil(results.length / PAGE_SIZE));
@@ -220,12 +275,13 @@ export function OpportunitySearch({
       )}
       <div className="result-count"><strong>{results.length}</strong> opportunities found · showing {visibleResults.length} on page {safePage} of {pageCount}</div>
       <div className="opportunity-list">
-        {visibleResults.map(({ item }) => (
+        {visibleResults.map(({ item, match }) => (
           <article className="opportunity-row" key={item.id}>
             <div className="opportunity-row__main">
               <span className="source-label">{item.source} · checked {item.lastChecked}</span>
               <h2><Link href={`/${locale}/dashboard/opportunities/${item.id}`}>{item.title}</Link></h2>
               <p>{item.industry} · {item.location}</p>
+              {match && <span className="match-explanation"><strong>{match.score}% match</strong>{match.reasons.length ? ` · ${match.reasons.join(", ")}` : " · criteria need review"}</span>}
             </div>
             <div><span>Asking price</span><strong>{item.price}</strong></div>
             <div><span>Revenue</span><strong>{item.revenue}</strong></div>

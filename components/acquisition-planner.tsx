@@ -47,6 +47,11 @@ export function AcquisitionPlanner({
   const [sde, setSde] = useState(initialWorkspace?.valuation_inputs.sde ?? opportunity.cashFlowValue?.toString() ?? "");
   const [ebitda, setEbitda] = useState(initialWorkspace?.valuation_inputs.ebitda ?? opportunity.ebitdaValue?.toString() ?? "");
   const [debtService, setDebtService] = useState(initialWorkspace?.valuation_inputs.debtService ?? "");
+  const [downPayment, setDownPayment] = useState(initialWorkspace?.valuation_inputs.downPayment ?? "10");
+  const [interestRate, setInterestRate] = useState(initialWorkspace?.valuation_inputs.interestRate ?? "10.5");
+  const [loanYears, setLoanYears] = useState(initialWorkspace?.valuation_inputs.loanYears ?? "10");
+  const [buyerSalary, setBuyerSalary] = useState(initialWorkspace?.valuation_inputs.buyerSalary ?? "");
+  const [workingCapital, setWorkingCapital] = useState(initialWorkspace?.valuation_inputs.workingCapital ?? "");
   const [stepNotes, setStepNotes] = useState<Record<string, string>>(initialWorkspace?.step_notes ?? {});
   const [saveMessage, setSaveMessage] = useState("");
   const [isSaving, startSaving] = useTransition();
@@ -58,12 +63,26 @@ export function AcquisitionPlanner({
     const s = parseNumber(sde);
     const e = parseNumber(ebitda);
     const d = parseNumber(debtService);
+    const down = parseNumber(downPayment) ?? 0;
+    const rate = (parseNumber(interestRate) ?? 0) / 1200;
+    const months = (parseNumber(loanYears) ?? 0) * 12;
+    const salary = parseNumber(buyerSalary) ?? 0;
+    const working = parseNumber(workingCapital) ?? 0;
+    const equity = p === null ? null : p * (down / 100);
+    const loan = p === null || equity === null ? null : Math.max(0, p - equity + working);
+    const monthlyPayment = loan !== null && months > 0
+      ? rate > 0 ? loan * rate * ((1 + rate) ** months) / (((1 + rate) ** months) - 1) : loan / months
+      : null;
+    const calculatedDebtService = monthlyPayment === null ? null : monthlyPayment * 12;
+    const availableCashFlow = s === null ? null : s - salary;
+    const coverageDebt = d || calculatedDebtService;
     return {
       priceToSde: p !== null && s ? p / s : null,
       priceToEbitda: p !== null && e ? p / e : null,
-      dscr: s !== null && d ? s / d : null,
+      equity, loan, monthlyPayment,
+      dscr: availableCashFlow !== null && coverageDebt ? availableCashFlow / coverageDebt : null,
     };
-  }, [price, sde, ebitda, debtService]);
+  }, [price, sde, ebitda, debtService, downPayment, interestRate, loanYears, buyerSalary, workingCapital]);
 
   function persist(nextCurrent = current, nextStatuses = stepStatuses) {
     const formData = new FormData();
@@ -72,7 +91,7 @@ export function AcquisitionPlanner({
     formData.set("current_step", String(nextCurrent));
     formData.set("checklist_progress", JSON.stringify(nextStatuses));
     formData.set("step_notes", JSON.stringify(stepNotes));
-    formData.set("valuation_inputs", JSON.stringify({ price, sde, ebitda, debtService }));
+    formData.set("valuation_inputs", JSON.stringify({ price, sde, ebitda, debtService, downPayment, interestRate, loanYears, buyerSalary, workingCapital }));
     startSaving(async () => {
       const result = await saveAcquisitionWorkspace(formData);
       setSaveMessage(result.message);
@@ -152,12 +171,20 @@ export function AcquisitionPlanner({
             <label>Normalized SDE / cash flow<input value={sde} onChange={(event) => setSde(event.target.value)} inputMode="decimal" placeholder="N/A" /></label>
             <label>Normalized EBITDA<input value={ebitda} onChange={(event) => setEbitda(event.target.value)} inputMode="decimal" placeholder="N/A" /></label>
             <label>Estimated annual debt service<input value={debtService} onChange={(event) => setDebtService(event.target.value)} inputMode="decimal" placeholder="Enter lender estimate" /></label>
+            <label>Down payment percentage<input value={downPayment} onChange={(event) => setDownPayment(event.target.value)} inputMode="decimal" placeholder="10" /></label>
+            <label>Interest rate percentage<input value={interestRate} onChange={(event) => setInterestRate(event.target.value)} inputMode="decimal" placeholder="10.5" /></label>
+            <label>Loan term in years<input value={loanYears} onChange={(event) => setLoanYears(event.target.value)} inputMode="numeric" placeholder="10" /></label>
+            <label>Buyer salary adjustment<input value={buyerSalary} onChange={(event) => setBuyerSalary(event.target.value)} inputMode="decimal" placeholder="0" /></label>
+            <label>Additional working capital<input value={workingCapital} onChange={(event) => setWorkingCapital(event.target.value)} inputMode="decimal" placeholder="0" /></label>
           </div>
           <div className="valuation-summary">
             <h3>Calculation summary</h3>
             <div><span>Price ÷ SDE</span><strong>{metrics.priceToSde ? `${metrics.priceToSde.toFixed(2)}×` : "N/A"}</strong></div>
             <div><span>Price ÷ EBITDA</span><strong>{metrics.priceToEbitda ? `${metrics.priceToEbitda.toFixed(2)}×` : "N/A"}</strong></div>
             <div><span>Illustrative debt coverage</span><strong>{metrics.dscr ? `${metrics.dscr.toFixed(2)}×` : "N/A"}</strong></div>
+            <div><span>Estimated buyer equity</span><strong>{metrics.equity !== null ? `$${Math.round(metrics.equity).toLocaleString()}` : "N/A"}</strong></div>
+            <div><span>Estimated loan amount</span><strong>{metrics.loan !== null ? `$${Math.round(metrics.loan).toLocaleString()}` : "N/A"}</strong></div>
+            <div><span>Estimated monthly payment</span><strong>{metrics.monthlyPayment !== null ? `$${Math.round(metrics.monthlyPayment).toLocaleString()}` : "N/A"}</strong></div>
             <p>{metrics.dscr !== null && metrics.dscr < 1.25 ? "Needs attention: the entered cash flow may provide limited room above estimated debt payments." : metrics.dscr !== null ? "Positive signal: the entered cash flow is above the estimated debt payments. Confirm with a lender." : "Enter cash flow and estimated debt service to calculate an illustrative coverage ratio."}</p>
           </div>
         </div>}

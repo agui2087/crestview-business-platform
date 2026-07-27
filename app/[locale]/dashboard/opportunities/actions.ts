@@ -25,6 +25,7 @@ export async function saveOpportunity(formData: FormData) {
     next_action: "Review the public listing and request missing information",
     updated_at: new Date().toISOString(),
   }, { onConflict: "user_id,opportunity_key", ignoreDuplicates: true });
+  await supabase.from("deal_activities").insert({ user_id: user.id, opportunity_key: opportunityKey, activity_type: "saved", description: "Opportunity saved." });
   revalidatePath(`/${locale}/dashboard/opportunities/${opportunityKey}`);
   revalidatePath(`/${locale}/dashboard/pipeline`);
 }
@@ -38,6 +39,7 @@ export async function beginAcquisition(formData: FormData) {
     next_action: "Complete initial screening and confirm listing availability",
     updated_at: new Date().toISOString(),
   }, { onConflict: "user_id,opportunity_key" });
+  await supabase.from("deal_activities").insert({ user_id: user.id, opportunity_key: opportunityKey, activity_type: "stage", description: "Acquisition screening started." });
   revalidatePath(`/${locale}/dashboard/opportunities/${opportunityKey}`);
   revalidatePath(`/${locale}/dashboard/pipeline`);
   redirect(`/${locale}/dashboard/pipeline`);
@@ -70,7 +72,43 @@ export async function saveAcquisitionWorkspace(formData: FormData) {
     updated_at: new Date().toISOString(),
   }, { onConflict: "user_id,opportunity_key" });
   if (error) return { ok: false, message: "Progress could not be saved." };
+  await supabase.from("deal_activities").insert({
+    user_id: user.id, opportunity_key: opportunityKey, activity_type: "progress",
+    description: `Acquisition workspace saved at step ${currentStep + 1}.`,
+  });
   revalidatePath(`/${locale}/dashboard/opportunities/${opportunityKey}`);
   revalidatePath(`/${locale}/dashboard/pipeline`);
   return { ok: true, message: "Progress saved." };
+}
+
+export async function addDiligenceItem(formData: FormData) {
+  const { locale, opportunityKey, supabase, user } = await authenticatedRequest(formData);
+  const title = String(formData.get("title") ?? "").trim();
+  if (title) await supabase.from("diligence_items").upsert({
+    user_id: user.id, opportunity_key: opportunityKey,
+    category: String(formData.get("category") ?? "Financial"), title,
+    due_date: String(formData.get("due_date") ?? "") || null,
+  }, { onConflict: "user_id,opportunity_key,category,title" });
+  await supabase.from("deal_activities").insert({ user_id: user.id, opportunity_key: opportunityKey, activity_type: "diligence", description: `Diligence item added: ${title}` });
+  revalidatePath(`/${locale}/dashboard/opportunities/${opportunityKey}`);
+}
+
+export async function updateDiligenceItem(formData: FormData) {
+  const { locale, opportunityKey, supabase, user } = await authenticatedRequest(formData);
+  await supabase.from("diligence_items").update({ status: String(formData.get("status")), updated_at: new Date().toISOString() })
+    .eq("id", String(formData.get("id"))).eq("user_id", user.id);
+  revalidatePath(`/${locale}/dashboard/opportunities/${opportunityKey}`);
+}
+
+export async function addBrokerInteraction(formData: FormData) {
+  const { locale, opportunityKey, supabase, user } = await authenticatedRequest(formData);
+  const summary = String(formData.get("summary") ?? "").trim();
+  if (summary) await supabase.from("broker_interactions").insert({
+    user_id: user.id, opportunity_key: opportunityKey,
+    contact_name: String(formData.get("contact_name") ?? "") || null,
+    interaction_type: String(formData.get("interaction_type") ?? "note"),
+    summary,
+  });
+  await supabase.from("deal_activities").insert({ user_id: user.id, opportunity_key: opportunityKey, activity_type: "broker", description: summary });
+  revalidatePath(`/${locale}/dashboard/opportunities/${opportunityKey}`);
 }

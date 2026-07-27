@@ -6,13 +6,13 @@ import { getCrestviewUser } from "@/lib/current-user";
 import type { Locale } from "@/lib/i18n";
 
 const navItems = [
-  ["overview", "Overview"],
-  ["opportunities", "Opportunities"],
-  ["pipeline", "Pipeline"],
-  ["tasks", "Tasks"],
-  ["documents", "Documents"],
-  ["workforce", "Workforce"],
-  ["settings", "Settings"],
+  ["overview", "Overview", "Resumen"],
+  ["opportunities", "Opportunities", "Oportunidades"],
+  ["pipeline", "Pipeline", "Proceso"],
+  ["tasks", "Tasks", "Tareas"],
+  ["documents", "Documents", "Documentos"],
+  ["workforce", "Workforce", "Personal"],
+  ["settings", "Settings", "Configuración"],
 ] as const;
 
 export async function PlatformShell({
@@ -40,40 +40,40 @@ export async function PlatformShell({
           <Brand locale={locale} />
           <details className="mobile-nav">
             <summary>
-              <span>Menu</span>
+              <span>{locale === "es" ? "Menú" : "Menu"}</span>
               <span className="mobile-nav__icon" aria-hidden="true">☰</span>
             </summary>
             <nav aria-label="Mobile dashboard navigation">
-              {navItems.map(([slug, label]) => (
+              {navItems.map(([slug, english, spanish]) => (
                 <Link
                   className={slug === active ? "is-active" : ""}
                   href={slug === "overview" ? `/${locale}/dashboard` : `/${locale}/dashboard/${slug}`}
                   key={slug}
                 >
                   <span className="nav-dot" aria-hidden="true" />
-                  {label}
+                  {locale === "es" ? spanish : english}
                 </Link>
               ))}
             </nav>
           </details>
         </div>
         <nav className="sidebar-nav" aria-label="Dashboard navigation">
-          {navItems.map(([slug, label]) => (
+          {navItems.map(([slug, english, spanish]) => (
             <Link
               className={slug === active ? "is-active" : ""}
               href={slug === "overview" ? `/${locale}/dashboard` : `/${locale}/dashboard/${slug}`}
               key={slug}
             >
               <span className="nav-dot" aria-hidden="true" />
-              {label}
+              {locale === "es" ? spanish : english}
             </Link>
           ))}
         </nav>
         <div className="listing-alert">
           <span className="listing-alert__icon" aria-hidden="true">◎</span>
-          <strong>Get listing alerts</strong>
-          <p>Receive a notification when a business matching your preferences is listed.</p>
-          <Link href={`/${locale}/dashboard/settings#listing-alerts`}>Set preferences →</Link>
+          <strong>{locale === "es" ? "Recibe alertas de anuncios" : "Get listing alerts"}</strong>
+          <p>{locale === "es" ? "Recibe una notificación cuando se publique un negocio que coincida con tus preferencias." : "Receive a notification when a business matching your preferences is listed."}</p>
+          <Link href={`/${locale}/dashboard/settings#listing-alerts`}>{locale === "es" ? "Configurar preferencias →" : "Set preferences →"}</Link>
         </div>
       </aside>
       <section className="dashboard-main">
@@ -83,10 +83,10 @@ export async function PlatformShell({
             Crestview Holdings
           </div>
           <div className="user-chip">
-            <Link href={`/${locale}`}>Website</Link>
+            <Link href={`/${locale}`}>{locale === "es" ? "Sitio web" : "Website"}</Link>
             <strong>{user.displayName}</strong>
             <span title={user.displayName}>{initials}</span>
-            <a href={user.source === "local" ? `/api/local-auth/signout?return_to=/${locale}` : chatGPTSignOutPath(`/${locale}`)}>Sign out</a>
+            <a href={user.source === "local" ? `/api/local-auth/signout?return_to=/${locale}` : chatGPTSignOutPath(`/${locale}`)}>{locale === "es" ? "Salir" : "Sign out"}</a>
           </div>
         </header>
         {children}

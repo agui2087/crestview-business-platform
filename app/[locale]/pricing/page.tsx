@@ -168,7 +168,7 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
         <p className="eyebrow">{es ? "Precios fundadores" : "Founding prices"}</p>
         <h1>{es ? "Empieza gratis. Paga solo por la ayuda que necesitas." : "Start free. Pay only for the help you need."}</h1>
         <p>{es ? "Crestview mantiene el proceso completo de adquisición accesible. Pro agrega explicaciones avanzadas, mientras los corredores y equipos eligen herramientas según su uso." : "Crestview keeps the complete acquisition process accessible. Pro adds advanced explanations, while brokers and workforce teams choose tools based on how they use the platform."}</p>
-        <div className="billing-note"><strong>{comingSoon}</strong><span>{es ? "Estos planes muestran nuestros precios previstos. Los pagos permanecen desactivados hasta que Stripe esté configurado. No se te cobrará hoy." : "These plans show our intended pricing. Payments remain disabled until Stripe is configured. You will not be charged today."}</span></div>
+        <div className="billing-note"><strong>{comingSoon}</strong><span>{es ? "Las suscripciones, publicaciones para corredores y promociones estarán disponibles próximamente." : "Subscriptions, broker listings, and promotional placements will be available soon."}</span></div>
       </section>
 
       <section className="shell pricing-section" aria-labelledby="buyer-pricing">
@@ -199,7 +199,7 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
 
       <section className="shell pricing-faq"><h2>{es ? "Preguntas sobre los planes" : "Plan questions"}</h2><div>
         <article><h3>{es ? "¿Puedo usar todo el proceso gratis?" : "Can I complete the process for free?"}</h3><p>{es ? "Sí. Buscar, guardar, valorar, organizar la diligencia y avanzar por la lista de adquisición permanecerá disponible sin Pro." : "Yes. Searching, saving, valuing, organizing diligence, and moving through the acquisition checklist will remain available without Pro."}</p></article>
-        <article><h3>{es ? "¿Cuándo se me cobrará?" : "When will I be charged?"}</h3><p>{es ? "Todavía no. Todos los botones de pago están desactivados y marcados Próximamente hasta que Stripe esté configurado y probado." : "Not yet. Every payment button is disabled and marked Coming soon until Stripe is configured and tested."}</p></article>
+        <article><h3>{es ? "¿Cuándo estarán disponibles los planes pagados?" : "When will paid plans be available?"}</h3><p>{es ? "Próximamente. Mientras tanto, puedes crear una cuenta y comenzar a usar las herramientas gratuitas de Crestview." : "Coming soon. In the meantime, you can create an account and start using Crestview’s free tools."}</p></article>
         <article><h3>{es ? "¿Cuánto dura una publicación?" : "How long does a listing remain active?"}</h3><p>{es ? "Una publicación individual continúa hasta su venta, retiro o inactividad. Se pedirá confirmar su disponibilidad cada 60 días." : "A single listing continues until it is sold, withdrawn, or inactive. Availability must be confirmed every 60 days."}</p></article>
       </div></section>
     </main>

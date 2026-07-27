@@ -6,57 +6,204 @@ import { isLocale } from "@/lib/i18n";
 
 export const metadata: Metadata = { title: "Plans and pricing" };
 
-export default async function PricingPage({ params }: { params: Promise<{ locale:string }> }) {
-  const { locale } = await params; if (!isLocale(locale)) notFound();
+type Plan = {
+  name: string;
+  price: string;
+  cadence?: string;
+  description: string;
+  features: string[];
+  badge?: string;
+  featured?: boolean;
+};
+
+function PlanCard({ plan, comingSoon }: { plan: Plan; comingSoon: string }) {
+  return (
+    <article className={`pricing-card ${plan.featured ? "pricing-card--featured" : ""}`}>
+      {plan.badge && <span className="pricing-badge">{plan.badge}</span>}
+      <h3>{plan.name}</h3>
+      <p>{plan.description}</p>
+      <div className="plan-price">
+        <strong>{plan.price}</strong>
+        {plan.cadence && <span>{plan.cadence}</span>}
+      </div>
+      <button className={`button ${plan.featured ? "button--primary" : "button--light"}`} type="button" disabled>
+        {comingSoon}
+      </button>
+      <ul>
+        {plan.features.map((feature) => <li key={feature}><span>✓</span>{feature}</li>)}
+      </ul>
+    </article>
+  );
+}
+
+export default async function PricingPage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
+  if (!isLocale(locale)) notFound();
+
   const es = locale === "es";
   const other = es ? "en" : "es";
-  const plans = [
+  const comingSoon = es ? "Próximamente" : "Coming soon";
+
+  const buyerPlans: Plan[] = es ? [
     {
-      name: es ? "Crestview Adquisiciones" : "Crestview Acquisition",
-      price: 49,
-      description: es ? "Para compradores que buscan, evalúan y adquieren negocios." : "For buyers finding, evaluating, and acquiring businesses.",
-      features: es ? ["Búsqueda y comparación de oportunidades","Puntajes explicables","Proceso y listas de adquisición","Diligencia, documentos y tareas","Informes de adquisición"] : ["Opportunity search and comparison","Explainable deal scores","Acquisition pipeline and checklists","Diligence, documents, and tasks","Acquisition reporting"],
-      accent: false,
+      name: "Crestview Gratis",
+      price: "$0",
+      cadence: "/siempre",
+      description: "Recursos completos para pasar de la búsqueda al cierre sin pagar por el proceso esencial.",
+      badge: "Para todos",
+      features: ["Buscar, filtrar y guardar oportunidades", "Proceso completo de adquisición", "Listas de diligencia y recursos", "Calculadoras de valoración", "Documentos, tareas y progreso", "Borradores para contactar al corredor"],
     },
     {
-      name: es ? "Crestview Personal" : "Crestview Workforce",
-      price: 39,
-      description: es ? "Para pequeñas empresas que necesitan administración de personal sencilla." : "For small businesses that need straightforward workforce administration.",
-      features: es ? ["Perfiles de empleados","Departamentos y gerentes","Capacitación y certificaciones","Registros de tiempo libre","Experiencia bilingüe"] : ["Employee profiles","Departments and managers","Training and certifications","Time-off records","Bilingual employee experience"],
-      accent: false,
+      name: "Crestview Pro",
+      price: "$9.99",
+      cadence: "/mes",
+      description: "Ayuda avanzada para entender contratos, documentos financieros y el lenguaje de M&A.",
+      badge: "Ayuda avanzada",
+      featured: true,
+      features: ["Todo lo incluido en Gratis", "Explicaciones de contratos en lenguaje claro", "Resúmenes de documentos con IA", "Explicaciones de términos de M&A", "Señales de riesgo y preguntas sugeridas", "Análisis financiero y comparaciones avanzadas"],
+    },
+  ] : [
+    {
+      name: "Crestview Free",
+      price: "$0",
+      cadence: "/forever",
+      description: "Complete resources for moving from discovery through closing without paying for the essential process.",
+      badge: "For everyone",
+      features: ["Search, filter, and save opportunities", "Complete acquisition process", "Diligence checklists and resources", "Valuation calculators", "Documents, tasks, and progress tracking", "Broker outreach drafts"],
     },
     {
-      name: es ? "Crestview Completo" : "Crestview Complete",
-      price: 69,
-      description: es ? "Todo el ciclo, desde encontrar un negocio hasta administrarlo." : "The complete ownership system, from finding a business to operating it.",
-      features: es ? ["Todo en Adquisiciones","Todo en Personal","Un solo inicio de sesión","Datos e informes conectados","Ahorra $19 al mes"] : ["Everything in Acquisition","Everything in Workforce","One connected account","Shared data and reporting","Save $19 every month"],
-      accent: true,
+      name: "Crestview Pro",
+      price: "$9.99",
+      cadence: "/month",
+      description: "Advanced help understanding contracts, financial documents, and high-level M&A language.",
+      badge: "Advanced guidance",
+      featured: true,
+      features: ["Everything included in Free", "Plain-English contract explanations", "AI summaries of uploaded documents", "M&A terminology explanations", "Risk flags and suggested questions", "Advanced financial analysis and comparisons"],
     },
   ];
+
+  const brokerPlans: Plan[] = es ? [
+    {
+      name: "Una publicación",
+      price: "$9.99",
+      cadence: "una vez",
+      description: "Para un vendedor o corredor ocasional con una sola publicación activa.",
+      features: ["Una publicación activa", "Activa hasta venta, retiro o inactividad", "Ubicación estándar en resultados", "Confirmación de disponibilidad cada 60 días"],
+    },
+    {
+      name: "Plan para corredores",
+      price: "$25",
+      cadence: "/mes",
+      description: "Para corredores que necesitan administrar varias publicaciones y consultas.",
+      badge: "Para profesionales",
+      featured: true,
+      features: ["Varias publicaciones activas", "Perfil profesional", "Bandeja de clientes potenciales", "Análisis de publicaciones", "Solicitudes de documentos y NDA"],
+    },
+    {
+      name: "Visibilidad mejorada",
+      price: "$49.99",
+      cadence: "/30 días",
+      description: "Más exposición para una publicación específica durante treinta días.",
+      features: ["Publicación destacada", "Mejor ubicación en búsquedas relevantes", "Estilo visual destacado", "Estadísticas de promoción"],
+    },
+    {
+      name: "Máxima visibilidad",
+      price: "$99.99",
+      cadence: "/30 días",
+      description: "La promoción más fuerte en búsquedas, categorías y ubicaciones relevantes.",
+      badge: "Mayor alcance",
+      features: ["Ubicación prioritaria", "Parte superior de búsquedas apropiadas", "Promoción por categoría y ubicación", "Estadísticas avanzadas de promoción"],
+    },
+  ] : [
+    {
+      name: "Single Listing",
+      price: "$9.99",
+      cadence: "one time",
+      description: "For an individual seller or occasional broker with one active listing.",
+      features: ["One active listing", "Active until sold, withdrawn, or inactive", "Standard search placement", "Availability confirmation every 60 days"],
+    },
+    {
+      name: "Broker Plan",
+      price: "$25",
+      cadence: "/month",
+      description: "For brokers who need to manage multiple listings and buyer inquiries.",
+      badge: "For professionals",
+      featured: true,
+      features: ["Multiple active listings", "Professional broker profile", "Buyer lead inbox", "Listing performance analytics", "Document and NDA requests"],
+    },
+    {
+      name: "Enhanced Visibility",
+      price: "$49.99",
+      cadence: "/30 days",
+      description: "Additional exposure for one specific listing for thirty days.",
+      features: ["Featured listing treatment", "Higher relevant search placement", "Distinct visual highlighting", "Promotion performance statistics"],
+    },
+    {
+      name: "Highest Visibility",
+      price: "$99.99",
+      cadence: "/30 days",
+      description: "The strongest promotion across relevant searches, categories, and locations.",
+      badge: "Maximum reach",
+      features: ["Priority placement", "Top of appropriate searches", "Category and location promotion", "Advanced promotion analytics"],
+    },
+  ];
+
+  const workforceTiers = es ? [
+    ["1–10 empleados", "$20/mes"], ["11–25 empleados", "$40/mes"], ["26–50 empleados", "$60/mes"],
+    ["51–100 empleados", "$80/mes"], ["101–200 empleados", "$100/mes"], ["201–300 empleados", "$120/mes"], ["301+ empleados", "Precio personalizado"],
+  ] : [
+    ["1–10 employees", "$20/month"], ["11–25 employees", "$40/month"], ["26–50 employees", "$60/month"],
+    ["51–100 employees", "$80/month"], ["101–200 employees", "$100/month"], ["201–300 employees", "$120/month"], ["301+ employees", "Custom pricing"],
+  ];
+
   return <>
     <header className="site-header"><div className="shell site-header__inner">
-      <Brand locale={locale}/>
-      <nav className="nav" aria-label="Pricing navigation"><Link href={`/${locale}`}>{es ? "Inicio" : "Home"}</Link><strong>{es ? "Planes" : "Plans"}</strong></nav>
+      <Brand locale={locale} />
+      <nav className="nav" aria-label={es ? "Navegación de precios" : "Pricing navigation"}><Link href={`/${locale}`}>{es ? "Inicio" : "Home"}</Link><strong>{es ? "Planes" : "Plans"}</strong></nav>
       <div className="header-actions"><Link className="locale-link" href={`/${other}/pricing`}>{other.toUpperCase()}</Link><Link className="button button--light" href={`/${locale}/sign-in`}>{es ? "Iniciar sesión" : "Sign in"}</Link></div>
     </div></header>
+
     <main className="pricing-page">
       <section className="pricing-hero shell">
-        <p className="eyebrow">{es ? "Planes sencillos" : "Simple plans"}</p>
-        <h1>{es ? "Elige la plataforma que necesitas hoy." : "Choose the platform you need today."}</h1>
-        <p>{es ? "Empieza con adquisiciones, personal o combina ambos. Cambia de plan cuando tu negocio crezca." : "Start with acquisition tools, workforce tools, or combine both. Change your plan as your business grows."}</p>
-        <div className="billing-note"><strong>{es ? "Precios preliminares" : "Early pricing"}</strong><span>{es ? "La facturación se activará cuando Stripe esté conectado. No se te cobrará al crear una cuenta hoy." : "Billing will activate after Stripe is connected. Creating an account today will not charge you."}</span></div>
+        <p className="eyebrow">{es ? "Precios fundadores" : "Founding prices"}</p>
+        <h1>{es ? "Empieza gratis. Paga solo por la ayuda que necesitas." : "Start free. Pay only for the help you need."}</h1>
+        <p>{es ? "Crestview mantiene el proceso completo de adquisición accesible. Pro agrega explicaciones avanzadas, mientras los corredores y equipos eligen herramientas según su uso." : "Crestview keeps the complete acquisition process accessible. Pro adds advanced explanations, while brokers and workforce teams choose tools based on how they use the platform."}</p>
+        <div className="billing-note"><strong>{comingSoon}</strong><span>{es ? "Estos planes muestran nuestros precios previstos. Los pagos permanecen desactivados hasta que Stripe esté configurado. No se te cobrará hoy." : "These plans show our intended pricing. Payments remain disabled until Stripe is configured. You will not be charged today."}</span></div>
       </section>
-      <section className="shell pricing-grid">
-        {plans.map((plan)=><article className={`pricing-card ${plan.accent ? "pricing-card--featured" : ""}`} key={plan.name}>
-          {plan.accent && <span className="pricing-badge">{es ? "Mejor valor" : "Best value"}</span>}
-          <h2>{plan.name}</h2><p>{plan.description}</p>
-          <div className="plan-price"><strong>${plan.price}</strong><span>/{es ? "mes" : "month"}</span></div>
-          <Link className={`button ${plan.accent ? "button--primary" : "button--light"}`} href={`/${locale}/create-account?plan=${plan.accent ? "complete" : plan.price === 49 ? "acquisition" : "workforce"}`}>{es ? "Elegir este plan" : "Choose this plan"}</Link>
-          <ul>{plan.features.map((feature)=><li key={feature}><span>✓</span>{feature}</li>)}</ul>
-        </article>)}
+
+      <section className="shell pricing-section" aria-labelledby="buyer-pricing">
+        <div className="pricing-section__heading"><div><p className="eyebrow">{es ? "Compradores" : "For buyers"}</p><h2 id="buyer-pricing">{es ? "La ruta completa permanece gratis." : "The complete path stays free."}</h2></div><p>{es ? "Pro mejora la comprensión. No bloquea los pasos esenciales para comprar un negocio." : "Pro improves understanding. It does not lock away the essential steps required to buy a business."}</p></div>
+        <div className="pricing-grid pricing-grid--two">{buyerPlans.map((plan) => <PlanCard key={plan.name} plan={plan} comingSoon={comingSoon} />)}</div>
+        <p className="pricing-disclaimer">{es ? "Las explicaciones de documentos son educativas y no sustituyen el asesoramiento de un abogado, contador u otro profesional calificado." : "Document explanations are educational and do not replace advice from a qualified attorney, accountant, or other professional."}</p>
       </section>
-      <section className="shell pricing-faq"><h2>{es ? "Sin sorpresas" : "No surprises"}</h2><div><article><h3>{es ? "¿Puedo cambiar después?" : "Can I switch later?"}</h3><p>{es ? "Sí. Podrás actualizar, bajar o combinar productos desde Configuración." : "Yes. You will be able to upgrade, downgrade, or combine products from Settings."}</p></article><article><h3>{es ? "¿Me cobrarán ahora?" : "Will I be charged now?"}</h3><p>{es ? "No. Los botones crean una cuenta, pero los cobros permanecerán desactivados hasta conectar Stripe." : "No. The buttons create an account, but charges remain disabled until Stripe is connected."}</p></article><article><h3>{es ? "¿Los datos están separados?" : "Is my data separated?"}</h3><p>{es ? "Cada cuenta solo puede acceder a sus propios negocios, archivos y registros de empleados." : "Each account can access only its own deals, files, and workforce records."}</p></article></div></section>
+
+      <section className="pricing-band" aria-labelledby="broker-pricing"><div className="shell pricing-section">
+        <div className="pricing-section__heading"><div><p className="eyebrow">{es ? "Vendedores y corredores" : "For sellers and brokers"}</p><h2 id="broker-pricing">{es ? "Publica una vez o administra una cartera." : "List once or manage a portfolio."}</h2></div><p>{es ? "Las promociones aumentan la visibilidad, pero nunca cambian la puntuación independiente de una oportunidad." : "Promotions increase visibility, but they never change an opportunity’s independent Crestview score."}</p></div>
+        <div className="pricing-grid pricing-grid--four">{brokerPlans.map((plan) => <PlanCard key={plan.name} plan={plan} comingSoon={comingSoon} />)}</div>
+        <p className="pricing-disclaimer">{es ? "Las publicaciones promocionadas siempre estarán identificadas claramente. Las promociones duran 30 días; la publicación base continúa según su plan." : "Promoted listings will always be clearly labeled. Promotions last 30 days; the underlying listing continues according to its plan."}</p>
+      </div></section>
+
+      <section className="shell pricing-section" aria-labelledby="workforce-pricing">
+        <div className="pricing-section__heading"><div><p className="eyebrow">{es ? "Personal" : "Workforce"}</p><h2 id="workforce-pricing">{es ? "Precios que crecen con tu equipo." : "Pricing that grows with your team."}</h2></div><p>{es ? "Administración sencilla de empleados, documentos, certificaciones, capacitación y tiempo libre. El procesamiento de nómina no está incluido inicialmente." : "Straightforward employee, document, certification, training, and time-off administration. Payroll processing is not included initially."}</p></div>
+        <div className="workforce-pricing">
+          <div className="workforce-pricing__intro">
+            <span>{es ? "Desde" : "Starting at"}</span><strong>$20</strong><small>/{es ? "mes" : "month"}</small>
+            <p>{es ? "Todos los niveles incluyen la experiencia bilingüe en inglés y español." : "Every tier includes the bilingual English and Spanish experience."}</p>
+            <button className="button button--primary" type="button" disabled>{comingSoon}</button>
+          </div>
+          <div className="workforce-tiers" role="table" aria-label={es ? "Niveles de precios de personal" : "Workforce pricing tiers"}>
+            {workforceTiers.map(([size, price]) => <div role="row" key={size}><span role="cell">{size}</span><strong role="cell">{price}</strong></div>)}
+          </div>
+        </div>
+      </section>
+
+      <section className="shell pricing-faq"><h2>{es ? "Preguntas sobre los planes" : "Plan questions"}</h2><div>
+        <article><h3>{es ? "¿Puedo usar todo el proceso gratis?" : "Can I complete the process for free?"}</h3><p>{es ? "Sí. Buscar, guardar, valorar, organizar la diligencia y avanzar por la lista de adquisición permanecerá disponible sin Pro." : "Yes. Searching, saving, valuing, organizing diligence, and moving through the acquisition checklist will remain available without Pro."}</p></article>
+        <article><h3>{es ? "¿Cuándo se me cobrará?" : "When will I be charged?"}</h3><p>{es ? "Todavía no. Todos los botones de pago están desactivados y marcados Próximamente hasta que Stripe esté configurado y probado." : "Not yet. Every payment button is disabled and marked Coming soon until Stripe is configured and tested."}</p></article>
+        <article><h3>{es ? "¿Cuánto dura una publicación?" : "How long does a listing remain active?"}</h3><p>{es ? "Una publicación individual continúa hasta su venta, retiro o inactividad. Se pedirá confirmar su disponibilidad cada 60 días." : "A single listing continues until it is sold, withdrawn, or inactive. Availability must be confirmed every 60 days."}</p></article>
+      </div></section>
     </main>
-    <footer className="footer"><div className="shell footer__inner"><Brand locale={locale}/><span>{es ? "Una plataforma para propietarios con visión." : "A platform for thoughtful business owners."}</span><span>© 2026 Crestview</span></div></footer>
+
+    <footer className="footer"><div className="shell footer__inner"><Brand locale={locale} /><span>{es ? "Una plataforma para propietarios con visión." : "A platform for thoughtful business owners."}</span><span>© 2026 Crestview</span></div></footer>
   </>;
 }

@@ -26,6 +26,7 @@ export default async function LandingPage({
             <a href="#platform">{copy.nav.platform}</a>
             <a href="#how-it-works">{copy.nav.how}</a>
             <a href="#vision">{copy.nav.vision}</a>
+            <Link href={`/${locale}/pricing`}>{locale === "es" ? "Planes" : "Pricing"}</Link>
           </nav>
           <div className="header-actions">
             <Link

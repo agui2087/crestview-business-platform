@@ -92,6 +92,31 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .hero__actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 34px; }
 .hero__note { display: flex; align-items: center; gap: 9px; margin-top: 22px; color: var(--muted); font-size: .8rem; }
 .hero__note span { width: 7px; height: 7px; border-radius: 999px; background: #5aab75; box-shadow: 0 0 0 5px rgba(90,171,117,.13); }
+.pricing-page { min-height: 80vh; padding-bottom: 90px; }
+.pricing-hero { padding: 80px 0 46px; text-align: center; }
+.pricing-hero .eyebrow { justify-content: center; }
+.pricing-hero h1 { max-width: 820px; margin: 0 auto; font: 400 clamp(2.6rem,6vw,5rem)/1.02 Georgia,"Times New Roman",serif; letter-spacing: -.055em; }
+.pricing-hero > p { max-width: 650px; margin: 24px auto 0; color: var(--muted); font-size: 1rem; line-height: 1.7; }
+.billing-note { max-width: 690px; display:flex; align-items:center; gap:12px; margin:28px auto 0; padding:13px 16px; border:1px solid #e1d8bd; border-radius:12px; background:#fbf8ed; color:#6e6345; text-align:left; font-size:.72rem; }
+.billing-note strong { flex:0 0 auto; color:var(--brand); }
+.pricing-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; align-items:stretch; }
+.pricing-card { position:relative; display:flex; flex-direction:column; padding:30px; border:1px solid var(--line); border-radius:20px; background:white; box-shadow:0 15px 45px rgba(22,79,60,.06); }
+.pricing-card--featured { border:2px solid var(--brand); background:linear-gradient(180deg,#f4fbf7,#fff); transform:translateY(-10px); box-shadow:0 22px 60px rgba(22,79,60,.14); }
+.pricing-badge { position:absolute; top:0; right:22px; transform:translateY(-50%); padding:7px 11px; border-radius:99px; background:var(--lime); color:var(--brand-dark); font-size:.65rem; font-weight:850; text-transform:uppercase; }
+.pricing-card h2 { margin:0; font-size:1.25rem; }
+.pricing-card > p { min-height:66px; color:var(--muted); font-size:.74rem; line-height:1.55; }
+.plan-price { display:flex; align-items:baseline; gap:5px; margin:18px 0 22px; }
+.plan-price strong { font-size:2.7rem; letter-spacing:-.06em; }
+.plan-price span { color:var(--muted); font-size:.75rem; }
+.pricing-card ul { display:grid; gap:12px; margin:26px 0 0; padding:0; list-style:none; }
+.pricing-card li { display:flex; gap:9px; color:#425049; font-size:.72rem; }
+.pricing-card li span { color:var(--brand); font-weight:900; }
+.pricing-faq { padding-top:70px; }
+.pricing-faq > h2 { text-align:center; font:400 2rem Georgia,serif; }
+.pricing-faq > div { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+.pricing-faq article { padding:22px; border:1px solid var(--line); border-radius:14px; background:white; }
+.pricing-faq h3 { margin:0 0 8px; font-size:.85rem; }
+.pricing-faq p { margin:0; color:var(--muted); font-size:.7rem; line-height:1.6; }
 .deal-preview { position: relative; min-height: 520px; }
 .deal-preview::before {
   content: ""; position: absolute; inset: 25px -80px 8px 55px; z-index: -1;
@@ -530,6 +555,9 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .deal-preview { min-height: 460px; }
   .trust-strip__inner,.cta-panel { align-items: flex-start; flex-direction: column; }
   .product-grid,.dashboard-grid { grid-template-columns: 1fr; }
+  .pricing-grid { grid-template-columns:1fr; }
+  .pricing-card--featured { transform:none; }
+  .pricing-faq > div { grid-template-columns:1fr; }
   .process-grid,.metric-grid { grid-template-columns: repeat(2,1fr); }
   .process-step:nth-child(2) { border-right: 0; }
   .auth-aside { min-height: 420px; }
@@ -569,6 +597,8 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .brand > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .header-actions { gap: 7px; }
   .hero { padding-top: 46px; }
+  .pricing-hero { padding-top:50px; }
+  .billing-note { align-items:flex-start; flex-direction:column; }
   .hero h1 { font-size: clamp(2.7rem,14vw,4rem); overflow-wrap: anywhere; }
   .hero__copy { font-size: 1rem; }
   .hero__actions .button { width: 100%; }

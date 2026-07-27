@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { PageHeading, PlatformShell } from "@/components/platform-shell";
 import { opportunities, getOpportunity } from "@/lib/demo-data";
 import { isLocale } from "@/lib/i18n";
@@ -23,7 +24,7 @@ export default async function TasksPage({ params }: { params: Promise<{ locale: 
     }
   }
   return <PlatformShell locale={locale} active="tasks"><div className="dashboard-content">
-    <PageHeading eyebrow={text.tasks.eyebrow} title={text.tasks.title} body={text.tasks.body} />
+    <PageHeading eyebrow={text.tasks.eyebrow} title={text.tasks.title} body={text.tasks.body} action={<Link className="button button--light" href="/api/export/tasks">{es ? "Exportar tareas" : "Export tasks"}</Link>} />
     <form className="task-create" action={createTask}>
       <input type="hidden" name="locale" value={locale} />
       <label>{text.tasks.task}<input required name="title" placeholder={es ? "Solicitar tres años de declaraciones de impuestos" : "Request three years of tax returns"} /></label>

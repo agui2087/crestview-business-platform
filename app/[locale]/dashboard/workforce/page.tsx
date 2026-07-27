@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { PageHeading, PlatformShell } from "@/components/platform-shell";
 import { isLocale } from "@/lib/i18n";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
@@ -19,7 +20,7 @@ export default async function WorkforcePage({ params }: { params: Promise<{ loca
     }
   }
   return <PlatformShell locale={locale} active="workforce"><div className="dashboard-content">
-    <PageHeading eyebrow={es ? "Administración de personal" : "Workforce administration"} title={es ? "Personal" : "Workforce"} body={es ? "Administra empleados, capacitación, certificaciones y tiempo libre." : "Manage employees, training, certifications, and time-off records."} />
+    <PageHeading eyebrow={es ? "Administración de personal" : "Workforce administration"} title={es ? "Personal" : "Workforce"} body={es ? "Administra empleados, capacitación, certificaciones y tiempo libre." : "Manage employees, training, certifications, and time-off records."} action={<Link className="button button--light" href="/api/export/employees">{es ? "Exportar empleados" : "Export employees"}</Link>} />
     <form className="task-create employee-create" action={createEmployee}>
       <input type="hidden" name="locale" value={locale}/>
       <label>{es ? "Nombre completo" : "Full name"}<input required name="full_name"/></label>

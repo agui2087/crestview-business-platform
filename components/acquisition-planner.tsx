@@ -27,6 +27,226 @@ const stagesEs = [
   ["Compra completada", "Confirma fondos y documentos, transfiere control e inicia la transición y obligaciones posteriores."],
 ] as const;
 
+const checklistItemsEn = [
+  [
+    "Confirm the industry, location, and business size fit your search",
+    "Decide whether the asking price fits your available capital",
+    "Understand the owner’s current role and expected transition",
+    "Identify licenses, certifications, or experience you would need",
+    "Write down your reason to continue, pause, or pass",
+  ],
+  [],
+  [],
+  [
+    "Estimate the total cash needed, including the down payment, fees, and working capital",
+    "Confirm how much cash you can invest without creating personal financial strain",
+    "Discuss the opportunity with an SBA or acquisition lender",
+    "Obtain preliminary lender feedback or a term sheet",
+    "Test whether cash flow covers debt payments and a reasonable buyer salary",
+    "Document seller-financing terms and financing contingencies",
+  ],
+  [
+    "Choose whether to send an informal indication of interest or a formal LOI",
+    "State the proposed price and how it would be paid",
+    "Define what is included, such as assets, inventory, cash, and assumed obligations",
+    "Describe the working-capital expectation at closing",
+    "Include financing, diligence, and other important contingencies",
+    "Set exclusivity, diligence, and expected closing timelines",
+    "Have qualified legal and tax advisors review it before signing",
+  ],
+  [
+    "Reconcile financial statements with tax returns and bank records",
+    "Verify revenue, expenses, add-backs, cash flow, and working-capital needs",
+    "Review customer concentration, contracts, retention, and outstanding disputes",
+    "Review employees, compensation, benefits, contractors, and key-person risk",
+    "Review licenses, permits, taxes, insurance, leases, assets, and legal obligations",
+    "Confirm technology ownership, security, vendor dependencies, and data access",
+    "Record every unresolved issue and decide whether it changes price, terms, or your decision",
+  ],
+  [
+    "Confirm the final agreement matches the negotiated economics and structure",
+    "Review asset allocation, representations, indemnities, escrow, and survival periods",
+    "Obtain final financing approval and satisfy lender conditions",
+    "Confirm required landlord, customer, vendor, licensing, and regulatory consents",
+    "Review the closing statement, payment instructions, and required signatures",
+    "Finalize training, employee communication, access transfer, and the transition plan",
+    "Receive final approval from your legal, tax, accounting, and lending advisors",
+  ],
+  [
+    "Confirm funds were transferred and every required document was signed",
+    "Confirm ownership, bank accounts, systems, passwords, and physical access were transferred",
+    "Communicate with employees, customers, vendors, and other important stakeholders",
+    "Record escrow releases, seller obligations, adjustments, and other post-closing deadlines",
+    "Start the first 30-, 60-, and 90-day operating plan",
+    "Store the final transaction documents in a secure location",
+  ],
+] as const;
+
+const checklistItemsEs = [
+  [
+    "Confirma que la industria, ubicación y tamaño coinciden con tu búsqueda",
+    "Decide si el precio solicitado se ajusta a tu capital disponible",
+    "Comprende el papel actual del propietario y la transición esperada",
+    "Identifica licencias, certificaciones o experiencia necesarias",
+    "Escribe tu razón para continuar, pausar o abandonar",
+  ],
+  [],
+  [],
+  [
+    "Calcula el efectivo total necesario, incluyendo anticipo, gastos y capital de trabajo",
+    "Confirma cuánto puedes invertir sin crear presión financiera personal",
+    "Habla sobre la oportunidad con un prestamista SBA o de adquisiciones",
+    "Obtén comentarios preliminares o una hoja de términos del prestamista",
+    "Comprueba que el flujo de caja cubra la deuda y un salario razonable",
+    "Documenta el financiamiento del vendedor y las contingencias financieras",
+  ],
+  [
+    "Elige entre una indicación informal de interés o una LOI formal",
+    "Indica el precio propuesto y cómo se pagará",
+    "Define activos, inventario, efectivo y obligaciones incluidos",
+    "Describe el capital de trabajo esperado al cierre",
+    "Incluye contingencias de financiamiento y diligencia",
+    "Establece exclusividad, diligencia y fechas de cierre",
+    "Solicita revisión legal y fiscal antes de firmar",
+  ],
+  [
+    "Concilia estados financieros con declaraciones fiscales y registros bancarios",
+    "Verifica ingresos, gastos, ajustes, flujo de caja y capital de trabajo",
+    "Revisa concentración, contratos, retención y disputas de clientes",
+    "Revisa empleados, compensación, beneficios, contratistas y personas clave",
+    "Revisa licencias, impuestos, seguros, arrendamientos, activos y obligaciones legales",
+    "Confirma tecnología, seguridad, proveedores y acceso a datos",
+    "Registra cada asunto pendiente y decide si cambia el precio, los términos o tu decisión",
+  ],
+  [
+    "Confirma que el acuerdo final coincida con la economía y estructura negociadas",
+    "Revisa asignación, declaraciones, indemnizaciones, depósito y plazos",
+    "Obtén aprobación financiera final y cumple las condiciones del prestamista",
+    "Confirma consentimientos de arrendador, clientes, proveedores y reguladores",
+    "Revisa el estado de cierre, instrucciones de pago y firmas",
+    "Finaliza capacitación, comunicación, accesos y transición",
+    "Obtén aprobación final de asesores legales, fiscales, contables y financieros",
+  ],
+  [
+    "Confirma la transferencia de fondos y la firma de todos los documentos",
+    "Confirma la transferencia de propiedad, cuentas, sistemas, contraseñas y acceso físico",
+    "Comunícate con empleados, clientes, proveedores y partes importantes",
+    "Registra depósitos, obligaciones del vendedor, ajustes y fechas posteriores al cierre",
+    "Inicia el plan operativo de 30, 60 y 90 días",
+    "Guarda los documentos finales de forma segura",
+  ],
+] as const;
+
+const readyWhenEn = [
+  "You understand the basic fit, major unknowns, and whether this opportunity deserves more time.",
+  "The NDA is handled and the seller or broker has a clear, written list of the information you need.",
+  "You have a supportable value range and understand which assumptions still need verification.",
+  "You know the likely cash requirement, financing path, and whether expected cash flow can support the debt.",
+  "The proposed economics, protections, responsibilities, and timeline are written clearly and reviewed by your advisors.",
+  "Important claims have been verified, material risks are documented, and remaining issues are reflected in the decision or terms.",
+  "Financing, documents, approvals, funds, access, and the transition plan are ready for the scheduled closing.",
+  "Control has transferred and every post-closing responsibility has an owner and due date.",
+] as const;
+
+const readyWhenEs = [
+  "Comprendes el ajuste básico, las incógnitas principales y si vale la pena continuar.",
+  "El NDA está resuelto y el vendedor o corredor tiene una lista escrita de la información necesaria.",
+  "Tienes un rango de valor respaldado y comprendes qué supuestos faltan por verificar.",
+  "Conoces el efectivo necesario, la ruta de financiamiento y si el flujo de caja puede cubrir la deuda.",
+  "La economía, protecciones, responsabilidades y fechas están escritas y revisadas por tus asesores.",
+  "Las afirmaciones importantes están verificadas, los riesgos documentados y los asuntos pendientes reflejados en los términos.",
+  "Financiamiento, documentos, aprobaciones, fondos, accesos y transición están listos para el cierre.",
+  "El control fue transferido y cada obligación posterior tiene responsable y fecha.",
+] as const;
+
+const useInformationEn = [
+  [
+    "Compare the opportunity with your non-negotiable criteria instead of judging it only by the asking price.",
+    "Turn unknown items into specific questions for the seller or broker.",
+    "If a license, owner role, or capital requirement does not fit, pause before spending money on diligence.",
+  ],
+  [
+    "Match profit-and-loss statements to tax returns and bank deposits; unexplained differences need follow-up.",
+    "Use customer information to calculate concentration and understand what happens if a major customer leaves.",
+    "Use owner hours and responsibilities to estimate the cost of replacing the seller’s work.",
+    "Put missing or contradictory information into the diligence tracker instead of treating it as verified.",
+  ],
+  [
+    "Build conservative, expected, and optimistic cases rather than relying on one earnings number.",
+    "Compare price multiples with the quality and stability of the earnings, not as a stand-alone answer.",
+    "Use weak debt coverage or unsupported add-backs to reconsider price, financing structure, or whether to continue.",
+  ],
+  [
+    "Compare lenders using down payment, rate, term, fees, collateral, covenants, and speed—not only the monthly payment.",
+    "Ask each lender which figures they will accept and how they calculate debt-service coverage.",
+    "Use lender feedback to adjust the offer, request seller financing, or add a financing contingency.",
+  ],
+  [
+    "Use the LOI as a written roadmap for the deal, while keeping it subject to appropriate diligence and professional review.",
+    "Connect every unresolved risk to a contingency, seller obligation, price adjustment, holdback, or walk-away right.",
+    "Confirm which provisions are binding before signing, especially confidentiality, exclusivity, expenses, and access.",
+  ],
+  [
+    "Trace important claims back to original evidence instead of relying on summaries or seller explanations.",
+    "Maintain an issues list showing the evidence, financial effect, responsible person, and deadline for every concern.",
+    "Resolve each material issue by verifying it, changing the terms, obtaining protection, or deciding not to proceed.",
+  ],
+  [
+    "Compare every final document and dollar amount with the LOI and most recent negotiations.",
+    "Use a closing checklist with one responsible person and deadline for every approval, signature, payment, and access transfer.",
+    "Do not authorize closing until professional advisors confirm that required conditions are satisfied.",
+  ],
+  [
+    "Convert every seller promise and post-closing requirement into a dated task with an owner.",
+    "Use the first 90 days to protect employees, customers, cash flow, and critical operating routines before making major changes.",
+    "Keep final agreements and closing evidence available for tax, escrow, warranty, and dispute questions.",
+  ],
+] as const;
+
+const useInformationEs = [
+  [
+    "Compara la oportunidad con tus criterios indispensables, no solamente con el precio.",
+    "Convierte la información desconocida en preguntas específicas para el vendedor o corredor.",
+    "Si una licencia, función del propietario o capital requerido no encaja, pausa antes de gastar en diligencia.",
+  ],
+  [
+    "Compara resultados con declaraciones fiscales y depósitos bancarios; investiga diferencias sin explicación.",
+    "Usa los datos de clientes para calcular concentración y el efecto de perder un cliente importante.",
+    "Usa las horas y funciones del propietario para estimar el costo de reemplazar su trabajo.",
+    "Registra información faltante o contradictoria en diligencia y no la trates como verificada.",
+  ],
+  [
+    "Crea escenarios conservador, esperado y optimista en lugar de depender de una sola cifra.",
+    "Compara múltiplos con la calidad y estabilidad de las ganancias.",
+    "Usa cobertura débil o ajustes sin respaldo para reconsiderar precio, financiamiento o continuidad.",
+  ],
+  [
+    "Compara anticipo, tasa, plazo, costos, garantía, condiciones y velocidad, no solo el pago mensual.",
+    "Pregunta qué cifras acepta cada prestamista y cómo calcula la cobertura de deuda.",
+    "Usa sus comentarios para ajustar la oferta, solicitar financiamiento del vendedor o agregar una contingencia.",
+  ],
+  [
+    "Usa la LOI como guía escrita, sujeta a diligencia y revisión profesional.",
+    "Conecta cada riesgo con una contingencia, obligación, ajuste, retención o derecho de abandonar.",
+    "Confirma qué disposiciones son obligatorias antes de firmar.",
+  ],
+  [
+    "Conecta afirmaciones importantes con evidencia original, no solo resúmenes o explicaciones.",
+    "Mantén una lista con evidencia, efecto financiero, responsable y fecha para cada asunto.",
+    "Resuelve cada asunto verificándolo, cambiando términos, obteniendo protección o abandonando.",
+  ],
+  [
+    "Compara cada documento y cantidad final con la LOI y la negociación más reciente.",
+    "Asigna responsable y fecha a cada aprobación, firma, pago y transferencia de acceso.",
+    "No autorices el cierre hasta que tus asesores confirmen las condiciones.",
+  ],
+  [
+    "Convierte cada promesa y obligación posterior en una tarea con responsable y fecha.",
+    "Usa los primeros 90 días para proteger empleados, clientes, flujo de caja y rutinas críticas.",
+    "Conserva acuerdos y evidencia para impuestos, depósitos, garantías y disputas.",
+  ],
+] as const;
+
 function parseNumber(value: string) {
   const parsed = Number(value.replace(/[$,\s]/g, ""));
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
@@ -51,6 +271,9 @@ export function AcquisitionPlanner({
 }) {
   const es = locale === "es";
   const stages = es ? stagesEs : stagesEn;
+  const checklistItems = es ? checklistItemsEs : checklistItemsEn;
+  const readyWhen = es ? readyWhenEs : readyWhenEn;
+  const useInformation = es ? useInformationEs : useInformationEn;
   const user = useCrestviewUser();
   const [started, setStarted] = useState(Boolean(initialWorkspace && initialWorkspace.stage !== "saved"));
   const [current, setCurrent] = useState(initialWorkspace?.current_step ?? 0);
@@ -119,6 +342,18 @@ export function AcquisitionPlanner({
     persist(nextCurrent, nextStatuses);
   }
 
+  function itemKey(step: number, item: number) {
+    return `item:${step}:${item}`;
+  }
+
+  function toggleChecklistItem(itemIndex: number) {
+    const key = itemKey(current, itemIndex);
+    setStepStatuses((existing) => ({
+      ...existing,
+      [key]: existing[key] === "complete" ? "open" : "complete",
+    }));
+  }
+
   if (!started) {
     return (
       <section className="begin-panel">
@@ -158,6 +393,38 @@ export function AcquisitionPlanner({
     window.setTimeout(() => setCopied(false), 2000);
   }
   const atLastStep = current === stages.length - 1;
+  const currentChecklist = checklistItems[current];
+  const completedChecklistItems = currentChecklist.filter((_, index) => stepStatuses[itemKey(current, index)] === "complete").length;
+  const generalResources = [
+    {
+      label: es ? "Guía de SBA para comprar un negocio" : "SBA guide to buying an existing business",
+      description: es ? "Conceptos básicos, valoración, diligencia y ayuda profesional." : "Plain-language guidance on evaluation, valuation, diligence, and professional help.",
+      href: "https://www.sba.gov/business-guide/plan-your-business/buy-existing-business-or-franchise",
+    },
+    {
+      label: es ? "Asistencia local de SBA" : "SBA local assistance",
+      description: es ? `Busca SBDC, SCORE y otros asesores cerca de ${opportunity.location}.` : `Find SBDC, SCORE, and other business advisors serving ${opportunity.location}.`,
+      href: "https://www.sba.gov/local-assistance",
+    },
+  ];
+  const financingResources = [
+    {
+      label: "SBA Lender Match",
+      description: es ? `Ingresa ${opportunity.location} y los detalles del préstamo para encontrar prestamistas interesados.` : `Enter ${opportunity.location} and the proposed loan details to find lenders that express interest.`,
+      href: "https://www.sba.gov/funding-programs/loans/lender-match-connects-you-lenders",
+    },
+    {
+      label: es ? "Préstamos SBA 7(a)" : "SBA 7(a) acquisition loans",
+      description: es ? "Revisa usos permitidos, requisitos y límites antes de comparar propuestas." : "Review permitted uses, eligibility, and program limits before comparing offers.",
+      href: "https://www.sba.gov/funding-programs/loans/7a-loans",
+    },
+    {
+      label: "FDIC BankFind",
+      description: es ? `Comprueba bancos asegurados que operan cerca de ${opportunity.location}; luego confirma directamente si financian adquisiciones.` : `Check insured banks operating near ${opportunity.location}, then confirm directly whether they finance acquisitions.`,
+      href: "https://banks.data.fdic.gov/bankfind-suite/bankfind",
+    },
+  ];
+  const stageResources = current === 3 ? [...financingResources, ...generalResources] : generalResources;
 
   return (
     <section className="acquisition-workspace">
@@ -174,7 +441,16 @@ export function AcquisitionPlanner({
         <h2>{stages[current][0]}</h2>
         <p className="stage-intro">{stages[current][1]}</p>
 
-        {current === 0 && <div className="check-card"><h3>Initial fit review</h3>{["Matches your preferred industry and geography","Purchase price fits available capital","Required licenses are understood","Owner role and transition expectations are clear"].map((item) => <label key={item}><input type="checkbox" />{item}</label>)}</div>}
+        {currentChecklist.length > 0 && <div className="check-card">
+          <div className="check-card__heading">
+            <h3>{es ? "Qué hacer" : "What to do"}</h3>
+            <span>{completedChecklistItems}/{currentChecklist.length} {es ? "completados" : "completed"}</span>
+          </div>
+          {currentChecklist.map((item, index) => <label key={item}>
+            <input type="checkbox" checked={stepStatuses[itemKey(current, index)] === "complete"} onChange={() => toggleChecklistItem(index)} />
+            {item}
+          </label>)}
+        </div>}
 
         {current === 1 && <div className="request-grid"><div className="check-card"><div className="check-card__heading"><h3>Information to request</h3><span>{selectedRequestItems.length} selected</span></div>{requestItems.map((item) => <label key={item}><input type="checkbox" checked={selectedRequestItems.includes(item)} onChange={() => toggleRequestItem(item)} />{item}</label>)}</div><div className="outreach-card"><span>Broker request draft · updates live</span><pre aria-live="polite">{brokerRequest}</pre><div className="outreach-actions"><button type="button" onClick={copyBrokerRequest}>{copied ? "Copied ✓" : "Copy request"}</button>{opportunity.brokerEmail && <a href={`mailto:${opportunity.brokerEmail}?subject=${encodeURIComponent(`Inquiry about listing ${opportunity.sourceId}`)}&body=${encodeURIComponent(brokerRequest)}`}>Open in email</a>}</div></div></div>}
 
@@ -202,15 +478,20 @@ export function AcquisitionPlanner({
           </div>
         </div>}
 
-        {current > 2 && current < 7 && <div className="check-card"><h3>{stages[current][0]} checklist</h3>{[
-          current === 3 ? "Confirm buyer equity and liquidity" : "Engage qualified legal and tax advisors",
-          current === 3 ? "Obtain lender feedback or term sheet" : "Document assumptions, contingencies, and approvals",
-          current === 5 ? "Reconcile financial statements to tax returns and bank records" : "Confirm responsible owner and deadline",
-          current === 6 ? "Review final closing statement and asset allocation" : "Record unresolved risks and required follow-up",
-        ].map((item) => <label key={item}><input type="checkbox" />{item}</label>)}</div>}
-
         {atLastStep && <div className="completion-card"><span>✓</span><h3>Purchase complete</h3><p>Use this stage only after your professional advisors confirm the transaction has closed. Record transition obligations, working-capital adjustments, escrow dates, and post-closing commitments.</p></div>}
 
+        <div className="information-use-card">
+          <span>{es ? "Cómo usar esta información" : "How to use what you learn"}</span>
+          <ul>{useInformation[current].map((item) => <li key={item}>{item}</li>)}</ul>
+        </div>
+        <div className="acquisition-resources">
+          <div><span>{es ? "Referencias útiles" : "Helpful references"}</span><p>{es ? "Abre estas fuentes confiables en una pestaña nueva. Confirma términos y disponibilidad directamente con cada profesional o prestamista." : "Open these trusted sources in a new tab. Confirm terms and availability directly with each professional or lender."}</p></div>
+          <div>{stageResources.map((resource) => <a href={resource.href} target="_blank" rel="noreferrer" key={resource.href}><strong>{resource.label} ↗</strong><span>{resource.description}</span></a>)}</div>
+        </div>
+        <div className="step-finish-note">
+          <span>{es ? "Listo para continuar cuando" : "Ready to continue when"}</span>
+          <p>{readyWhen[current]}</p>
+        </div>
         <label className="stage-notes">Notes and evidence<textarea value={stepNotes[String(current)] ?? ""} onChange={(event) => setStepNotes((existing) => ({ ...existing, [String(current)]: event.target.value }))} placeholder="Record what you verified, what is still missing, and who owns the next action." /></label>
         {saveMessage && <p className="workspace-save-message" aria-live="polite">{saveMessage}</p>}
         <p className="advisor-note">Crestview provides organizational tools and illustrative calculations, not legal, tax, accounting, lending, or investment advice.</p>

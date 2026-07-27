@@ -453,6 +453,18 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .check-card label { display: flex; align-items: flex-start; gap: 9px; padding: 9px 0; border-top: 1px solid #e3e8e3; color: #49564f; font-size: .7rem; }
 .check-card label:first-of-type { border-top: 0; }
 .check-card input { margin-top: 1px; accent-color: var(--brand); }
+.information-use-card { margin-top: 16px; padding: 20px; border: 1px solid #d9dfc4; border-radius: 13px; background: #f7fae9; }
+.information-use-card > span,.acquisition-resources > div:first-child > span,.step-finish-note > span { color: var(--brand); font-size: .62rem; font-weight: 850; letter-spacing: .08em; text-transform: uppercase; }
+.information-use-card ul { display: grid; gap: 9px; margin: 13px 0 0; padding-left: 18px; color: #405249; font-size: .71rem; line-height: 1.55; }
+.acquisition-resources { display: grid; grid-template-columns: .7fr 1.3fr; gap: 18px; margin-top: 16px; padding: 20px; border: 1px solid var(--line); border-radius: 13px; background: white; }
+.acquisition-resources > div:first-child p { margin: 8px 0 0; color: var(--muted); font-size: .67rem; line-height: 1.5; }
+.acquisition-resources > div:last-child { display: grid; gap: 8px; }
+.acquisition-resources a { display: grid; gap: 3px; padding: 11px 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--paper); }
+.acquisition-resources a:hover { border-color: var(--brand); }
+.acquisition-resources a strong { color: var(--brand); font-size: .69rem; }
+.acquisition-resources a span { color: var(--muted); font-size: .63rem; line-height: 1.45; }
+.step-finish-note { margin-top: 16px; padding: 16px 18px; border-left: 3px solid var(--brand); border-radius: 0 11px 11px 0; background: var(--brand-soft); }
+.step-finish-note p { margin: 7px 0 0; color: #405249; font-size: .72rem; line-height: 1.55; }
 .request-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .outreach-card { background: var(--brand-soft); }
 .outreach-card > span { color: var(--brand); font-size: .61rem; font-weight: 780; text-transform: uppercase; }
@@ -698,6 +710,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .detail-heading,.begin-panel { align-items: flex-start; flex-direction: column; }
   .detail-metrics { grid-template-columns: 1fr; }
   .detail-grid,.acquisition-workspace,.request-grid,.valuation-area { grid-template-columns: 1fr; }
+  .acquisition-resources { grid-template-columns: 1fr; padding: 17px; }
   .acquisition-steps { display: flex; overflow-x: auto; gap: 5px; }
   .acquisition-steps > p { display: none; }
   .acquisition-steps button { min-width: 150px; }

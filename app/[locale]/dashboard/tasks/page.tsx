@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { PageHeading, PlatformShell } from "@/components/platform-shell";
 import { opportunities, getOpportunity } from "@/lib/demo-data";
 import { isLocale } from "@/lib/i18n";
+import { platformCopy } from "@/lib/platform-copy";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { createTask, toggleTask } from "./actions";
 
@@ -10,6 +11,8 @@ type DealTask = { id: string; title: string; opportunity_key: string | null; due
 export default async function TasksPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
+  const text = platformCopy(locale);
+  const es = locale === "es";
   let tasks: DealTask[] = [];
   if (isSupabaseConfigured()) {
     const supabase = await createSupabaseServerClient();
@@ -20,21 +23,21 @@ export default async function TasksPage({ params }: { params: Promise<{ locale: 
     }
   }
   return <PlatformShell locale={locale} active="tasks"><div className="dashboard-content">
-    <PageHeading eyebrow="Work queue" title="Tasks" body="Create real tasks, connect them to opportunities, and track due dates and priority." />
+    <PageHeading eyebrow={text.tasks.eyebrow} title={text.tasks.title} body={text.tasks.body} />
     <form className="task-create" action={createTask}>
       <input type="hidden" name="locale" value={locale} />
-      <label>Task<input required name="title" placeholder="Request three years of tax returns" /></label>
-      <label>Opportunity<select name="opportunity_key"><option value="">General task</option>{opportunities.map((item)=><option key={item.id} value={item.id}>{item.title}</option>)}</select></label>
-      <label>Due date<input type="date" name="due_date" /></label>
-      <label>Priority<select name="priority"><option value="medium">Medium</option><option value="high">High</option><option value="low">Low</option></select></label>
-      <button className="button button--primary" type="submit">Add task</button>
+      <label>{text.tasks.task}<input required name="title" placeholder={es ? "Solicitar tres años de declaraciones de impuestos" : "Request three years of tax returns"} /></label>
+      <label>{text.tasks.opportunity}<select name="opportunity_key"><option value="">{es ? "Tarea general" : "General task"}</option>{opportunities.map((item)=><option key={item.id} value={item.id}>{item.title}</option>)}</select></label>
+      <label>{text.tasks.due}<input type="date" name="due_date" /></label>
+      <label>{text.tasks.priority}<select name="priority"><option value="medium">{es ? "Media" : "Medium"}</option><option value="high">{es ? "Alta" : "High"}</option><option value="low">{es ? "Baja" : "Low"}</option></select></label>
+      <button className="button button--primary" type="submit">{text.tasks.add}</button>
     </form>
     <section className="task-list">
       {tasks.map((task) => <article className={task.status === "complete" ? "is-complete" : ""} key={task.id}>
-        <div><span>{task.priority} priority</span><strong>{task.title}</strong><small>{task.opportunity_key ? getOpportunity(task.opportunity_key)?.title : "General"} · {task.due_date ?? "No due date"}</small></div>
-        <form action={toggleTask}><input type="hidden" name="locale" value={locale}/><input type="hidden" name="id" value={task.id}/><input type="hidden" name="status" value={task.status === "complete" ? "open" : "complete"}/><button type="submit">{task.status === "complete" ? "Reopen" : "Complete"}</button></form>
+        <div><span>{task.priority} {es ? "prioridad" : "priority"}</span><strong>{task.title}</strong><small>{task.opportunity_key ? getOpportunity(task.opportunity_key)?.title : text.common.general} · {task.due_date ?? text.common.noDueDate}</small></div>
+        <form action={toggleTask}><input type="hidden" name="locale" value={locale}/><input type="hidden" name="id" value={task.id}/><input type="hidden" name="status" value={task.status === "complete" ? "open" : "complete"}/><button type="submit">{task.status === "complete" ? (es ? "Reabrir" : "Reopen") : (es ? "Completar" : "Complete")}</button></form>
       </article>)}
-      {!tasks.length && <div className="empty-state"><h2>No tasks yet</h2><p>Create the first task above. It will be stored with your account.</p></div>}
+      {!tasks.length && <div className="empty-state"><h2>{text.tasks.empty}</h2><p>{text.tasks.emptyBody}</p></div>}
     </section>
   </div></PlatformShell>;
 }

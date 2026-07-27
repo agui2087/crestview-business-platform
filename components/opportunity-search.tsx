@@ -150,6 +150,8 @@ export function OpportunitySearch({
   const [maxPrice, setMaxPrice] = useState("");
   const [location, setLocation] = useState("");
   const [page, setPage] = useState(1);
+  const [selected, setSelected] = useState<string[]>([]);
+  const es = locale === "es";
   const industries = useMemo(
     () => ["All industries", ...Array.from(new Set(items.map((item) => item.industry))).sort()],
     [items],
@@ -226,17 +228,17 @@ export function OpportunitySearch({
     <>
       <div className="smart-search">
         <span aria-hidden="true">⌕</span>
-        <input value={query} onChange={(event) => updateFilters(() => setQuery(event.target.value))} placeholder="Describe the business or enter any words you remember" aria-label="Search opportunities" />
-        {query && <button onClick={() => updateFilters(() => setQuery(""))} type="button">Clear</button>}
+        <input value={query} onChange={(event) => updateFilters(() => setQuery(event.target.value))} placeholder={es ? "Describe el negocio o escribe cualquier palabra que recuerdes" : "Describe the business or enter any words you remember"} aria-label={es ? "Buscar oportunidades" : "Search opportunities"} />
+        {query && <button onClick={() => updateFilters(() => setQuery(""))} type="button">{es ? "Borrar" : "Clear"}</button>}
       </div>
-      <p className="search-help">Searches titles, descriptions, industries, locations, and partial word matches. The closest matches appear first.</p>
+      <p className="search-help">{es ? "Busca títulos, descripciones, industrias, ubicaciones y palabras parciales. Las coincidencias más cercanas aparecen primero." : "Searches titles, descriptions, industries, locations, and partial word matches. The closest matches appear first."}</p>
       <div className="location-search">
         <label>
-          Search location
+          {es ? "Buscar ubicación" : "Search location"}
           <input
             value={location}
             onChange={(event) => updateFilters(() => setLocation(event.target.value))}
-            placeholder="City, State (example: Portland, OR)"
+            placeholder={es ? "Ciudad, Estado (ejemplo: Portland, OR)" : "City, State (example: Portland, OR)"}
             aria-label="Search location"
             list="crestview-location-suggestions"
             autoComplete="off"
@@ -246,8 +248,8 @@ export function OpportunitySearch({
           </datalist>
         </label>
         <div>
-          <strong>Location-first search</strong>
-          <span>Starts with the city, then expands through the region and current listing coverage until it reaches up to {TARGET_RESULTS} results.</span>
+          <strong>{es ? "Búsqueda por ubicación" : "Location-first search"}</strong>
+          <span>{es ? `Comienza con la ciudad y amplía la región hasta encontrar un máximo de ${TARGET_RESULTS} resultados.` : `Starts with the city, then expands through the region and current listing coverage until it reaches up to ${TARGET_RESULTS} results.`}</span>
         </div>
       </div>
       <div className="opportunity-filters" aria-label="Opportunity filters">
@@ -273,10 +275,26 @@ export function OpportunitySearch({
           </span>
         </div>
       )}
+      <div className="comparison-toolbar" aria-live="polite">
+        <span>{selected.length} {es ? "seleccionados (máximo 4)" : "selected (maximum 4)"}</span>
+        <Link className={`button button--light ${selected.length < 2 ? "is-disabled" : ""}`} aria-disabled={selected.length < 2} href={selected.length >= 2 ? `/${locale}/dashboard/opportunities/compare?ids=${selected.join(",")}` : `/${locale}/dashboard/opportunities`}>
+          {es ? "Comparar seleccionados" : "Compare selected"}
+        </Link>
+        {selected.length > 0 && <button type="button" onClick={() => setSelected([])}>{es ? "Borrar selección" : "Clear selection"}</button>}
+      </div>
       <div className="result-count"><strong>{results.length}</strong> opportunities found · showing {visibleResults.length} on page {safePage} of {pageCount}</div>
       <div className="opportunity-list">
         {visibleResults.map(({ item, match }) => (
           <article className="opportunity-row" key={item.id}>
+            <label className="compare-check">
+              <input
+                type="checkbox"
+                checked={selected.includes(item.id)}
+                disabled={!selected.includes(item.id) && selected.length >= 4}
+                onChange={() => setSelected((current) => current.includes(item.id) ? current.filter((id) => id !== item.id) : [...current, item.id])}
+              />
+              <span className="sr-only">{es ? `Comparar ${item.title}` : `Compare ${item.title}`}</span>
+            </label>
             <div className="opportunity-row__main">
               <span className="source-label">{item.source} · checked {item.lastChecked}</span>
               <h2><Link href={`/${locale}/dashboard/opportunities/${item.id}`}>{item.title}</Link></h2>
@@ -287,7 +305,7 @@ export function OpportunitySearch({
             <div><span>Revenue</span><strong>{item.revenue}</strong></div>
             <div><span>Cash flow / SDE</span><strong>{item.cashFlow}</strong></div>
             <div className="listing-status"><strong>{item.status}</strong><span>{item.publicBusinessName ? "Name public" : "Confidential"}</span></div>
-            <Link className="save-button" href={`/${locale}/dashboard/opportunities/${item.id}`}>View</Link>
+            <Link className="save-button" href={`/${locale}/dashboard/opportunities/${item.id}`}>{es ? "Ver" : "View"}</Link>
           </article>
         ))}
         {results.length === 0 && <div className="empty-state"><h2>No close matches yet</h2><p>Try fewer words, a location, an industry, or one unusual word from the listing title.</p></div>}

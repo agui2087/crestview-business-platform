@@ -112,3 +112,60 @@ export async function addBrokerInteraction(formData: FormData) {
   await supabase.from("deal_activities").insert({ user_id: user.id, opportunity_key: opportunityKey, activity_type: "broker", description: summary });
   revalidatePath(`/${locale}/dashboard/opportunities/${opportunityKey}`);
 }
+
+export async function addOpportunityNote(formData: FormData) {
+  const { locale, opportunityKey, supabase, user } = await authenticatedRequest(formData);
+  const body = String(formData.get("body") ?? "").trim();
+  if (body) {
+    await supabase.from("opportunity_notes").insert({
+      user_id: user.id,
+      opportunity_key: opportunityKey,
+      body,
+    });
+    await supabase.from("deal_activities").insert({
+      user_id: user.id,
+      opportunity_key: opportunityKey,
+      activity_type: "note",
+      description: "A private opportunity note was added.",
+    });
+  }
+  revalidatePath(`/${locale}/dashboard/opportunities/${opportunityKey}`);
+  revalidatePath(`/${locale}/dashboard/lists`);
+}
+
+export async function createOpportunityList(formData: FormData) {
+  const locale = String(formData.get("locale") ?? "en");
+  if (!isLocale(locale)) redirect("/en/dashboard/lists");
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect(`/${locale}/sign-in`);
+  const name = String(formData.get("name") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim();
+  if (name) {
+    await supabase.from("opportunity_lists").upsert({
+      user_id: user.id,
+      name,
+      description: description || null,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "user_id,name" });
+  }
+  revalidatePath(`/${locale}/dashboard/lists`);
+}
+
+export async function addOpportunityToList(formData: FormData) {
+  const { locale, opportunityKey, supabase, user } = await authenticatedRequest(formData);
+  const listId = String(formData.get("list_id") ?? "");
+  if (listId) {
+    const { data: list } = await supabase.from("opportunity_lists").select("id").eq("id", listId).eq("user_id", user.id).maybeSingle();
+    if (list) {
+      await supabase.from("opportunity_list_items").upsert({
+        user_id: user.id,
+        list_id: list.id,
+        opportunity_key: opportunityKey,
+      }, { onConflict: "list_id,opportunity_key" });
+      await supabase.from("opportunity_lists").update({ updated_at: new Date().toISOString() }).eq("id", list.id).eq("user_id", user.id);
+    }
+  }
+  revalidatePath(`/${locale}/dashboard/opportunities/${opportunityKey}`);
+  revalidatePath(`/${locale}/dashboard/lists`);
+}

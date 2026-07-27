@@ -5,7 +5,7 @@ import { PlatformShell } from "@/components/platform-shell";
 import { getOpportunity, opportunities } from "@/lib/demo-data";
 import { isLocale } from "@/lib/i18n";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
-import { addBrokerInteraction, addDiligenceItem, beginAcquisition, saveOpportunity, updateDiligenceItem } from "../actions";
+import { addBrokerInteraction, addDiligenceItem, addOpportunityNote, addOpportunityToList, beginAcquisition, saveOpportunity, updateDiligenceItem } from "../actions";
 
 export function generateStaticParams() {
   return opportunities.flatMap((item) => ["en", "es"].map((locale) => ({ locale, id: item.id })));
@@ -26,6 +26,8 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
   let diligence: Array<{ id: string; category: string; title: string; status: string; due_date: string | null }> = [];
   let interactions: Array<{ id: string; interaction_type: string; summary: string; contact_name: string | null; occurred_at: string }> = [];
   let activities: Array<{ id: string; description: string; created_at: string }> = [];
+  let notes: Array<{ id: string; body: string; created_at: string }> = [];
+  let lists: Array<{ id: string; name: string }> = [];
   if (isSupabaseConfigured()) {
     const supabase = await createSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -37,14 +39,18 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
         .eq("opportunity_key", opportunity.id)
         .maybeSingle();
       workspace = data ?? null;
-      const [{ data: diligenceData }, { data: interactionData }, { data: activityData }] = await Promise.all([
+      const [{ data: diligenceData }, { data: interactionData }, { data: activityData }, { data: noteData }, { data: listData }] = await Promise.all([
         supabase.from("diligence_items").select("id,category,title,status,due_date").eq("user_id", user.id).eq("opportunity_key", opportunity.id).order("category"),
         supabase.from("broker_interactions").select("id,interaction_type,summary,contact_name,occurred_at").eq("user_id", user.id).eq("opportunity_key", opportunity.id).order("occurred_at", { ascending: false }).limit(10),
         supabase.from("deal_activities").select("id,description,created_at").eq("user_id", user.id).eq("opportunity_key", opportunity.id).order("created_at", { ascending: false }).limit(12),
+        supabase.from("opportunity_notes").select("id,body,created_at").eq("user_id", user.id).eq("opportunity_key", opportunity.id).order("created_at", { ascending: false }).limit(20),
+        supabase.from("opportunity_lists").select("id,name").eq("user_id", user.id).order("name"),
       ]);
       diligence = diligenceData ?? [];
       interactions = interactionData ?? [];
       activities = activityData ?? [];
+      notes = noteData ?? [];
+      lists = listData ?? [];
     }
   }
 
@@ -69,7 +75,10 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
           </div>
         </div>
         <div className="source-warning">Seller or broker reported information. Crestview has not independently verified the listing. Last checked {opportunity.lastChecked}.</div>
-        <div className="detail-metrics">
+        <nav className="deal-workspace-nav" aria-label="Deal workspace sections">
+          <a href="#summary">Summary</a><a href="#valuation">Acquisition plan</a><a href="#diligence">Diligence</a><a href="#broker">Broker activity</a><a href="#notes">Private notes</a>
+        </nav>
+        <div className="detail-metrics" id="summary">
           {[["Asking price",opportunity.price],["Revenue",opportunity.revenue],["Cash flow / SDE",opportunity.cashFlow],["EBITDA",opportunity.ebitda]].map(([label,value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}
         </div>
         <div className="detail-grid">
@@ -89,9 +98,30 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
           <div><span>Data completeness</span><strong>{Math.round(([opportunity.priceValue, opportunity.revenueValue, opportunity.cashFlowValue, opportunity.ebitdaValue, opportunity.brokerEmail ?? opportunity.brokerPhone].filter(Boolean).length / 5) * 100)}%</strong><p>{opportunity.missing.length} important information requests identified.</p></div>
           <div><span>Duplicate review</span><strong>No duplicate detected</strong><p>Compared by source and listing identifier in the current Crestview catalog.</p></div>
         </section>
-        <AcquisitionPlanner opportunity={opportunity} initialWorkspace={workspace} locale={locale} />
+        <div id="valuation"><AcquisitionPlanner opportunity={opportunity} initialWorkspace={workspace} locale={locale} /></div>
+        <section className="notes-lists-grid" id="notes">
+          <article className="operations-card">
+            <header><div><span>Private research</span><h2>Opportunity notes</h2></div></header>
+            <form className="interaction-create" action={addOpportunityNote}>
+              <input type="hidden" name="locale" value={locale}/><input type="hidden" name="opportunity_key" value={opportunity.id}/>
+              <textarea name="body" required placeholder="Record an observation, question, or decision. Only your account can see this note."/>
+              <button type="submit">Add private note</button>
+            </form>
+            {notes.map((note) => <article className="timeline-item" key={note.id}><span>{new Date(note.created_at).toLocaleString(locale)}</span><p>{note.body}</p></article>)}
+            {!notes.length && <p className="muted">No private notes yet.</p>}
+          </article>
+          <article className="operations-card">
+            <header><div><span>Organization</span><h2>Add to a saved list</h2></div></header>
+            {lists.length ? <form className="inline-create" action={addOpportunityToList}>
+              <input type="hidden" name="locale" value={locale}/><input type="hidden" name="opportunity_key" value={opportunity.id}/>
+              <select name="list_id" aria-label="Saved list">{lists.map((list) => <option value={list.id} key={list.id}>{list.name}</option>)}</select>
+              <button type="submit">Add to list</button>
+            </form> : <p>Create a saved list first, then return here to add this opportunity.</p>}
+            <Link className="button button--light" href={`/${locale}/dashboard/lists`}>Manage saved lists</Link>
+          </article>
+        </section>
         {workspace && workspace.stage !== "saved" && <div className="deal-operations">
-          <section className="operations-card">
+          <section className="operations-card" id="diligence">
             <header><div><span>Due diligence</span><h2>Verification tracker</h2></div><strong>{diligence.filter((item)=>item.status === "verified").length}/{diligence.length} verified</strong></header>
             <form className="inline-create" action={addDiligenceItem}>
               <input type="hidden" name="locale" value={locale}/><input type="hidden" name="opportunity_key" value={opportunity.id}/>
@@ -102,7 +132,7 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
             </form>
             {diligence.map((item)=><article className="diligence-row" key={item.id}><div><span>{item.category}</span><strong>{item.title}</strong><small>{item.due_date ?? "No due date"}</small></div><form action={updateDiligenceItem}><input type="hidden" name="locale" value={locale}/><input type="hidden" name="opportunity_key" value={opportunity.id}/><input type="hidden" name="id" value={item.id}/><select name="status" defaultValue={item.status}><option value="open">Open</option><option value="requested">Requested</option><option value="received">Received</option><option value="verified">Verified</option><option value="flagged">Flagged</option><option value="not_applicable">N/A</option></select><button>Update</button></form></article>)}
           </section>
-          <section className="operations-card">
+          <section className="operations-card" id="broker">
             <header><div><span>Broker contact</span><h2>Interaction history</h2></div></header>
             <form className="interaction-create" action={addBrokerInteraction}>
               <input type="hidden" name="locale" value={locale}/><input type="hidden" name="opportunity_key" value={opportunity.id}/>

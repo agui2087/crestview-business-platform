@@ -8,6 +8,7 @@ import type { Locale } from "@/lib/i18n";
 const navItems = [
   ["overview", "Overview", "Resumen"],
   ["opportunities", "Opportunities", "Oportunidades"],
+  ["lists", "Saved lists", "Listas guardadas"],
   ["pipeline", "Pipeline", "Proceso"],
   ["tasks", "Tasks", "Tareas"],
   ["documents", "Documents", "Documentos"],

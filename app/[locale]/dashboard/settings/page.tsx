@@ -33,6 +33,7 @@ export default async function SettingsPage({
 }) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
+  const es = locale === "es";
   const messages = await searchParams;
   let preferences = defaults;
 
@@ -52,15 +53,15 @@ export default async function SettingsPage({
   return (
     <PlatformShell locale={locale} active="settings">
       <div className="dashboard-content">
-        <PageHeading eyebrow="Preferences" title="Settings" body="Teach Crestview what a strong acquisition looks like for you." />
+        <PageHeading eyebrow={es ? "Preferencias" : "Preferences"} title={es ? "Configuración" : "Settings"} body={es ? "Enséñale a Crestview cómo es una adquisición sólida para ti." : "Teach Crestview what a strong acquisition looks like for you."} />
         <form className="settings-panel" id="listing-alerts" action={saveBuyerPreferences}>
           <input type="hidden" name="locale" value={locale} />
           <div>
-            <span>Buyer profile</span>
-            <h2>Acquisition criteria and listing alerts</h2>
-            <p>These preferences power personalized matches and will later control new-listing notifications.</p>
+            <span>{es ? "Perfil del comprador" : "Buyer profile"}</span>
+            <h2>{es ? "Criterios de adquisición y alertas" : "Acquisition criteria and listing alerts"}</h2>
+            <p>{es ? "Estas preferencias mejoran las coincidencias personalizadas y controlarán futuras alertas." : "These preferences power personalized matches and will later control new-listing notifications."}</p>
           </div>
-          {messages.saved && <p className="auth-success">Your buyer preferences were saved.</p>}
+          {messages.saved && <p className="auth-success">{es ? "Tus preferencias fueron guardadas." : "Your buyer preferences were saved."}</p>}
           {messages.error && <p className="auth-error">Crestview could not save these preferences. Please try again.</p>}
           <div className="preference-grid">
             <label>Industries
@@ -97,7 +98,7 @@ export default async function SettingsPage({
             <input type="checkbox" name="seller_financing_preferred" defaultChecked={preferences.seller_financing_preferred} />
             Prefer opportunities offering seller financing
           </label>
-          <button className="button button--primary" type="submit">Save buyer profile</button>
+          <button className="button button--primary" type="submit">{es ? "Guardar perfil" : "Save buyer profile"}</button>
         </form>
       </div>
     </PlatformShell>

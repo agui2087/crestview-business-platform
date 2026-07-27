@@ -2,43 +2,79 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeading, PlatformShell } from "@/components/platform-shell";
-import { opportunities, platformTasks } from "@/lib/demo-data";
+import { getOpportunity } from "@/lib/demo-data";
+import { getCrestviewUser } from "@/lib/current-user";
 import { isLocale } from "@/lib/i18n";
+import { platformCopy } from "@/lib/platform-copy";
+import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Overview" };
+
+type Deal = { id: string; opportunity_key: string; stage: string; next_action: string | null; updated_at: string };
+type Task = { id: string; title: string; due_date: string | null; priority: string; opportunity_key: string | null };
 
 export default async function DashboardPage({ params }: PageProps<"/[locale]/dashboard">) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
-
+  const text = platformCopy(locale);
+  const user = await getCrestviewUser(locale);
+  let deals: Deal[] = [];
+  let tasks: Task[] = [];
+  let diligenceCount = 0;
+  let flaggedCount = 0;
+  if (isSupabaseConfigured() && user.source === "supabase") {
+    const supabase = await createSupabaseServerClient();
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (authUser) {
+      const [{ data: dealData }, { data: taskData }, { count: diligence }, { count: flagged }] = await Promise.all([
+        supabase.from("saved_opportunities").select("id,opportunity_key,stage,next_action,updated_at").eq("user_id", authUser.id).order("updated_at", { ascending: false }).limit(8),
+        supabase.from("deal_tasks").select("id,title,due_date,priority,opportunity_key").eq("user_id", authUser.id).eq("status", "open").order("due_date").limit(6),
+        supabase.from("diligence_items").select("*", { count: "exact", head: true }).eq("user_id", authUser.id).neq("status", "verified"),
+        supabase.from("diligence_items").select("*", { count: "exact", head: true }).eq("user_id", authUser.id).eq("status", "flagged"),
+      ]);
+      deals = (dealData ?? []) as Deal[];
+      tasks = (taskData ?? []) as Task[];
+      diligenceCount = diligence ?? 0;
+      flaggedCount = flagged ?? 0;
+    }
+  }
+  const activeDeals = deals.filter((deal) => !["saved", "complete", "passed"].includes(deal.stage)).length;
   return (
     <PlatformShell locale={locale} active="overview">
       <div className="dashboard-content">
         <PageHeading
-          eyebrow="Good morning, Geovannia"
-          title="Your acquisition overview"
-          body="Track the opportunities and next steps that matter most."
-          action={<Link className="button button--primary" href={`/${locale}/dashboard/opportunities`}>Browse opportunities</Link>}
+          eyebrow={`${locale === "es" ? "Hola" : "Hello"}, ${user.displayName.split(" ")[0]}`}
+          title={text.overview.title}
+          body={text.overview.body}
+          action={<Link className="button button--primary" href={`/${locale}/dashboard/opportunities`}>{text.common.browse}</Link>}
         />
         <div className="metric-grid">
-          {[["Saved opportunities","24","+4 this week"],["Active deals","7","3 need attention"],["Average AI score","76","+5 this month"],["Tasks due","5","2 due today"]].map(([label,value,detail]) => (
+          {[
+            [text.overview.saved, String(deals.length), locale === "es" ? "Guardadas en tu cuenta" : "Stored in your account"],
+            [text.overview.active, String(activeDeals), `${flaggedCount} ${text.overview.attention.toLowerCase()}`],
+            [text.overview.diligence, String(diligenceCount), locale === "es" ? "Pendientes de verificar" : "Awaiting verification"],
+            [text.overview.due, String(tasks.length), locale === "es" ? "En tu lista de trabajo" : "In your work queue"],
+          ].map(([label,value,detail]) => (
             <article className="metric-card" key={label}><span>{label}</span><strong>{value}</strong><small>{detail}</small></article>
           ))}
         </div>
         <div className="dashboard-grid">
           <section className="panel">
-            <div className="panel__header"><h2>Priority opportunities</h2><Link href={`/${locale}/dashboard/opportunities`}>View all →</Link></div>
-            {opportunities.slice(0,3).map((deal) => (
-              <div className="deal-row" key={deal.id}>
-                <div className="deal-name"><strong>{deal.title}</strong><span>{deal.location}</span></div>
-                <span>{deal.price}</span><span className="stage">{deal.status}</span><span className="deal-score">{deal.source}</span>
-              </div>
-            ))}
+            <div className="panel__header"><h2>{text.overview.priority}</h2><Link href={`/${locale}/dashboard/pipeline`}>{text.common.viewAll} →</Link></div>
+            {deals.slice(0, 5).map((deal) => {
+              const opportunity = getOpportunity(deal.opportunity_key);
+              return opportunity ? <Link className="deal-row deal-row--linked" href={`/${locale}/dashboard/opportunities/${opportunity.id}`} key={deal.id}>
+                <div className="deal-name"><strong>{opportunity.title}</strong><span>{opportunity.location}</span></div>
+                <span>{opportunity.price}</span><span className="stage">{deal.stage}</span><span>{new Date(deal.updated_at).toLocaleDateString(locale)}</span>
+              </Link> : null;
+            })}
+            {!deals.length && <p className="panel-empty">{text.overview.emptyDeals}</p>}
           </section>
           <section className="panel">
-            <div className="panel__header"><h2>Next actions</h2><Link href={`/${locale}/dashboard/tasks`}>View tasks →</Link></div>
+            <div className="panel__header"><h2>{text.overview.actions}</h2><Link href={`/${locale}/dashboard/tasks`}>{text.common.viewAll} →</Link></div>
             <div className="task-list">
-              {platformTasks.slice(0,3).map((task) => <article className="task" key={task.title}><strong>{task.title}</strong><span>{task.due}</span></article>)}
+              {tasks.map((task) => <article className="task" key={task.id}><strong>{task.title}</strong><span>{task.due_date ? new Date(`${task.due_date}T12:00:00`).toLocaleDateString(locale) : text.common.noDueDate}</span></article>)}
+              {!tasks.length && <p className="panel-empty">{text.overview.emptyTasks}</p>}
             </div>
           </section>
         </div>

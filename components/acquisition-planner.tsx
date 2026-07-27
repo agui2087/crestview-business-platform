@@ -5,7 +5,7 @@ import { useCrestviewUser } from "@/components/user-provider";
 import type { Opportunity } from "@/lib/demo-data";
 import { saveAcquisitionWorkspace } from "@/app/[locale]/dashboard/opportunities/actions";
 
-const stages = [
+const stagesEn = [
   ["Initial screening", "Confirm fit, seller expectations, licenses, and basic financial availability."],
   ["Confidentiality and information request", "Execute the NDA and request financial, operational, customer, employee, and legal records."],
   ["Valuation", "Normalize earnings, test valuation ranges, and identify unsupported adjustments."],
@@ -14,6 +14,17 @@ const stages = [
   ["Due diligence", "Validate financial, tax, legal, operational, customer, employee, technology, insurance, and compliance claims."],
   ["Definitive agreement and closing", "Finalize allocation, representations, consents, financing, escrow, transition, and closing deliverables."],
   ["Purchase complete", "Confirm funds and documents, transfer control, begin transition, and track post-closing obligations."],
+] as const;
+
+const stagesEs = [
+  ["Evaluación inicial", "Confirma el ajuste, expectativas del vendedor, licencias y disponibilidad financiera básica."],
+  ["Confidencialidad y solicitud de información", "Firma el NDA y solicita registros financieros, operativos, de clientes, empleados y legales."],
+  ["Valoración", "Normaliza ganancias, prueba rangos de valor e identifica ajustes sin respaldo."],
+  ["Preparación financiera", "Revisa capital, prestamista, cobertura de deuda, capital de trabajo y financiamiento del vendedor."],
+  ["Indicación de interés o LOI", "Documenta precio, estructura, exclusividad, acceso a diligencia, contingencias y tiempos con asesoría legal."],
+  ["Debida diligencia", "Valida afirmaciones financieras, fiscales, legales, operativas, de clientes, empleados, tecnología, seguros y cumplimiento."],
+  ["Acuerdo definitivo y cierre", "Finaliza asignación, declaraciones, consentimientos, financiamiento, depósito, transición y entregables."],
+  ["Compra completada", "Confirma fondos y documentos, transfiere control e inicia la transición y obligaciones posteriores."],
 ] as const;
 
 function parseNumber(value: string) {
@@ -38,6 +49,8 @@ export function AcquisitionPlanner({
   initialWorkspace: InitialWorkspace;
   locale: string;
 }) {
+  const es = locale === "es";
+  const stages = es ? stagesEs : stagesEn;
   const user = useCrestviewUser();
   const [started, setStarted] = useState(Boolean(initialWorkspace && initialWorkspace.stage !== "saved"));
   const [current, setCurrent] = useState(initialWorkspace?.current_step ?? 0);
@@ -109,8 +122,8 @@ export function AcquisitionPlanner({
   if (!started) {
     return (
       <section className="begin-panel">
-        <div><span>Acquisition workspace</span><h2>Ready to evaluate this opportunity?</h2><p>Start a guided checklist from screening through closing. You can move at your own pace and flag missing information for the seller or broker.</p></div>
-        <button className="button button--primary" onClick={() => setStarted(true)}>Begin acquisition</button>
+        <div><span>{es ? "Espacio de adquisición" : "Acquisition workspace"}</span><h2>{es ? "¿Listo para evaluar esta oportunidad?" : "Ready to evaluate this opportunity?"}</h2><p>{es ? "Inicia una lista guiada desde la evaluación hasta el cierre. Avanza a tu ritmo y marca información faltante." : "Start a guided checklist from screening through closing. You can move at your own pace and flag missing information for the seller or broker."}</p></div>
+        <button className="button button--primary" onClick={() => setStarted(true)}>{es ? "Iniciar adquisición" : "Begin acquisition"}</button>
       </section>
     );
   }
@@ -149,7 +162,7 @@ export function AcquisitionPlanner({
   return (
     <section className="acquisition-workspace">
       <aside className="acquisition-steps">
-        <p>Acquisition checklist</p>
+        <p>{es ? "Lista de adquisición" : "Acquisition checklist"}</p>
         {stages.map(([title], index) => (
           <button className={index === current ? "is-current" : stepStatuses[String(index)] === "complete" ? "is-complete" : stepStatuses[String(index)] === "skipped" ? "is-skipped" : ""} onClick={() => setCurrent(index)} key={title}>
             <span>{stepStatuses[String(index)] === "complete" ? "✓" : stepStatuses[String(index)] === "skipped" ? "!" : index + 1}</span>{title}
@@ -157,7 +170,7 @@ export function AcquisitionPlanner({
         ))}
       </aside>
       <div className="acquisition-stage">
-        <span className="mini-label">Step {current + 1} of {stages.length}</span>
+        <span className="mini-label">{es ? "Paso" : "Step"} {current + 1} {es ? "de" : "of"} {stages.length}</span>
         <h2>{stages[current][0]}</h2>
         <p className="stage-intro">{stages[current][1]}</p>
 

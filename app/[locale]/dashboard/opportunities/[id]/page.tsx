@@ -16,6 +16,7 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
   if (!isLocale(locale)) notFound();
   const opportunity = getOpportunity(id);
   if (!opportunity) notFound();
+  const es = locale === "es";
   let workspace: {
     stage: string;
     current_step: number;
@@ -57,29 +58,29 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
   return (
     <PlatformShell locale={locale} active="opportunities">
       <div className="dashboard-content">
-        <Link className="back-link" href={`/${locale}/dashboard/opportunities`}>← All opportunities</Link>
+        <Link className="back-link" href={`/${locale}/dashboard/opportunities`}>{es ? "← Todas las oportunidades" : "← All opportunities"}</Link>
         <div className="detail-heading">
           <div><span>{opportunity.source} · {opportunity.sourceId}</span><h1>{opportunity.title}</h1><p>{opportunity.industry} · {opportunity.location}</p></div>
           <div className="detail-actions">
             <form action={saveOpportunity}>
               <input type="hidden" name="locale" value={locale} />
               <input type="hidden" name="opportunity_key" value={opportunity.id} />
-              <button className="button button--light" type="submit">{workspace ? "Saved ✓" : "Save opportunity"}</button>
+              <button className="button button--light" type="submit">{workspace ? (es ? "Guardado ✓" : "Saved ✓") : (es ? "Guardar oportunidad" : "Save opportunity")}</button>
             </form>
             <form action={beginAcquisition}>
               <input type="hidden" name="locale" value={locale} />
               <input type="hidden" name="opportunity_key" value={opportunity.id} />
-              <button className="button button--primary" type="submit">{workspace && workspace.stage !== "saved" ? "Open in pipeline" : "Begin acquisition"}</button>
+              <button className="button button--primary" type="submit">{workspace && workspace.stage !== "saved" ? (es ? "Abrir en el proceso" : "Open in pipeline") : (es ? "Iniciar adquisición" : "Begin acquisition")}</button>
             </form>
-            <a className="button button--light" href={opportunity.sourceUrl} target="_blank" rel="noreferrer">View source listing ↗</a>
+            <a className="button button--light" href={opportunity.sourceUrl} target="_blank" rel="noreferrer">{es ? "Ver anuncio original ↗" : "View source listing ↗"}</a>
           </div>
         </div>
-        <div className="source-warning">Seller or broker reported information. Crestview has not independently verified the listing. Last checked {opportunity.lastChecked}.</div>
+        <div className="source-warning">{es ? "Información proporcionada por el vendedor o corredor. Crestview no ha verificado el anuncio. Última revisión" : "Seller or broker reported information. Crestview has not independently verified the listing. Last checked"} {opportunity.lastChecked}.</div>
         <nav className="deal-workspace-nav" aria-label="Deal workspace sections">
-          <a href="#summary">Summary</a><a href="#valuation">Acquisition plan</a><a href="#diligence">Diligence</a><a href="#broker">Broker activity</a><a href="#notes">Private notes</a>
+          <a href="#summary">{es ? "Resumen" : "Summary"}</a><a href="#valuation">{es ? "Plan de adquisición" : "Acquisition plan"}</a><a href="#diligence">{es ? "Diligencia" : "Diligence"}</a><a href="#broker">{es ? "Actividad del corredor" : "Broker activity"}</a><a href="#notes">{es ? "Notas privadas" : "Private notes"}</a>
         </nav>
         <div className="detail-metrics" id="summary">
-          {[["Asking price",opportunity.price],["Revenue",opportunity.revenue],["Cash flow / SDE",opportunity.cashFlow],["EBITDA",opportunity.ebitda]].map(([label,value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}
+          {[[es ? "Precio solicitado" : "Asking price",opportunity.price],[es ? "Ingresos" : "Revenue",opportunity.revenue],[es ? "Flujo de caja / SDE" : "Cash flow / SDE",opportunity.cashFlow],["EBITDA",opportunity.ebitda]].map(([label,value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}
         </div>
         <div className="detail-grid">
           <article className="detail-card"><h2>Listing summary</h2><p>{opportunity.description}</p><h3>Public highlights</h3><ul>{opportunity.highlights.map((item) => <li key={item}>{item}</li>)}</ul></article>

@@ -42,3 +42,35 @@ export async function beginAcquisition(formData: FormData) {
   revalidatePath(`/${locale}/dashboard/pipeline`);
   redirect(`/${locale}/dashboard/pipeline`);
 }
+
+function safeJson(value: FormDataEntryValue | null, fallback: Record<string, unknown>) {
+  try {
+    const parsed = JSON.parse(String(value ?? ""));
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+export async function saveAcquisitionWorkspace(formData: FormData) {
+  const { locale, opportunityKey, supabase, user } = await authenticatedRequest(formData);
+  const currentStep = Math.max(0, Math.min(7, Number(formData.get("current_step")) || 0));
+  const checklistProgress = safeJson(formData.get("checklist_progress"), {});
+  const stepNotes = safeJson(formData.get("step_notes"), {});
+  const valuationInputs = safeJson(formData.get("valuation_inputs"), {});
+  const { error } = await supabase.from("saved_opportunities").upsert({
+    user_id: user.id,
+    opportunity_key: opportunityKey,
+    stage: currentStep >= 5 ? "diligence" : currentStep >= 2 ? "evaluating" : "screening",
+    current_step: currentStep,
+    checklist_progress: checklistProgress,
+    step_notes: stepNotes,
+    valuation_inputs: valuationInputs,
+    next_action: currentStep === 7 ? "Confirm closing and transition obligations" : `Continue acquisition checklist at step ${currentStep + 1}`,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: "user_id,opportunity_key" });
+  if (error) return { ok: false, message: "Progress could not be saved." };
+  revalidatePath(`/${locale}/dashboard/opportunities/${opportunityKey}`);
+  revalidatePath(`/${locale}/dashboard/pipeline`);
+  return { ok: true, message: "Progress saved." };
+}

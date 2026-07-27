@@ -365,6 +365,8 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .acquisition-steps button > span { width: 23px; height: 23px; flex: 0 0 auto; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 7px; font-size: .6rem; }
 .acquisition-steps button.is-current { background: var(--brand-soft); color: var(--brand); font-weight: 760; }
 .acquisition-steps button.is-complete > span { border-color: var(--brand); background: var(--brand); color: white; }
+.acquisition-steps button.is-skipped { color: #87691f; }
+.acquisition-steps button.is-skipped > span { border-color: #d8b45b; background: #fff3cf; color: #87691f; }
 .acquisition-stage { min-width: 0; padding: 28px; border: 1px solid var(--line); border-radius: 15px; background: white; }
 .acquisition-stage > h2 { margin: 8px 0; font-size: 1.35rem; letter-spacing: -.035em; }
 .stage-intro { margin: 0 0 22px; color: var(--muted); font-size: .74rem; line-height: 1.55; }
@@ -398,6 +400,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .completion-card p { max-width: 590px; margin: 0 auto; color: var(--muted); font-size: .7rem; line-height: 1.6; }
 .stage-notes { margin-top: 18px; }
 .stage-notes textarea { min-height: 92px; resize: vertical; padding: 12px; border: 1px solid var(--line); border-radius: 10px; }
+.workspace-save-message { margin: 9px 0 0; color: var(--brand); font-size: .65rem; font-weight: 760; }
 .advisor-note { color: var(--muted); font-size: .6rem; line-height: 1.5; }
 .stage-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-top: 18px; }
 .skip-link { border: 0; background: transparent; color: var(--muted); font-size: .67rem; font-weight: 700; cursor: pointer; }

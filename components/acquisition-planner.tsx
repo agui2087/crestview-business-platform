@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useCrestviewUser } from "@/components/user-provider";
 import type { Opportunity } from "@/lib/demo-data";
+import { saveAcquisitionWorkspace } from "@/app/[locale]/dashboard/opportunities/actions";
 
 const stages = [
   ["Initial screening", "Confirm fit, seller expectations, licenses, and basic financial availability."],
@@ -20,16 +21,35 @@ function parseNumber(value: string) {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
-export function AcquisitionPlanner({ opportunity }: { opportunity: Opportunity }) {
+type InitialWorkspace = {
+  stage: string;
+  current_step: number;
+  checklist_progress: Record<string, string>;
+  step_notes: Record<string, string>;
+  valuation_inputs: Record<string, string>;
+} | null;
+
+export function AcquisitionPlanner({
+  opportunity,
+  initialWorkspace,
+  locale,
+}: {
+  opportunity: Opportunity;
+  initialWorkspace: InitialWorkspace;
+  locale: string;
+}) {
   const user = useCrestviewUser();
-  const [started, setStarted] = useState(false);
-  const [current, setCurrent] = useState(0);
+  const [started, setStarted] = useState(Boolean(initialWorkspace && initialWorkspace.stage !== "saved"));
+  const [current, setCurrent] = useState(initialWorkspace?.current_step ?? 0);
+  const [stepStatuses, setStepStatuses] = useState<Record<string, string>>(initialWorkspace?.checklist_progress ?? {});
   const [skipOpen, setSkipOpen] = useState(false);
-  const [price, setPrice] = useState(opportunity.priceValue?.toString() ?? "");
-  const [sde, setSde] = useState(opportunity.cashFlowValue?.toString() ?? "");
-  const [ebitda, setEbitda] = useState(opportunity.ebitdaValue?.toString() ?? "");
-  const [debtService, setDebtService] = useState("");
-  const [notes, setNotes] = useState("");
+  const [price, setPrice] = useState(initialWorkspace?.valuation_inputs.price ?? opportunity.priceValue?.toString() ?? "");
+  const [sde, setSde] = useState(initialWorkspace?.valuation_inputs.sde ?? opportunity.cashFlowValue?.toString() ?? "");
+  const [ebitda, setEbitda] = useState(initialWorkspace?.valuation_inputs.ebitda ?? opportunity.ebitdaValue?.toString() ?? "");
+  const [debtService, setDebtService] = useState(initialWorkspace?.valuation_inputs.debtService ?? "");
+  const [stepNotes, setStepNotes] = useState<Record<string, string>>(initialWorkspace?.step_notes ?? {});
+  const [saveMessage, setSaveMessage] = useState("");
+  const [isSaving, startSaving] = useTransition();
   const [copied, setCopied] = useState(false);
   const [selectedRequestItems, setSelectedRequestItems] = useState<string[]>(() => [...opportunity.missing]);
 
@@ -44,6 +64,28 @@ export function AcquisitionPlanner({ opportunity }: { opportunity: Opportunity }
       dscr: s !== null && d ? s / d : null,
     };
   }, [price, sde, ebitda, debtService]);
+
+  function persist(nextCurrent = current, nextStatuses = stepStatuses) {
+    const formData = new FormData();
+    formData.set("locale", locale);
+    formData.set("opportunity_key", opportunity.id);
+    formData.set("current_step", String(nextCurrent));
+    formData.set("checklist_progress", JSON.stringify(nextStatuses));
+    formData.set("step_notes", JSON.stringify(stepNotes));
+    formData.set("valuation_inputs", JSON.stringify({ price, sde, ebitda, debtService }));
+    startSaving(async () => {
+      const result = await saveAcquisitionWorkspace(formData);
+      setSaveMessage(result.message);
+    });
+  }
+
+  function advance(status: "complete" | "skipped") {
+    const nextStatuses = { ...stepStatuses, [String(current)]: status };
+    const nextCurrent = Math.min(stages.length - 1, current + 1);
+    setStepStatuses(nextStatuses);
+    setCurrent(nextCurrent);
+    persist(nextCurrent, nextStatuses);
+  }
 
   if (!started) {
     return (
@@ -90,8 +132,8 @@ export function AcquisitionPlanner({ opportunity }: { opportunity: Opportunity }
       <aside className="acquisition-steps">
         <p>Acquisition checklist</p>
         {stages.map(([title], index) => (
-          <button className={index === current ? "is-current" : index < current ? "is-complete" : ""} onClick={() => setCurrent(index)} key={title}>
-            <span>{index < current ? "✓" : index + 1}</span>{title}
+          <button className={index === current ? "is-current" : stepStatuses[String(index)] === "complete" ? "is-complete" : stepStatuses[String(index)] === "skipped" ? "is-skipped" : ""} onClick={() => setCurrent(index)} key={title}>
+            <span>{stepStatuses[String(index)] === "complete" ? "✓" : stepStatuses[String(index)] === "skipped" ? "!" : index + 1}</span>{title}
           </button>
         ))}
       </aside>
@@ -129,15 +171,17 @@ export function AcquisitionPlanner({ opportunity }: { opportunity: Opportunity }
 
         {atLastStep && <div className="completion-card"><span>✓</span><h3>Purchase complete</h3><p>Use this stage only after your professional advisors confirm the transaction has closed. Record transition obligations, working-capital adjustments, escrow dates, and post-closing commitments.</p></div>}
 
-        <label className="stage-notes">Notes and evidence<textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Record what you verified, what is still missing, and who owns the next action." /></label>
+        <label className="stage-notes">Notes and evidence<textarea value={stepNotes[String(current)] ?? ""} onChange={(event) => setStepNotes((existing) => ({ ...existing, [String(current)]: event.target.value }))} placeholder="Record what you verified, what is still missing, and who owns the next action." /></label>
+        {saveMessage && <p className="workspace-save-message" aria-live="polite">{saveMessage}</p>}
         <p className="advisor-note">Crestview provides organizational tools and illustrative calculations, not legal, tax, accounting, lending, or investment advice.</p>
         <div className="stage-actions">
           <button className="button button--light" disabled={current === 0} onClick={() => setCurrent((value) => Math.max(0, value - 1))}>Back</button>
-          {!atLastStep && <><button className="skip-link" onClick={() => setSkipOpen(true)}>Skip this step</button><button className="button button--primary" onClick={() => setCurrent((value) => Math.min(stages.length - 1, value + 1))}>Mark complete and continue</button></>}
+          <button className="button button--light" disabled={isSaving} onClick={() => persist()}>{isSaving ? "Saving…" : "Save progress"}</button>
+          {!atLastStep && <><button className="skip-link" onClick={() => setSkipOpen(true)}>Skip this step</button><button className="button button--primary" disabled={isSaving} onClick={() => advance("complete")}>Mark complete and continue</button></>}
         </div>
       </div>
 
-      {skipOpen && <div className="modal-backdrop" role="presentation"><div className="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="skip-title"><span>!</span><h2 id="skip-title">Are you sure you want to skip this step?</h2><p>Missing work can create financial, legal, or operational risk. Crestview will mark this step as skipped so you can return later.</p><div><button className="button button--light" onClick={() => setSkipOpen(false)}>Keep working</button><button className="button button--primary" onClick={() => { setSkipOpen(false); setCurrent((value) => Math.min(stages.length - 1, value + 1)); }}>Skip and continue</button></div></div></div>}
+      {skipOpen && <div className="modal-backdrop" role="presentation"><div className="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="skip-title"><span>!</span><h2 id="skip-title">Are you sure you want to skip this step?</h2><p>Missing work can create financial, legal, or operational risk. Crestview will mark this step as skipped so you can return later.</p><div><button className="button button--light" onClick={() => setSkipOpen(false)}>Keep working</button><button className="button button--primary" onClick={() => { setSkipOpen(false); advance("skipped"); }}>Skip and continue</button></div></div></div>}
     </section>
   );
 }

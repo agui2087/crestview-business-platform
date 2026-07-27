@@ -16,18 +16,24 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
   if (!isLocale(locale)) notFound();
   const opportunity = getOpportunity(id);
   if (!opportunity) notFound();
-  let savedStage: string | null = null;
+  let workspace: {
+    stage: string;
+    current_step: number;
+    checklist_progress: Record<string, string>;
+    step_notes: Record<string, string>;
+    valuation_inputs: Record<string, string>;
+  } | null = null;
   if (isSupabaseConfigured()) {
     const supabase = await createSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       const { data } = await supabase
         .from("saved_opportunities")
-        .select("stage")
+        .select("stage, current_step, checklist_progress, step_notes, valuation_inputs")
         .eq("user_id", user.id)
         .eq("opportunity_key", opportunity.id)
         .maybeSingle();
-      savedStage = data?.stage ?? null;
+      workspace = data ?? null;
     }
   }
 
@@ -41,12 +47,12 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
             <form action={saveOpportunity}>
               <input type="hidden" name="locale" value={locale} />
               <input type="hidden" name="opportunity_key" value={opportunity.id} />
-              <button className="button button--light" type="submit">{savedStage ? "Saved ✓" : "Save opportunity"}</button>
+              <button className="button button--light" type="submit">{workspace ? "Saved ✓" : "Save opportunity"}</button>
             </form>
             <form action={beginAcquisition}>
               <input type="hidden" name="locale" value={locale} />
               <input type="hidden" name="opportunity_key" value={opportunity.id} />
-              <button className="button button--primary" type="submit">{savedStage && savedStage !== "saved" ? "Open in pipeline" : "Begin acquisition"}</button>
+              <button className="button button--primary" type="submit">{workspace && workspace.stage !== "saved" ? "Open in pipeline" : "Begin acquisition"}</button>
             </form>
             <a className="button button--light" href={opportunity.sourceUrl} target="_blank" rel="noreferrer">View source listing ↗</a>
           </div>
@@ -67,7 +73,7 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
             <a href={opportunity.sourceUrl} target="_blank" rel="noreferrer">Contact through listing ↗</a>
           </div>
         </article>
-        <AcquisitionPlanner opportunity={opportunity} />
+        <AcquisitionPlanner opportunity={opportunity} initialWorkspace={workspace} locale={locale} />
       </div>
     </PlatformShell>
   );

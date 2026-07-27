@@ -93,6 +93,30 @@ export async function addDiligenceItem(formData: FormData) {
   revalidatePath(`/${locale}/dashboard/opportunities/${opportunityKey}`);
 }
 
+export async function addDiligenceTemplate(formData: FormData) {
+  const { locale, opportunityKey, supabase, user } = await authenticatedRequest(formData);
+  const template = String(formData.get("template") ?? "general");
+  const shared = [
+    ["Financial", "Reconcile tax returns to financial statements"],
+    ["Financial", "Verify revenue through bank statements"],
+    ["Legal", "Review entity, contracts, liens, and litigation"],
+    ["Operational", "Document owner responsibilities and transition"],
+    ["Customer", "Analyze customer concentration and retention"],
+  ];
+  const specialized = template === "service"
+    ? [["Employee", "Verify licenses, certifications, and technician retention"], ["Operational", "Review fleet, equipment, and service agreements"]]
+    : template === "retail"
+      ? [["Operational", "Count and value inventory"], ["Legal", "Review lease terms and assignment"]]
+      : template === "healthcare"
+        ? [["Compliance", "Review licensing, credentialing, privacy, and billing compliance"], ["Employee", "Review provider agreements and retention"]]
+        : [["Compliance", "Identify required permits and regulatory obligations"]];
+  await supabase.from("diligence_items").upsert(
+    [...shared, ...specialized].map(([category, title]) => ({ user_id: user.id, opportunity_key: opportunityKey, category, title })),
+    { onConflict: "user_id,opportunity_key,category,title" },
+  );
+  revalidatePath(`/${locale}/dashboard/opportunities/${opportunityKey}`);
+}
+
 export async function updateDiligenceItem(formData: FormData) {
   const { locale, opportunityKey, supabase, user } = await authenticatedRequest(formData);
   await supabase.from("diligence_items").update({ status: String(formData.get("status")), updated_at: new Date().toISOString() })

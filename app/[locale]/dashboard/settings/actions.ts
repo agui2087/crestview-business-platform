@@ -40,3 +40,21 @@ export async function saveBuyerPreferences(formData: FormData) {
   revalidatePath(`/${localeValue}/dashboard/opportunities`);
   redirect(`/${localeValue}/dashboard/settings?saved=1`);
 }
+
+export async function saveAccountProfile(formData: FormData) {
+  const localeValue = String(formData.get("locale") ?? "en");
+  if (!isLocale(localeValue)) redirect("/en/sign-in");
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect(`/${localeValue}/sign-in`);
+  await supabase.from("profiles").update({
+    display_name: String(formData.get("display_name") ?? "").trim() || null,
+    job_title: String(formData.get("job_title") ?? "").trim() || null,
+    phone: String(formData.get("phone") ?? "").trim() || null,
+    organization_name: String(formData.get("organization_name") ?? "").trim() || "Crestview Holdings",
+    locale: localeValue,
+    updated_at: new Date().toISOString(),
+  }).eq("user_id", user.id);
+  revalidatePath(`/${localeValue}/dashboard`, "layout");
+  redirect(`/${localeValue}/dashboard/settings?profile=1`);
+}

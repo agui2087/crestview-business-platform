@@ -11,6 +11,7 @@ const navItems = [
   ["lists", "Saved lists", "Listas guardadas"],
   ["pipeline", "Pipeline", "Proceso"],
   ["tasks", "Tasks", "Tareas"],
+  ["reports", "Reports", "Informes"],
   ["documents", "Documents", "Documentos"],
   ["workforce", "Workforce", "Personal"],
   ["settings", "Settings", "Configuración"],
@@ -81,7 +82,7 @@ export async function PlatformShell({
         <header className="dashboard-topbar">
           <div className="organization">
             <span className="organization__avatar">CH</span>
-            Crestview Holdings
+            {"organizationName" in user ? user.organizationName : "Crestview Holdings"}
           </div>
           <div className="user-chip">
             <Link href={`/${locale}`}>{locale === "es" ? "Sitio web" : "Website"}</Link>

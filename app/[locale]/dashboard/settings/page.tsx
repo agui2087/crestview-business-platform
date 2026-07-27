@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { PageHeading, PlatformShell } from "@/components/platform-shell";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { isLocale } from "@/lib/i18n";
-import { saveBuyerPreferences } from "./actions";
+import { saveAccountProfile, saveBuyerPreferences } from "./actions";
 
 type Preferences = {
   industries: string[];
@@ -36,6 +36,7 @@ export default async function SettingsPage({
   const es = locale === "es";
   const messages = await searchParams;
   let preferences = defaults;
+  let profile = { display_name: "", job_title: "", phone: "", organization_name: "Crestview Holdings" };
 
   if (isSupabaseConfigured()) {
     const supabase = await createSupabaseServerClient();
@@ -47,6 +48,13 @@ export default async function SettingsPage({
         .eq("user_id", user.id)
         .maybeSingle();
       if (data) preferences = data as Preferences;
+      const { data: profileData } = await supabase.from("profiles").select("display_name,job_title,phone,organization_name").eq("user_id", user.id).maybeSingle();
+      if (profileData) profile = {
+        display_name: profileData.display_name ?? "",
+        job_title: profileData.job_title ?? "",
+        phone: profileData.phone ?? "",
+        organization_name: profileData.organization_name ?? "Crestview Holdings",
+      };
     }
   }
 
@@ -54,6 +62,17 @@ export default async function SettingsPage({
     <PlatformShell locale={locale} active="settings">
       <div className="dashboard-content">
         <PageHeading eyebrow={es ? "Preferencias" : "Preferences"} title={es ? "Configuración" : "Settings"} body={es ? "Enséñale a Crestview cómo es una adquisición sólida para ti." : "Teach Crestview what a strong acquisition looks like for you."} />
+        <form className="settings-panel" action={saveAccountProfile}>
+          <input type="hidden" name="locale" value={locale}/>
+          <div><span>{es ? "Cuenta y organización" : "Account and organization"}</span><h2>{es ? "Perfil público dentro de Crestview" : "Your Crestview profile"}</h2><p>{es ? "Tu nombre se usa en mensajes y borradores en toda la plataforma." : "Your name is used in messages and drafts throughout the platform."}</p></div>
+          <div className="preference-grid">
+            <label>{es ? "Nombre" : "Display name"}<input name="display_name" defaultValue={profile.display_name}/></label>
+            <label>{es ? "Organización" : "Organization"}<input name="organization_name" defaultValue={profile.organization_name}/></label>
+            <label>{es ? "Puesto" : "Job title"}<input name="job_title" defaultValue={profile.job_title}/></label>
+            <label>{es ? "Teléfono" : "Phone"}<input name="phone" defaultValue={profile.phone}/></label>
+          </div>
+          <button className="button button--primary">{es ? "Guardar perfil" : "Save profile"}</button>
+        </form>
         <form className="settings-panel" id="listing-alerts" action={saveBuyerPreferences}>
           <input type="hidden" name="locale" value={locale} />
           <div>

@@ -5,7 +5,8 @@ import { PlatformShell } from "@/components/platform-shell";
 import { getOpportunity, opportunities } from "@/lib/demo-data";
 import { isLocale } from "@/lib/i18n";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
-import { addBrokerInteraction, addDiligenceItem, addOpportunityNote, addOpportunityToList, beginAcquisition, saveOpportunity, updateDiligenceItem } from "../actions";
+import { calculateDealScore } from "@/lib/deal-score";
+import { addBrokerInteraction, addDiligenceItem, addDiligenceTemplate, addOpportunityNote, addOpportunityToList, beginAcquisition, saveOpportunity, updateDiligenceItem } from "../actions";
 
 export function generateStaticParams() {
   return opportunities.flatMap((item) => ["en", "es"].map((locale) => ({ locale, id: item.id })));
@@ -17,6 +18,7 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
   const opportunity = getOpportunity(id);
   if (!opportunity) notFound();
   const es = locale === "es";
+  const dealScore = calculateDealScore(opportunity);
   let workspace: {
     stage: string;
     current_step: number;
@@ -99,6 +101,11 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
           <div><span>Data completeness</span><strong>{Math.round(([opportunity.priceValue, opportunity.revenueValue, opportunity.cashFlowValue, opportunity.ebitdaValue, opportunity.brokerEmail ?? opportunity.brokerPhone].filter(Boolean).length / 5) * 100)}%</strong><p>{opportunity.missing.length} important information requests identified.</p></div>
           <div><span>Duplicate review</span><strong>No duplicate detected</strong><p>Compared by source and listing identifier in the current Crestview catalog.</p></div>
         </section>
+        <section className="score-card">
+          <div className="score-card__value"><span>{es ? "Puntaje explicable" : "Explainable score"}</span><strong>{dealScore.score}</strong><small>/ 100 · v{dealScore.version} · {es ? "confianza" : "confidence"} {dealScore.confidence}</small></div>
+          <div className="score-factors">{dealScore.factors.map((factor) => <div key={factor.label}><span>{factor.label}</span><strong>{factor.earned}/{factor.weight}</strong></div>)}</div>
+          <p>{es ? "El puntaje usa solo datos públicos y penaliza información faltante. No es una recomendación de inversión." : "The score uses only public listing data and penalizes missing information. It is not an investment recommendation."}</p>
+        </section>
         <div id="valuation"><AcquisitionPlanner opportunity={opportunity} initialWorkspace={workspace} locale={locale} /></div>
         <section className="notes-lists-grid" id="notes">
           <article className="operations-card">
@@ -124,6 +131,7 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
         {workspace && workspace.stage !== "saved" && <div className="deal-operations">
           <section className="operations-card" id="diligence">
             <header><div><span>Due diligence</span><h2>Verification tracker</h2></div><strong>{diligence.filter((item)=>item.status === "verified").length}/{diligence.length} verified</strong></header>
+            <form className="template-picker" action={addDiligenceTemplate}><input type="hidden" name="locale" value={locale}/><input type="hidden" name="opportunity_key" value={opportunity.id}/><select name="template"><option value="general">General business</option><option value="service">Service business</option><option value="retail">Retail or restaurant</option><option value="healthcare">Healthcare</option></select><button>Load checklist template</button></form>
             <form className="inline-create" action={addDiligenceItem}>
               <input type="hidden" name="locale" value={locale}/><input type="hidden" name="opportunity_key" value={opportunity.id}/>
               <select name="category"><option>Financial</option><option>Legal</option><option>Operational</option><option>Customer</option><option>Employee</option><option>Compliance</option></select>

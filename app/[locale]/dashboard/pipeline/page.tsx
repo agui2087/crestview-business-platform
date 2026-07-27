@@ -27,6 +27,7 @@ export default async function PipelinePage({ params }: { params: Promise<{ local
     { key: "closing", title: text.common.closing },
   ] as const;
   let deals: SavedDeal[] = [];
+  let archived: SavedDeal[] = [];
   if (isSupabaseConfigured()) {
     const supabase = await createSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -38,6 +39,13 @@ export default async function PipelinePage({ params }: { params: Promise<{ local
         .not("stage", "in", "(complete,passed)")
         .order("updated_at", { ascending: false });
       deals = (data ?? []) as SavedDeal[];
+      const { data: archivedData } = await supabase
+        .from("saved_opportunities")
+        .select("id, opportunity_key, stage, next_action")
+        .eq("user_id", user.id)
+        .in("stage", ["complete","passed"])
+        .order("updated_at", { ascending: false });
+      archived = (archivedData ?? []) as SavedDeal[];
     }
   }
 
@@ -85,6 +93,14 @@ export default async function PipelinePage({ params }: { params: Promise<{ local
             })}
           </div>
         )}
+        <section className="panel archive-panel">
+          <div className="panel__header"><h2>{locale === "es" ? "Archivo de negocios" : "Deal archive"}</h2><span>{archived.length}</span></div>
+          {archived.map((deal) => {
+            const item = getOpportunity(deal.opportunity_key);
+            return item ? <Link className="saved-list-item" href={`/${locale}/dashboard/opportunities/${item.id}`} key={deal.id}><strong>{item.title}</strong><span>{deal.stage} · {item.location} · {item.price}</span></Link> : null;
+          })}
+          {!archived.length && <p className="muted">{locale === "es" ? "Los negocios completados o descartados aparecerán aquí." : "Completed and passed deals will appear here."}</p>}
+        </section>
       </div>
     </PlatformShell>
   );

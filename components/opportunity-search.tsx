@@ -53,13 +53,37 @@ const LOCATION_SUGGESTIONS = [
   "Washington, DC",
 ] as const;
 
+const STATE_NAMES: Record<string, string> = {
+  alabama: "AL", alaska: "AK", arizona: "AZ", arkansas: "AR", california: "CA",
+  colorado: "CO", connecticut: "CT", delaware: "DE", florida: "FL", georgia: "GA",
+  hawaii: "HI", idaho: "ID", illinois: "IL", indiana: "IN", iowa: "IA",
+  kansas: "KS", kentucky: "KY", louisiana: "LA", maine: "ME", maryland: "MD",
+  massachusetts: "MA", michigan: "MI", minnesota: "MN", mississippi: "MS",
+  missouri: "MO", montana: "MT", nebraska: "NE", nevada: "NV",
+  "new hampshire": "NH", "new jersey": "NJ", "new mexico": "NM", "new york": "NY",
+  "north carolina": "NC", "north dakota": "ND", ohio: "OH", oklahoma: "OK",
+  oregon: "OR", pennsylvania: "PA", "rhode island": "RI", "south carolina": "SC",
+  "south dakota": "SD", tennessee: "TN", texas: "TX", utah: "UT", vermont: "VT",
+  virginia: "VA", washington: "WA", "west virginia": "WV", wisconsin: "WI",
+  wyoming: "WY", "district of columbia": "DC",
+};
+
 function normalize(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
 
 function locationParts(value: string) {
-  const [city = "", region = ""] = value.split(",").map((part) => normalize(part));
+  const [city = "", regionInput = ""] = value.split(",").map((part) => normalize(part));
+  const region = STATE_NAMES[regionInput] ?? regionInput.toUpperCase();
   return { city, region };
+}
+
+function listingRegion(value: string) {
+  const normalized = normalize(value);
+  const abbreviation = value.match(/,\s*([A-Za-z]{2})(?:\s|$)/)?.[1]?.toUpperCase();
+  if (abbreviation) return abbreviation;
+  const state = Object.entries(STATE_NAMES).find(([name]) => normalized.includes(name));
+  return state?.[1] ?? "";
 }
 
 function score(item: Opportunity, query: string) {
@@ -149,6 +173,7 @@ export function OpportunitySearch({
   const [sortBy, setSortBy] = useState("relevance");
   const [maxPrice, setMaxPrice] = useState("");
   const [location, setLocation] = useState("");
+  const [locationFocused, setLocationFocused] = useState(false);
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<string[]>([]);
   const es = locale === "es";
@@ -160,6 +185,13 @@ export function OpportunitySearch({
     () => ["All sources", ...Array.from(new Set(items.map((item) => item.source))).sort()],
     [items],
   );
+  const locationSuggestions = useMemo(() => {
+    const phrase = normalize(location);
+    if (!phrase) return LOCATION_SUGGESTIONS.slice(0, 8);
+    return LOCATION_SUGGESTIONS
+      .filter((suggestion) => normalize(suggestion).startsWith(phrase) || normalize(suggestion).includes(phrase))
+      .slice(0, 8);
+  }, [location]);
   const searchResult = useMemo(
     () => {
       const ceiling = Number(maxPrice.replace(/[$,\s]/g, ""));
@@ -176,7 +208,7 @@ export function OpportunitySearch({
         ? eligible.filter(({ item }) => normalize(item.location).includes(requested.city))
         : eligible;
       const regional = requested.region
-        ? eligible.filter(({ item }) => normalize(item.location).includes(requested.region))
+        ? eligible.filter(({ item }) => listingRegion(item.location) === requested.region)
         : exact;
       const filtered = !requested.city
         ? eligible
@@ -233,23 +265,45 @@ export function OpportunitySearch({
       </div>
       <p className="search-help">{es ? "Busca títulos, descripciones, industrias, ubicaciones y palabras parciales. Las coincidencias más cercanas aparecen primero." : "Searches titles, descriptions, industries, locations, and partial word matches. The closest matches appear first."}</p>
       <div className="location-search">
-        <label>
+        <label className="location-combobox">
           {es ? "Buscar ubicación" : "Search location"}
           <input
             value={location}
             onChange={(event) => updateFilters(() => setLocation(event.target.value))}
+            onFocus={() => setLocationFocused(true)}
+            onBlur={() => setLocationFocused(false)}
             placeholder={es ? "Ciudad, Estado (ejemplo: Portland, OR)" : "City, State (example: Portland, OR)"}
-            aria-label="Search location"
-            list="crestview-location-suggestions"
+            aria-label={es ? "Buscar ubicación" : "Search location"}
+            aria-autocomplete="list"
+            aria-expanded={locationFocused && locationSuggestions.length > 0}
+            aria-controls="crestview-location-suggestions"
+            role="combobox"
             autoComplete="off"
           />
-          <datalist id="crestview-location-suggestions">
-            {LOCATION_SUGGESTIONS.map((suggestion) => <option value={suggestion} key={suggestion} />)}
-          </datalist>
+          {locationFocused && locationSuggestions.length > 0 && (
+            <div className="location-suggestions" id="crestview-location-suggestions" role="listbox">
+              {locationSuggestions.map((suggestion) => (
+                <button
+                  key={suggestion}
+                  type="button"
+                  role="option"
+                  aria-selected={location === suggestion}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => {
+                    updateFilters(() => setLocation(suggestion));
+                    setLocationFocused(false);
+                  }}
+                >
+                  <span aria-hidden="true">⌖</span>
+                  {suggestion}
+                </button>
+              ))}
+            </div>
+          )}
         </label>
         <div>
           <strong>{es ? "Búsqueda por ubicación" : "Location-first search"}</strong>
-          <span>{es ? `Comienza con la ciudad y amplía la región hasta encontrar un máximo de ${TARGET_RESULTS} resultados.` : `Starts with the city, then expands through the region and current listing coverage until it reaches up to ${TARGET_RESULTS} results.`}</span>
+          <span>{es ? `Prioriza la ciudad, luego el estado y finalmente otras publicaciones verificadas. Crestview mostrará hasta ${TARGET_RESULTS} cuando estén disponibles.` : `Prioritizes the city, then the state, followed by other verified coverage. Crestview will show up to ${TARGET_RESULTS} when available.`}</span>
         </div>
       </div>
       <div className="opportunity-filters" aria-label="Opportunity filters">
@@ -271,7 +325,7 @@ export function OpportunitySearch({
           <span>
             {expansion === "city" && ` Showing up to ${TARGET_RESULTS} listings in ${location}.`}
             {expansion === "region" && ` Expanded to the surrounding region, with ${regionalCount} regional matches.`}
-            {expansion === "coverage" && ` Fewer than ${TARGET_RESULTS} were available nearby, so Crestview added the closest matches available in its current coverage.`}
+            {expansion === "coverage" && ` Fewer than ${TARGET_RESULTS} were available in that state. Additional results shown are outside the requested area and come from Crestview’s current verified coverage.`}
           </span>
         </div>
       )}
@@ -282,7 +336,7 @@ export function OpportunitySearch({
         </Link>
         {selected.length > 0 && <button type="button" onClick={() => setSelected([])}>{es ? "Borrar selección" : "Clear selection"}</button>}
       </div>
-      <div className="result-count"><strong>{results.length}</strong> opportunities found · showing {visibleResults.length} on page {safePage} of {pageCount}</div>
+      <div className="result-count"><strong>{results.length}</strong> verified opportunities currently available · showing {visibleResults.length} on page {safePage} of {pageCount}</div>
       <div className="opportunity-list">
         {visibleResults.map(({ item, match }) => (
           <article className="opportunity-row" key={item.id}>

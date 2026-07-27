@@ -85,6 +85,7 @@ export async function PlatformShell({
             {"organizationName" in user ? user.organizationName : "Crestview Holdings"}
           </div>
           <div className="user-chip">
+            {user.email.toLowerCase() === "agui2087@outlook.com" && <Link className="admin-switch" href={`/${locale}/dashboard/admin`}>{locale === "es" ? "Vista admin" : "Admin view"}</Link>}
             <Link href={`/${locale}`}>{locale === "es" ? "Sitio web" : "Website"}</Link>
             <strong>{user.displayName}</strong>
             <span title={user.displayName}>{initials}</span>

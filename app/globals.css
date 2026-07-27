@@ -500,6 +500,10 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .dashboard-loading > span:nth-child(3) { width: min(320px,60vw); }
 .dashboard-loading p,.error-state p { color: var(--muted); font-size: .7rem; }
 .error-state > span { width: 44px; height: 44px; display:grid; place-items:center; border-radius:50%; background:#fff1cf; color:#936a0f; font-weight:900; }
+.admin-switch { padding:6px 9px; border-radius:8px; background:var(--brand-soft); color:var(--brand)!important; font-weight:800!important; }
+.admin-users > article { display:grid; grid-template-columns:1.4fr .6fr .6fr .6fr; gap:14px; padding:13px 0; border-top:1px solid var(--line); align-items:center; }
+.admin-users > article > div { display:grid; gap:3px; }
+.admin-users span { color:var(--muted); font-size:.62rem; }
 
 .documents-workspace { display: grid; gap: 16px; }
 .upload-card { display: grid; grid-template-columns: 1fr 1.5fr; gap: 24px; padding: 24px; border: 1px solid var(--line); border-radius: 15px; background: #fff; }
@@ -620,6 +624,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .csv-import { align-items:stretch; flex-direction:column; }
   .employee-records > div { grid-template-columns: 1fr; }
   .report-bar { grid-template-columns: 90px 1fr 24px; }
+  .admin-users > article { grid-template-columns:1fr; gap:5px; }
   .pipeline-board { grid-template-columns: repeat(4,220px); }
   .table-head { display: none; }
   .table-row { grid-template-columns: 1fr auto; }

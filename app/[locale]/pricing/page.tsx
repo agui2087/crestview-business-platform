@@ -16,7 +16,15 @@ type Plan = {
   featured?: boolean;
 };
 
-function PlanCard({ plan, comingSoon }: { plan: Plan; comingSoon: string }) {
+function PlanCard({
+  plan,
+  cta,
+  href,
+}: {
+  plan: Plan;
+  cta: string;
+  href: string;
+}) {
   return (
     <article className={`pricing-card ${plan.featured ? "pricing-card--featured" : ""}`}>
       {plan.badge && <span className="pricing-badge">{plan.badge}</span>}
@@ -26,9 +34,9 @@ function PlanCard({ plan, comingSoon }: { plan: Plan; comingSoon: string }) {
         <strong>{plan.price}</strong>
         {plan.cadence && <span>{plan.cadence}</span>}
       </div>
-      <button className={`button ${plan.featured ? "button--primary" : "button--light"}`} type="button" disabled>
-        {comingSoon}
-      </button>
+      <Link className={`button ${plan.featured ? "button--primary" : "button--light"}`} href={href}>
+        {cta}
+      </Link>
       <ul>
         {plan.features.map((feature) => <li key={feature}><span>✓</span>{feature}</li>)}
       </ul>
@@ -42,7 +50,8 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
 
   const es = locale === "es";
   const other = es ? "en" : "es";
-  const comingSoon = es ? "Próximamente" : "Coming soon";
+  const createAccount = es ? "Crear una cuenta" : "Create account";
+  const createAccountHref = `/${locale}/create-account`;
 
   const buyerPlans: Plan[] = es ? [
     {
@@ -168,18 +177,18 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
         <p className="eyebrow">{es ? "Precios fundadores" : "Founding prices"}</p>
         <h1>{es ? "Empieza gratis. Paga solo por la ayuda que necesitas." : "Start free. Pay only for the help you need."}</h1>
         <p>{es ? "Crestview mantiene el proceso completo de adquisición accesible. Pro agrega explicaciones avanzadas, mientras los corredores y equipos eligen herramientas según su uso." : "Crestview keeps the complete acquisition process accessible. Pro adds advanced explanations, while brokers and workforce teams choose tools based on how they use the platform."}</p>
-        <div className="billing-note"><strong>{comingSoon}</strong><span>{es ? "Las suscripciones, publicaciones para corredores y promociones estarán disponibles próximamente." : "Subscriptions, broker listings, and promotional placements will be available soon."}</span></div>
+        <div className="billing-note"><strong>{es ? "Acceso gratuito disponible" : "Free access available"}</strong><span>{es ? "Crea una cuenta para buscar oportunidades, guardar negocios y administrar tu proceso de adquisición." : "Create an account to search opportunities, save businesses, and manage your acquisition process."}</span></div>
       </section>
 
       <section className="shell pricing-section" aria-labelledby="buyer-pricing">
         <div className="pricing-section__heading"><div><p className="eyebrow">{es ? "Compradores" : "For buyers"}</p><h2 id="buyer-pricing">{es ? "La ruta completa permanece gratis." : "The complete path stays free."}</h2></div><p>{es ? "Pro mejora la comprensión. No bloquea los pasos esenciales para comprar un negocio." : "Pro improves understanding. It does not lock away the essential steps required to buy a business."}</p></div>
-        <div className="pricing-grid pricing-grid--two">{buyerPlans.map((plan) => <PlanCard key={plan.name} plan={plan} comingSoon={comingSoon} />)}</div>
+        <div className="pricing-grid pricing-grid--two">{buyerPlans.map((plan) => <PlanCard key={plan.name} plan={plan} cta={createAccount} href={createAccountHref} />)}</div>
         <p className="pricing-disclaimer">{es ? "Las explicaciones de documentos son educativas y no sustituyen el asesoramiento de un abogado, contador u otro profesional calificado." : "Document explanations are educational and do not replace advice from a qualified attorney, accountant, or other professional."}</p>
       </section>
 
       <section className="pricing-band" aria-labelledby="broker-pricing"><div className="shell pricing-section">
         <div className="pricing-section__heading"><div><p className="eyebrow">{es ? "Vendedores y corredores" : "For sellers and brokers"}</p><h2 id="broker-pricing">{es ? "Publica una vez o administra una cartera." : "List once or manage a portfolio."}</h2></div><p>{es ? "Las promociones aumentan la visibilidad, pero nunca cambian la puntuación independiente de una oportunidad." : "Promotions increase visibility, but they never change an opportunity’s independent Crestview score."}</p></div>
-        <div className="pricing-grid pricing-grid--four">{brokerPlans.map((plan) => <PlanCard key={plan.name} plan={plan} comingSoon={comingSoon} />)}</div>
+        <div className="pricing-grid pricing-grid--four">{brokerPlans.map((plan) => <PlanCard key={plan.name} plan={plan} cta={createAccount} href={createAccountHref} />)}</div>
         <p className="pricing-disclaimer">{es ? "Las publicaciones promocionadas siempre estarán identificadas claramente. Las promociones duran 30 días; la publicación base continúa según su plan." : "Promoted listings will always be clearly labeled. Promotions last 30 days; the underlying listing continues according to its plan."}</p>
       </div></section>
 
@@ -189,7 +198,7 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
           <div className="workforce-pricing__intro">
             <span>{es ? "Desde" : "Starting at"}</span><strong>$20</strong><small>/{es ? "mes" : "month"}</small>
             <p>{es ? "Todos los niveles incluyen la experiencia bilingüe en inglés y español." : "Every tier includes the bilingual English and Spanish experience."}</p>
-            <button className="button button--primary" type="button" disabled>{comingSoon}</button>
+            <Link className="button button--primary" href={createAccountHref}>{createAccount}</Link>
           </div>
           <div className="workforce-tiers" role="table" aria-label={es ? "Niveles de precios de personal" : "Workforce pricing tiers"}>
             {workforceTiers.map(([size, price]) => <div role="row" key={size}><span role="cell">{size}</span><strong role="cell">{price}</strong></div>)}
@@ -199,7 +208,7 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
 
       <section className="shell pricing-faq"><h2>{es ? "Preguntas sobre los planes" : "Plan questions"}</h2><div>
         <article><h3>{es ? "¿Puedo usar todo el proceso gratis?" : "Can I complete the process for free?"}</h3><p>{es ? "Sí. Buscar, guardar, valorar, organizar la diligencia y avanzar por la lista de adquisición permanecerá disponible sin Pro." : "Yes. Searching, saving, valuing, organizing diligence, and moving through the acquisition checklist will remain available without Pro."}</p></article>
-        <article><h3>{es ? "¿Cuándo estarán disponibles los planes pagados?" : "When will paid plans be available?"}</h3><p>{es ? "Próximamente. Mientras tanto, puedes crear una cuenta y comenzar a usar las herramientas gratuitas de Crestview." : "Coming soon. In the meantime, you can create an account and start using Crestview’s free tools."}</p></article>
+        <article><h3>{es ? "¿Puedo comenzar sin elegir un plan pagado?" : "Can I start without choosing a paid plan?"}</h3><p>{es ? "Sí. Crea una cuenta gratuita y comienza con las herramientas esenciales. Podrás elegir una mejora desde tu cuenta cuando la necesites." : "Yes. Create a free account and begin with the essential tools. You can choose an upgrade from your account when you need it."}</p></article>
         <article><h3>{es ? "¿Cuánto dura una publicación?" : "How long does a listing remain active?"}</h3><p>{es ? "Una publicación individual continúa hasta su venta, retiro o inactividad. Se pedirá confirmar su disponibilidad cada 60 días." : "A single listing continues until it is sold, withdrawn, or inactive. Availability must be confirmed every 60 days."}</p></article>
       </div></section>
     </main>

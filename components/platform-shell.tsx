@@ -14,8 +14,15 @@ const navItems = [
   ["reports", "Reports", "Informes"],
   ["documents", "Documents", "Documentos"],
   ["workforce", "Workforce", "Personal"],
+  ["plans", "Plans", "Planes"],
   ["settings", "Settings", "Configuración"],
 ] as const;
+
+function navHref(locale: Locale, slug: (typeof navItems)[number][0]) {
+  if (slug === "overview") return `/${locale}/dashboard`;
+  if (slug === "plans") return `/${locale}/pricing`;
+  return `/${locale}/dashboard/${slug}`;
+}
 
 export async function PlatformShell({
   locale,
@@ -49,7 +56,7 @@ export async function PlatformShell({
               {navItems.map(([slug, english, spanish]) => (
                 <Link
                   className={slug === active ? "is-active" : ""}
-                  href={slug === "overview" ? `/${locale}/dashboard` : `/${locale}/dashboard/${slug}`}
+                  href={navHref(locale, slug)}
                   key={slug}
                 >
                   <span className="nav-dot" aria-hidden="true" />
@@ -63,7 +70,7 @@ export async function PlatformShell({
           {navItems.map(([slug, english, spanish]) => (
             <Link
               className={slug === active ? "is-active" : ""}
-              href={slug === "overview" ? `/${locale}/dashboard` : `/${locale}/dashboard/${slug}`}
+              href={navHref(locale, slug)}
               key={slug}
             >
               <span className="nav-dot" aria-hidden="true" />

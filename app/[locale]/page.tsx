@@ -68,7 +68,7 @@ export default async function LandingPage({
               </p>
             </div>
 
-            <div className="deal-preview" aria-label="DealFlow opportunity preview">
+            <div className="deal-preview" aria-label="DealFlow opportunity example">
               <article className="preview-card preview-card--main">
                 <div className="preview-card__top">
                   <span className="mini-label">DealFlow AI</span>

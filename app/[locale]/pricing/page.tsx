@@ -12,6 +12,8 @@ type Plan = {
   cadence?: string;
   description: string;
   features: string[];
+  productCode?: string;
+  action?: string;
   badge?: string;
   featured?: boolean;
 };
@@ -20,10 +22,12 @@ function PlanCard({
   plan,
   cta,
   href,
+  locale,
 }: {
   plan: Plan;
   cta: string;
   href: string;
+  locale: string;
 }) {
   return (
     <article className={`pricing-card ${plan.featured ? "pricing-card--featured" : ""}`}>
@@ -34,9 +38,19 @@ function PlanCard({
         <strong>{plan.price}</strong>
         {plan.cadence && <span>{plan.cadence}</span>}
       </div>
-      <Link className={`button ${plan.featured ? "button--primary" : "button--light"}`} href={href}>
-        {cta}
-      </Link>
+      {plan.productCode ? (
+        <form className="pricing-checkout-form" action="/api/stripe/checkout" method="post">
+          <input type="hidden" name="locale" value={locale} />
+          <input type="hidden" name="product_code" value={plan.productCode} />
+          <button className={`button ${plan.featured ? "button--primary" : "button--light"}`} type="submit">
+            {plan.action ?? cta}
+          </button>
+        </form>
+      ) : (
+        <Link className={`button ${plan.featured ? "button--primary" : "button--light"}`} href={href}>
+          {cta}
+        </Link>
+      )}
       <ul>
         {plan.features.map((feature) => <li key={feature}><span>✓</span>{feature}</li>)}
       </ul>
@@ -44,8 +58,12 @@ function PlanCard({
   );
 }
 
-export default async function PricingPage({ params }: { params: Promise<{ locale: string }> }) {
+export default async function PricingPage({
+  params,
+  searchParams,
+}: PageProps<"/[locale]/pricing">) {
   const { locale } = await params;
+  const query = await searchParams;
   if (!isLocale(locale)) notFound();
 
   const es = locale === "es";
@@ -66,6 +84,8 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
       name: "Crestview Pro",
       price: "$9.99",
       cadence: "/mes",
+      productCode: "crestview_pro",
+      action: "Elegir Pro",
       description: "Ayuda avanzada para entender contratos, documentos financieros y el lenguaje de M&A.",
       badge: "Ayuda avanzada",
       featured: true,
@@ -84,6 +104,8 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
       name: "Crestview Pro",
       price: "$9.99",
       cadence: "/month",
+      productCode: "crestview_pro",
+      action: "Choose Pro",
       description: "Advanced help understanding contracts, financial documents, and high-level M&A language.",
       badge: "Advanced guidance",
       featured: true,
@@ -96,6 +118,8 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
       name: "Una publicación",
       price: "$30",
       cadence: "una vez",
+      productCode: "single_listing",
+      action: "Comprar publicación",
       description: "Para un vendedor o corredor ocasional con una sola publicación activa.",
       features: ["Una publicación activa", "Activa hasta venta, retiro o inactividad", "Ubicación estándar en resultados", "Confirmación de disponibilidad cada 60 días"],
     },
@@ -103,6 +127,8 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
       name: "Plan para corredores",
       price: "$25",
       cadence: "/mes",
+      productCode: "broker_plan",
+      action: "Elegir plan",
       description: "Para corredores que necesitan administrar varias publicaciones y consultas.",
       badge: "Para profesionales",
       featured: true,
@@ -112,6 +138,8 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
       name: "Visibilidad mejorada",
       price: "$49.99",
       cadence: "/30 días",
+      productCode: "enhanced_visibility",
+      action: "Promocionar publicación",
       description: "Más exposición para una publicación específica durante treinta días.",
       features: ["Publicación destacada", "Mejor ubicación en búsquedas relevantes", "Estilo visual destacado", "Estadísticas de promoción"],
     },
@@ -119,6 +147,8 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
       name: "Máxima visibilidad",
       price: "$99.99",
       cadence: "/30 días",
+      productCode: "highest_visibility",
+      action: "Obtener máxima visibilidad",
       description: "La promoción más fuerte en búsquedas, categorías y ubicaciones relevantes.",
       badge: "Mayor alcance",
       features: ["Ubicación prioritaria", "Parte superior de búsquedas apropiadas", "Promoción por categoría y ubicación", "Estadísticas avanzadas de promoción"],
@@ -128,6 +158,8 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
       name: "Single Listing",
       price: "$30",
       cadence: "one time",
+      productCode: "single_listing",
+      action: "Buy listing",
       description: "For an individual seller or occasional broker with one active listing.",
       features: ["One active listing", "Active until sold, withdrawn, or inactive", "Standard search placement", "Availability confirmation every 60 days"],
     },
@@ -135,6 +167,8 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
       name: "Broker Plan",
       price: "$25",
       cadence: "/month",
+      productCode: "broker_plan",
+      action: "Choose plan",
       description: "For brokers who need to manage multiple listings and buyer inquiries.",
       badge: "For professionals",
       featured: true,
@@ -144,6 +178,8 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
       name: "Enhanced Visibility",
       price: "$49.99",
       cadence: "/30 days",
+      productCode: "enhanced_visibility",
+      action: "Promote listing",
       description: "Additional exposure for one specific listing for thirty days.",
       features: ["Featured listing treatment", "Higher relevant search placement", "Distinct visual highlighting", "Promotion performance statistics"],
     },
@@ -151,6 +187,8 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
       name: "Highest Visibility",
       price: "$99.99",
       cadence: "/30 days",
+      productCode: "highest_visibility",
+      action: "Get highest visibility",
       description: "The strongest promotion across relevant searches, categories, and locations.",
       badge: "Maximum reach",
       features: ["Priority placement", "Top of appropriate searches", "Category and location promotion", "Advanced promotion analytics"],
@@ -169,11 +207,36 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
     <header className="site-header"><div className="shell site-header__inner">
       <Brand locale={locale} />
       <nav className="nav" aria-label={es ? "Navegación de precios" : "Pricing navigation"}><Link href={`/${locale}`}>{es ? "Inicio" : "Home"}</Link><strong>{es ? "Planes" : "Plans"}</strong></nav>
-      <div className="header-actions"><Link className="locale-link" href={`/${other}/pricing`}>{other.toUpperCase()}</Link><Link className="button button--light" href={`/${locale}/sign-in`}>{es ? "Iniciar sesión" : "Sign in"}</Link></div>
+      <div className="header-actions">
+        <Link className="locale-link" href={`/${other}/pricing`}>{other.toUpperCase()}</Link>
+        <form action="/api/stripe/portal" method="post">
+          <input type="hidden" name="locale" value={locale} />
+          <button className="button button--light" type="submit">{es ? "Administrar facturación" : "Manage billing"}</button>
+        </form>
+        <Link className="button button--light" href={`/${locale}/sign-in`}>{es ? "Iniciar sesión" : "Sign in"}</Link>
+      </div>
     </div></header>
 
     <main className="pricing-page">
       <section className="pricing-hero shell">
+        {query.checkout === "success" && (
+          <div className="billing-status billing-status--success" role="status">
+            <strong>{es ? "Pago recibido" : "Payment received"}</strong>
+            <span>{es ? "Stripe está confirmando el pago. Tu acceso se activará mediante la confirmación segura del servidor." : "Stripe is confirming the payment. Your access will activate through secure server confirmation."}</span>
+          </div>
+        )}
+        {query.checkout === "canceled" && (
+          <div className="billing-status" role="status">
+            <strong>{es ? "Pago cancelado" : "Checkout canceled"}</strong>
+            <span>{es ? "No se realizó ningún cargo. Puedes elegir un plan cuando estés listo." : "No charge was made. You can choose a plan whenever you are ready."}</span>
+          </div>
+        )}
+        {typeof query.billing_error === "string" && (
+          <div className="billing-status billing-status--error" role="alert">
+            <strong>{es ? "No se pudo abrir la facturación" : "Billing could not be opened"}</strong>
+            <span>{es ? "Vuelve a intentarlo o inicia sesión antes de seleccionar un plan." : "Please try again or sign in before selecting a plan."}</span>
+          </div>
+        )}
         <p className="eyebrow">{es ? "Precios fundadores" : "Founding prices"}</p>
         <h1>{es ? "Empieza gratis. Paga solo por la ayuda que necesitas." : "Start free. Pay only for the help you need."}</h1>
         <p>{es ? "Crestview mantiene el proceso completo de adquisición accesible. Pro agrega explicaciones avanzadas, mientras los corredores y equipos eligen herramientas según su uso." : "Crestview keeps the complete acquisition process accessible. Pro adds advanced explanations, while brokers and workforce teams choose tools based on how they use the platform."}</p>
@@ -182,13 +245,13 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
 
       <section className="shell pricing-section" aria-labelledby="buyer-pricing">
         <div className="pricing-section__heading"><div><p className="eyebrow">{es ? "Compradores" : "For buyers"}</p><h2 id="buyer-pricing">{es ? "La ruta completa permanece gratis." : "The complete path stays free."}</h2></div><p>{es ? "Pro mejora la comprensión. No bloquea los pasos esenciales para comprar un negocio." : "Pro improves understanding. It does not lock away the essential steps required to buy a business."}</p></div>
-        <div className="pricing-grid pricing-grid--two">{buyerPlans.map((plan) => <PlanCard key={plan.name} plan={plan} cta={createAccount} href={createAccountHref} />)}</div>
+        <div className="pricing-grid pricing-grid--two">{buyerPlans.map((plan) => <PlanCard key={plan.name} plan={plan} cta={createAccount} href={createAccountHref} locale={locale} />)}</div>
         <p className="pricing-disclaimer">{es ? "Las explicaciones de documentos son educativas y no sustituyen el asesoramiento de un abogado, contador u otro profesional calificado." : "Document explanations are educational and do not replace advice from a qualified attorney, accountant, or other professional."}</p>
       </section>
 
       <section className="pricing-band" aria-labelledby="broker-pricing"><div className="shell pricing-section">
         <div className="pricing-section__heading"><div><p className="eyebrow">{es ? "Vendedores y corredores" : "For sellers and brokers"}</p><h2 id="broker-pricing">{es ? "Publica una vez o administra una cartera." : "List once or manage a portfolio."}</h2></div><p>{es ? "Las promociones aumentan la visibilidad, pero nunca cambian la puntuación independiente de una oportunidad." : "Promotions increase visibility, but they never change an opportunity’s independent Crestview score."}</p></div>
-        <div className="pricing-grid pricing-grid--four">{brokerPlans.map((plan) => <PlanCard key={plan.name} plan={plan} cta={createAccount} href={createAccountHref} />)}</div>
+        <div className="pricing-grid pricing-grid--four">{brokerPlans.map((plan) => <PlanCard key={plan.name} plan={plan} cta={createAccount} href={createAccountHref} locale={locale} />)}</div>
         <p className="pricing-disclaimer">{es ? "Las publicaciones promocionadas siempre estarán identificadas claramente. Las promociones duran 30 días; la publicación base continúa según su plan." : "Promoted listings will always be clearly labeled. Promotions last 30 days; the underlying listing continues according to its plan."}</p>
       </div></section>
 
@@ -198,7 +261,17 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
           <div className="workforce-pricing__intro">
             <span>{es ? "Desde" : "Starting at"}</span><strong>$20</strong><small>/{es ? "mes" : "month"}</small>
             <p>{es ? "Precio equivalente a $2 por empleado al mes. Todos los niveles incluyen la experiencia bilingüe en inglés y español." : "Equivalent to $2 per employee per month. Every tier includes the bilingual English and Spanish experience."}</p>
-            <Link className="button button--primary" href={createAccountHref}>{createAccount}</Link>
+            <form className="workforce-checkout-form" action="/api/stripe/checkout" method="post">
+              <input type="hidden" name="locale" value={locale} />
+              <input type="hidden" name="product_code" value="workforce" />
+              <label htmlFor="workforce-quantity">{es ? "Número de empleados" : "Employee count"}</label>
+              <select id="workforce-quantity" name="quantity" defaultValue="10">
+                {[10, 25, 50, 100, 200, 300].map((quantity) => (
+                  <option key={quantity} value={quantity}>{quantity}</option>
+                ))}
+              </select>
+              <button className="button button--primary" type="submit">{es ? "Elegir Workforce" : "Choose Workforce"}</button>
+            </form>
           </div>
           <div className="workforce-tiers" role="table" aria-label={es ? "Niveles de precios de personal" : "Workforce pricing tiers"}>
             {workforceTiers.map(([size, price]) => <div role="row" key={size}><span role="cell">{size}</span><strong role="cell">{price}</strong></div>)}

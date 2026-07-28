@@ -94,7 +94,7 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
   const brokerPlans: Plan[] = es ? [
     {
       name: "Una publicación",
-      price: "$9.99",
+      price: "$30",
       cadence: "una vez",
       description: "Para un vendedor o corredor ocasional con una sola publicación activa.",
       features: ["Una publicación activa", "Activa hasta venta, retiro o inactividad", "Ubicación estándar en resultados", "Confirmación de disponibilidad cada 60 días"],
@@ -126,7 +126,7 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
   ] : [
     {
       name: "Single Listing",
-      price: "$9.99",
+      price: "$30",
       cadence: "one time",
       description: "For an individual seller or occasional broker with one active listing.",
       features: ["One active listing", "Active until sold, withdrawn, or inactive", "Standard search placement", "Availability confirmation every 60 days"],
@@ -158,11 +158,11 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
   ];
 
   const workforceTiers = es ? [
-    ["1–10 empleados", "$20/mes"], ["11–25 empleados", "$40/mes"], ["26–50 empleados", "$60/mes"],
-    ["51–100 empleados", "$80/mes"], ["101–200 empleados", "$100/mes"], ["201–300 empleados", "$120/mes"], ["301+ empleados", "Precio personalizado"],
+    ["10 empleados", "$20/mes"], ["25 empleados", "$50/mes"], ["50 empleados", "$100/mes"],
+    ["100 empleados", "$200/mes"], ["200 empleados", "$400/mes"], ["300 empleados", "$600/mes"], ["Más de 300 empleados", "Precio personalizado"],
   ] : [
-    ["1–10 employees", "$20/month"], ["11–25 employees", "$40/month"], ["26–50 employees", "$60/month"],
-    ["51–100 employees", "$80/month"], ["101–200 employees", "$100/month"], ["201–300 employees", "$120/month"], ["301+ employees", "Custom pricing"],
+    ["10 employees", "$20/month"], ["25 employees", "$50/month"], ["50 employees", "$100/month"],
+    ["100 employees", "$200/month"], ["200 employees", "$400/month"], ["300 employees", "$600/month"], ["More than 300 employees", "Custom pricing"],
   ];
 
   return <>
@@ -197,7 +197,7 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
         <div className="workforce-pricing">
           <div className="workforce-pricing__intro">
             <span>{es ? "Desde" : "Starting at"}</span><strong>$20</strong><small>/{es ? "mes" : "month"}</small>
-            <p>{es ? "Todos los niveles incluyen la experiencia bilingüe en inglés y español." : "Every tier includes the bilingual English and Spanish experience."}</p>
+            <p>{es ? "Precio equivalente a $2 por empleado al mes. Todos los niveles incluyen la experiencia bilingüe en inglés y español." : "Equivalent to $2 per employee per month. Every tier includes the bilingual English and Spanish experience."}</p>
             <Link className="button button--primary" href={createAccountHref}>{createAccount}</Link>
           </div>
           <div className="workforce-tiers" role="table" aria-label={es ? "Niveles de precios de personal" : "Workforce pricing tiers"}>

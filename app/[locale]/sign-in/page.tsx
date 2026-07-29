@@ -46,7 +46,7 @@ export default async function SignInPage({
           ) : user ? (
             <div className="signed-in-choice">
               <p>Signed in as <strong>{user.email}</strong></p>
-              <Link className="button button--primary auth-submit" href={`/${locale}/create-account`}>Continue to Crestview</Link>
+              <Link className="button button--primary auth-submit" href={`/${locale}/dashboard`}>Continue to your dashboard</Link>
             </div>
           ) : (
             <a className="button button--primary auth-submit auth-provider" href={signInHref}>Continue securely with ChatGPT</a>

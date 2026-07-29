@@ -18,6 +18,14 @@ const navItems = [
   ["settings", "Settings", "Configuración"],
 ] as const;
 
+const navGroups = [
+  { label: ["Workspace", "Espacio de trabajo"], slugs: ["overview", "opportunities", "lists", "pipeline"] },
+  { label: ["Operations", "Operaciones"], slugs: ["tasks", "documents", "reports", "workforce"] },
+  { label: ["Account", "Cuenta"], slugs: ["plans", "settings"] },
+] as const;
+
+type NavSlug = (typeof navItems)[number][0];
+
 function navHref(locale: Locale, slug: (typeof navItems)[number][0]) {
   if (slug === "overview") return `/${locale}/dashboard`;
   if (slug === "plans") return `/${locale}/pricing`;
@@ -30,7 +38,7 @@ export async function PlatformShell({
   children,
 }: {
   locale: Locale;
-  active: (typeof navItems)[number][0];
+  active: NavSlug;
   children: React.ReactNode;
 }) {
   const user = await getCrestviewUser(locale);
@@ -67,15 +75,19 @@ export async function PlatformShell({
           </details>
         </div>
         <nav className="sidebar-nav" aria-label="Dashboard navigation">
-          {navItems.map(([slug, english, spanish]) => (
-            <Link
-              className={slug === active ? "is-active" : ""}
-              href={navHref(locale, slug)}
-              key={slug}
-            >
-              <span className="nav-dot" aria-hidden="true" />
-              {locale === "es" ? spanish : english}
-            </Link>
+          {navGroups.map((group) => (
+            <div className="sidebar-nav__group" key={group.label[0]}>
+              <span>{locale === "es" ? group.label[1] : group.label[0]}</span>
+              {group.slugs.map((slug) => {
+                const item = navItems.find(([candidate]) => candidate === slug)!;
+                return (
+                  <Link className={slug === active ? "is-active" : ""} href={navHref(locale, slug)} key={slug}>
+                    <span className="nav-dot" aria-hidden="true" />
+                    {locale === "es" ? item[2] : item[1]}
+                  </Link>
+                );
+              })}
+            </div>
           ))}
         </nav>
         <div className="listing-alert">

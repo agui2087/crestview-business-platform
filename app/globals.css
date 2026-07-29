@@ -99,6 +99,11 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .pricing-hero > p { max-width: 650px; margin: 24px auto 0; color: var(--muted); font-size: 1rem; line-height: 1.7; }
 .billing-note { max-width: 690px; display:flex; align-items:center; gap:12px; margin:28px auto 0; padding:13px 16px; border:1px solid #e1d8bd; border-radius:12px; background:#fbf8ed; color:#6e6345; text-align:left; font-size:.72rem; }
 .billing-note strong { flex:0 0 auto; color:var(--brand); }
+.billing-status { max-width:720px; display:flex; align-items:center; gap:12px; margin:0 auto 28px; padding:14px 16px; border:1px solid #d7ddd9; border-radius:12px; background:#f3f6f4; color:#405048; text-align:left; font-size:.72rem; }
+.billing-status strong { flex:0 0 auto; color:var(--brand); }
+.billing-status--success { border-color:#b9d8c5; background:#edf8f1; }
+.billing-status--error { border-color:#e0c3bd; background:#fff2ef; }
+.billing-status--error strong { color:#9a3f32; }
 .pricing-section { padding: 78px 0; }
 .pricing-section__heading { display:grid; grid-template-columns:minmax(0,1fr) minmax(280px,.62fr); align-items:end; gap:50px; margin-bottom:30px; }
 .pricing-section__heading .eyebrow { margin-bottom:14px; }
@@ -119,6 +124,8 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .pricing-card ul { display:grid; gap:12px; margin:26px 0 0; padding:0; list-style:none; }
 .pricing-card li { display:flex; gap:9px; color:#425049; font-size:.72rem; }
 .pricing-card li span { color:var(--brand); font-weight:900; }
+.pricing-checkout-form { display:grid; }
+.pricing-checkout-form .button { width:100%; }
 .pricing-disclaimer { max-width:850px; margin:20px auto 0; color:var(--muted); font-size:.68rem; line-height:1.6; text-align:center; }
 .workforce-pricing { display:grid; grid-template-columns:.72fr 1.28fr; overflow:hidden; border:1px solid var(--line); border-radius:22px; background:white; box-shadow:0 15px 45px rgba(22,79,60,.06); }
 .workforce-pricing__intro { padding:36px; background:var(--brand-dark); color:white; }
@@ -127,6 +134,10 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .workforce-pricing__intro > small { color:#b8c8c0; }
 .workforce-pricing__intro p { max-width:360px; margin:18px 0 26px; color:#d4dfd9; font-size:.75rem; line-height:1.6; }
 .workforce-pricing__intro .button:disabled { background:var(--lime); color:var(--brand-dark); opacity:.72; }
+.workforce-checkout-form { display:grid; gap:10px; }
+.workforce-checkout-form label { color:#d4dfd9; font-size:.7rem; font-weight:750; }
+.workforce-checkout-form select { width:100%; padding:12px 13px; border:1px solid rgba(255,255,255,.25); border-radius:10px; background:white; color:var(--ink); font:inherit; }
+.workforce-checkout-form .button { width:100%; margin-top:4px; }
 .workforce-tiers { display:grid; align-content:center; padding:22px 32px; }
 .workforce-tiers > div { display:flex; align-items:center; justify-content:space-between; gap:24px; padding:16px 4px; border-bottom:1px solid var(--line); }
 .workforce-tiers > div:last-child { border-bottom:0; }

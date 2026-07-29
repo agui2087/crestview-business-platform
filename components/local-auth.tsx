@@ -26,7 +26,7 @@ function readAccounts(): StoredAccount[] {
 
 function startLocalSession(account: StoredAccount, returnTo: string) {
   const value = encodeURIComponent(JSON.stringify({ email: account.email, fullName: account.fullName }));
-  document.cookie = `crestview_local_user=${value}; Path=/; Max-Age=2592000; SameSite=Lax`;
+  document.cookie = `crestview_local_user=${value}; Path=/; SameSite=Lax`;
   window.location.assign(returnTo);
 }
 

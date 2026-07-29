@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Brand } from "@/components/brand";
+import { chatGPTSignOutPath, getChatGPTUser } from "@/app/chatgpt-auth";
 import { isLocale } from "@/lib/i18n";
 
 export const metadata: Metadata = { title: "Plans and pricing" };
@@ -65,6 +66,7 @@ export default async function PricingPage({
   const { locale } = await params;
   const query = await searchParams;
   if (!isLocale(locale)) notFound();
+  const user = await getChatGPTUser();
 
   const es = locale === "es";
   const other = es ? "en" : "es";
@@ -209,11 +211,14 @@ export default async function PricingPage({
       <nav className="nav" aria-label={es ? "Navegación de precios" : "Pricing navigation"}><Link href={`/${locale}`}>{es ? "Inicio" : "Home"}</Link><strong>{es ? "Planes" : "Plans"}</strong></nav>
       <div className="header-actions">
         <Link className="locale-link" href={`/${other}/pricing`}>{other.toUpperCase()}</Link>
-        <form action="/api/stripe/portal" method="post">
-          <input type="hidden" name="locale" value={locale} />
-          <button className="button button--light" type="submit">{es ? "Administrar facturación" : "Manage billing"}</button>
-        </form>
-        <Link className="button button--light" href={`/${locale}/sign-in`}>{es ? "Iniciar sesión" : "Sign in"}</Link>
+        {user ? <>
+          <Link className="button button--light" href={`/${locale}/dashboard`}>{es ? "Panel" : "Dashboard"}</Link>
+          <form action="/api/stripe/portal" method="post">
+            <input type="hidden" name="locale" value={locale} />
+            <button className="button button--light" type="submit">{es ? "Administrar facturación" : "Manage billing"}</button>
+          </form>
+          <a className="header-signout" href={chatGPTSignOutPath(`/${locale}`)}>{es ? "Salir" : "Sign out"}</a>
+        </> : <Link className="button button--light" href={`/${locale}/sign-in`}>{es ? "Iniciar sesión" : "Sign in"}</Link>}
       </div>
     </div></header>
 

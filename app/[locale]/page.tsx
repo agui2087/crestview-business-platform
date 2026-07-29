@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Brand } from "@/components/brand";
+import { getChatGPTUser } from "@/app/chatgpt-auth";
 import { getDictionary, isLocale } from "@/lib/i18n";
 
 export const metadata: Metadata = {
@@ -16,6 +17,7 @@ export default async function LandingPage({
 
   const copy = getDictionary(locale);
   const otherLocale = locale === "en" ? "es" : "en";
+  const user = await getChatGPTUser();
 
   return (
     <>
@@ -38,8 +40,8 @@ export default async function LandingPage({
             >
               {otherLocale.toUpperCase()}
             </Link>
-            <Link className="button button--light" href={`/${locale}/sign-in`}>
-              {copy.nav.signIn}
+            <Link className="button button--light" href={user ? `/${locale}/dashboard` : `/${locale}/sign-in`}>
+              {user ? (locale === "es" ? "Abrir panel" : "Open dashboard") : copy.nav.signIn}
             </Link>
           </div>
         </div>

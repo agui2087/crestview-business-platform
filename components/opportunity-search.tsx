@@ -5,52 +5,20 @@ import Link from "next/link";
 import type { Opportunity } from "@/lib/demo-data";
 
 const PAGE_SIZE = 30;
-const TARGET_RESULTS = 300;
 const LOCATION_SUGGESTIONS = [
-  "Atlanta, GA",
   "Austin, TX",
-  "Baltimore, MD",
   "Boston, MA",
-  "Charlotte, NC",
   "Chicago, IL",
-  "Cincinnati, OH",
-  "Cleveland, OH",
-  "Columbus, OH",
   "Dallas, TX",
   "Denver, CO",
-  "Detroit, MI",
-  "Houston, TX",
-  "Indianapolis, IN",
-  "Jacksonville, FL",
-  "Kansas City, MO",
-  "Las Vegas, NV",
   "Los Angeles, CA",
-  "Louisville, KY",
-  "Memphis, TN",
   "Miami, FL",
-  "Milwaukee, WI",
-  "Minneapolis, MN",
-  "Nashville, TN",
-  "New Orleans, LA",
   "New York, NY",
-  "Oklahoma City, OK",
-  "Orlando, FL",
-  "Philadelphia, PA",
   "Phoenix, AZ",
-  "Pittsburgh, PA",
   "Portland, OR",
-  "Raleigh, NC",
-  "Richmond, VA",
-  "Sacramento, CA",
-  "Salt Lake City, UT",
-  "San Antonio, TX",
   "San Diego, CA",
   "San Francisco, CA",
-  "San Jose, CA",
   "Seattle, WA",
-  "St. Louis, MO",
-  "Tampa, FL",
-  "Washington, DC",
 ] as const;
 
 const STATE_NAMES: Record<string, string> = {
@@ -205,26 +173,13 @@ export function OpportunitySearch({
         );
       const requested = locationParts(location);
       const exact = requested.city
-        ? eligible.filter(({ item }) => normalize(item.location).includes(requested.city))
+        ? eligible.filter(({ item }) => {
+          const itemLocation = normalize(item.location);
+          return itemLocation.includes(requested.city)
+            && (!requested.region || listingRegion(item.location) === requested.region);
+        })
         : eligible;
-      const regional = requested.region
-        ? eligible.filter(({ item }) => listingRegion(item.location) === requested.region)
-        : exact;
-      const filtered = !requested.city
-        ? eligible
-        : exact.length >= TARGET_RESULTS
-          ? exact
-          : Array.from(new Map([...exact, ...regional, ...eligible].map((entry) => [entry.item.id, entry])).values());
-
-      const exactCount = requested.city ? exact.length : filtered.length;
-      const regionalCount = requested.region ? regional.length : exactCount;
-      const expansion = !requested.city
-        ? "none"
-        : exactCount >= TARGET_RESULTS
-          ? "city"
-          : regionalCount >= TARGET_RESULTS
-            ? "region"
-            : "coverage";
+      const filtered = requested.city ? exact : eligible;
 
       const sorted = filtered.sort((a, b) => {
         if (sortBy === "price-low") return (a.item.priceValue ?? Number.MAX_SAFE_INTEGER) - (b.item.priceValue ?? Number.MAX_SAFE_INTEGER);
@@ -242,11 +197,11 @@ export function OpportunitySearch({
         if (a.match?.score !== b.match?.score) return (b.match?.score ?? -1) - (a.match?.score ?? -1);
         return b.rank - a.rank;
       });
-      return { results: sorted, exactCount, regionalCount, expansion };
+      return { results: sorted, exactCount: exact.length };
     },
     [items, query, industry, source, sortBy, maxPrice, location, preferences],
   );
-  const { results, exactCount, regionalCount, expansion } = searchResult;
+  const { results, exactCount } = searchResult;
   const pageCount = Math.max(1, Math.ceil(results.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount);
   const visibleResults = results.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
@@ -303,7 +258,7 @@ export function OpportunitySearch({
         </label>
         <div>
           <strong>{es ? "Búsqueda por ubicación" : "Location-first search"}</strong>
-          <span>{es ? `Prioriza la ciudad, luego el estado y finalmente otras publicaciones verificadas. Crestview mostrará hasta ${TARGET_RESULTS} cuando estén disponibles.` : `Prioritizes the city, then the state, followed by other verified coverage. Crestview will show up to ${TARGET_RESULTS} when available.`}</span>
+          <span>{es ? "Elige una ciudad cubierta para ver solo publicaciones verificadas en esa ciudad. Nunca mezclamos resultados de otras áreas." : "Choose a covered city to see only verified listings in that city. Results from other areas are never mixed in."}</span>
         </div>
       </div>
       <div className="opportunity-filters" aria-label="Opportunity filters">
@@ -322,11 +277,7 @@ export function OpportunitySearch({
       {location.trim() && (
         <div className="location-expansion" role="status">
           <strong>{exactCount} exact city {exactCount === 1 ? "match" : "matches"}.</strong>
-          <span>
-            {expansion === "city" && ` Showing up to ${TARGET_RESULTS} listings in ${location}.`}
-            {expansion === "region" && ` Expanded to the surrounding region, with ${regionalCount} regional matches.`}
-            {expansion === "coverage" && ` Fewer than ${TARGET_RESULTS} were available in that state. Additional results shown are outside the requested area and come from Crestview’s current verified coverage.`}
-          </span>
+          <span>{exactCount ? ` Every result shown is in ${location}.` : ` Crestview does not currently have a verified listing in ${location}; try another covered city.`}</span>
         </div>
       )}
       <div className="comparison-toolbar" aria-live="polite">

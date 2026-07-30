@@ -27,7 +27,7 @@ export default async function ListingsPage({ params, searchParams }: PageProps<"
         <PageHeading
           eyebrow="Broker workspace"
           title="Your business listings"
-          body="Publish opportunities, control confidential information, and manage every buyer inquiry from one place."
+          body="Publish opportunities, automate your standard NDA, and personally approve access to sensitive financial information."
           action={<Link className="button button--primary" href={`/${locale}/dashboard/listings?new=1#new-listing`}>+ Add a listing</Link>}
         />
         {query.created && <p className="notice">Your listing was saved successfully.</p>}
@@ -41,8 +41,8 @@ export default async function ListingsPage({ params, searchParams }: PageProps<"
         <div className="broker-flow">
           <span><strong>1</strong> Add public details</span>
           <span><strong>2</strong> Publish the opportunity</span>
-          <span><strong>3</strong> Screen buyer requests</span>
-          <span><strong>4</strong> Open a secure deal room</span>
+          <span><strong>3</strong> Let buyers sign the NDA instantly</span>
+          <span><strong>4</strong> Approve financial access manually</span>
         </div>
         <details className="listing-editor" id="new-listing" open={!listings.length || query.new === "1"}>
           <summary><span><strong>Create a new listing</strong><small>Public and confidential fields stay separate</small></span><b>+</b></summary>
@@ -64,6 +64,18 @@ export default async function ListingsPage({ params, searchParams }: PageProps<"
             <div className="listing-form-grid">
               <label className="span-two confidential-field">Confidential notes<textarea name="confidential_notes" placeholder="Details only approved buyers should see after completing the NDA process." /></label>
             </div>
+            <div className="form-section-heading nda-automation"><span>03</span><div><strong>Reusable listing NDA</strong><small>Buyers can receive and sign this agreement instantly without sending you a preliminary request.</small></div></div>
+            <div className="nda-template-editor">
+              <label>Agreement name<input name="nda_document_name" defaultValue="Confidentiality agreement" /></label>
+              <label className="span-two">Upload the attorney-approved NDA
+                <input name="nda_file" type="file" accept="application/pdf,.pdf" />
+                <small>PDF only, up to 10 MB. The exact version signed by each buyer is recorded.</small>
+              </label>
+              <label className="span-three">Optional plain-language summary<textarea name="nda_template_body" placeholder="Briefly explain what the agreement protects. The uploaded agreement remains the controlling document." /></label>
+              <label className="nda-confirmation span-three"><input type="checkbox" name="nda_attested" /> I confirm that I am authorized to use this agreement and have reviewed whether it is appropriate for this listing.</label>
+              <label className="nda-confirmation span-three"><input type="checkbox" name="auto_send_nda" defaultChecked /> Automatically make this NDA available to signed-in buyers</label>
+            </div>
+            <p className="advisor-note">Crestview records the document version and electronic acceptance. It does not draft or approve the agreement. Have an attorney review reusable NDA language.</p>
             <div className="listing-form-options">
               <label><input type="checkbox" name="financing_available" /> Seller financing may be available</label>
               <label><input type="checkbox" name="publish" /> Publish immediately</label>

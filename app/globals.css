@@ -464,6 +464,11 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .acquisition-workspace { display: grid; grid-template-columns: 230px 1fr; gap: 15px; margin-top: 16px; }
 .acquisition-steps { padding: 18px; border: 1px solid var(--line); border-radius: 15px; background: white; }
 .acquisition-steps > p { margin: 0 0 13px; color: var(--muted); font-size: .61rem; font-weight: 780; letter-spacing: .07em; text-transform: uppercase; }
+.checklist-overall-progress { display:grid; grid-template-columns:auto 1fr; gap:2px 8px; align-items:baseline; margin:0 0 14px; padding:11px; border-radius:10px; background:var(--brand-soft); }
+.checklist-overall-progress strong { color:var(--brand); font-size:.78rem; }
+.checklist-overall-progress span { color:var(--muted); font-size:.56rem; }
+.checklist-overall-progress i { grid-column:1 / -1; height:5px; overflow:hidden; border-radius:999px; background:#dbe7e0; }
+.checklist-overall-progress b { display:block; height:100%; border-radius:inherit; background:var(--brand); transition:width .2s ease; }
 .acquisition-steps button { width: 100%; display: flex; align-items: center; gap: 10px; padding: 10px 8px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); text-align: left; font-size: .66rem; cursor: pointer; }
 .acquisition-steps button > span { width: 23px; height: 23px; flex: 0 0 auto; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 7px; font-size: .6rem; }
 .acquisition-steps button.is-current { background: var(--brand-soft); color: var(--brand); font-weight: 760; }
@@ -494,6 +499,12 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .step-finish-note { margin-top: 16px; padding: 16px 18px; border-left: 3px solid var(--brand); border-radius: 0 11px 11px 0; background: var(--brand-soft); }
 .step-finish-note p { margin: 7px 0 0; color: #405249; font-size: .72rem; line-height: 1.55; }
 .request-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.workflow-connection { display:flex; align-items:center; justify-content:space-between; gap:18px; margin-top:12px; padding:17px 19px; border:1px solid #cfe1d8; border-radius:12px; background:#f4faf7; }
+.workflow-connection > div { display:grid; gap:4px; }
+.workflow-connection span { color:var(--brand); font-size:.56rem; font-weight:850; letter-spacing:.07em; text-transform:uppercase; }
+.workflow-connection strong { font-size:.72rem; }
+.workflow-connection p { margin:0; color:var(--muted); font-size:.62rem; line-height:1.45; }
+.workflow-connection a { flex:0 0 auto; color:var(--brand); font-size:.65rem; font-weight:800; }
 .outreach-card { background: var(--brand-soft); }
 .outreach-card > span { color: var(--brand); font-size: .61rem; font-weight: 780; text-transform: uppercase; }
 .outreach-card p { color: #405249; font-size: .7rem; line-height: 1.6; }
@@ -517,6 +528,21 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .stage-notes textarea { min-height: 92px; resize: vertical; padding: 12px; border: 1px solid var(--line); border-radius: 10px; }
 .workspace-save-message { margin: 9px 0 0; color: var(--brand); font-size: .65rem; font-weight: 760; }
 .advisor-note { color: var(--muted); font-size: .6rem; line-height: 1.5; }
+.professional-review-card { display:grid; grid-template-columns:1fr auto; gap:7px 18px; margin-top:16px; padding:18px; border:1px solid #e5d7ae; border-radius:12px; background:#fffaf0; }
+.professional-review-card > div { display:grid; gap:4px; }
+.professional-review-card span { color:#7b5d16; font-size:.55rem; font-weight:850; letter-spacing:.07em; text-transform:uppercase; }
+.professional-review-card strong { font-size:.72rem; }
+.professional-review-card p { grid-column:1; margin:0; color:var(--muted); font-size:.64rem; line-height:1.5; }
+.professional-review-card a { grid-column:2; grid-row:1 / span 2; align-self:center; color:var(--brand); font-size:.63rem; font-weight:800; }
+.professional-review-card small { grid-column:1 / -1; padding-top:8px; border-top:1px solid #eadfbe; color:#766b4e; font-size:.56rem; line-height:1.5; }
+.decision-gate { display:flex; align-items:center; justify-content:space-between; gap:18px; margin-top:14px; padding:16px 18px; border:1px solid var(--line); border-radius:12px; background:var(--paper); }
+.decision-gate > div:first-child { display:grid; gap:3px; }
+.decision-gate span { color:var(--brand); font-size:.55rem; font-weight:850; letter-spacing:.07em; text-transform:uppercase; }
+.decision-gate strong { font-size:.72rem; }
+.decision-gate p { margin:0; color:var(--muted); font-size:.58rem; }
+.decision-gate > div:last-child { display:flex; gap:7px; }
+.decision-gate button { padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:white; color:var(--muted); font-size:.6rem; font-weight:750; cursor:pointer; }
+.decision-gate button.is-selected { border-color:var(--brand); background:var(--brand); color:white; }
 .stage-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-top: 18px; }
 .skip-link { border: 0; background: transparent; color: var(--muted); font-size: .67rem; font-weight: 700; cursor: pointer; }
 .modal-backdrop { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 20px; background: rgba(8,25,18,.62); }
@@ -683,6 +709,9 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .request-panel fieldset input { accent-color:var(--brand); }
 .request-message textarea { min-height:145px; resize:vertical; line-height:1.55; }
 .request-panel .button { width:100%; margin-top:10px; }
+.nda-delivery-note { display:flex; align-items:flex-start; gap:10px; margin:13px 0 0; padding:12px; border:1px solid #cfe1d8; border-radius:10px; background:#f4faf7; }
+.nda-delivery-note strong { flex:0 0 auto; color:var(--brand); font-size:.61rem; }
+.nda-delivery-note span { color:var(--muted); font-size:.59rem; line-height:1.45; }
 
 .broker-summary { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin:26px 0 14px; }
 .broker-summary article { padding:17px; border:1px solid var(--line); border-radius:13px; background:white; }
@@ -710,6 +739,17 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .listing-form-grid .confidential-field { padding:12px; border:1px solid #e1d8bd; border-radius:11px; background:#fbf8ed; }
 .listing-form-options { display:flex; gap:22px; margin:16px 0; color:var(--muted); font-size:.68rem; }
 .listing-form-options input { accent-color:var(--brand); }
+.form-section-heading.nda-automation > span { background:var(--brand); }
+.nda-template-editor { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; padding:16px; border:1px solid #cfe1d8; border-radius:12px; background:#f7fbf9; }
+.nda-template-editor label { display:grid; gap:6px; color:var(--muted); font-size:.62rem; font-weight:700; }
+.nda-template-editor .span-two { grid-column:span 2; }
+.nda-template-editor .span-three { grid-column:1 / -1; }
+.nda-template-editor input,.nda-template-editor textarea { min-width:0; padding:10px 11px; border:1px solid var(--line); border-radius:9px; background:#fff; color:var(--ink); font:inherit; font-size:.68rem; }
+.nda-template-editor input[type="file"] { padding:8px; }
+.nda-template-editor textarea { min-height:80px; resize:vertical; }
+.nda-template-editor label > small { font-size:.54rem; line-height:1.4; }
+.nda-template-editor .nda-confirmation { display:flex; flex-direction:row; align-items:flex-start; font-weight:650; }
+.nda-template-editor .nda-confirmation input { margin-top:2px; padding:0; accent-color:var(--brand); }
 .listing-management { display:grid; gap:9px; margin-top:14px; }
 .listing-management article { display:flex; align-items:center; justify-content:space-between; gap:18px; padding:18px 20px; border:1px solid var(--line); border-radius:13px; background:white; }
 .listing-management article > div > span { color:var(--brand); font-size:.57rem; font-weight:800; text-transform:uppercase; }
@@ -769,10 +809,33 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .nda-card > strong { font-size:.76rem; }
 .nda-card > p { color:var(--muted); font-size:.66rem; line-height:1.55; }
 .nda-card > small { display:block; margin:10px 0; color:var(--brand); font-size:.6rem; }
+.nda-document-link { display:inline-block; margin:8px 0; color:var(--brand); font-size:.64rem; font-weight:800; }
 .nda-card form { display:grid; gap:10px; margin-top:13px; }
 .nda-card textarea { min-height:120px; resize:vertical; }
 .signature-consent { display:flex!important; align-items:flex-start; flex-direction:row!important; }
 .secure-room { margin-top:14px; }
+.financial-access-panel { margin-top:14px; }
+.financial-access-panel .panel__header > div { display:grid; gap:5px; }
+.financial-access-panel .panel__header h2 { margin:0; }
+.financial-access-panel > form { display:grid; gap:12px; }
+.financial-access-panel > form > p,.financial-status-message p { margin:0; color:var(--muted); font-size:.65rem; line-height:1.5; }
+.financial-access-panel label { display:grid; gap:6px; color:var(--muted); font-size:.61rem; font-weight:700; }
+.financial-access-panel select,.financial-access-panel textarea { padding:10px 11px; border:1px solid var(--line); border-radius:9px; background:var(--paper); color:var(--ink); font:inherit; font-size:.66rem; }
+.financial-access-panel textarea { min-height:90px; resize:vertical; }
+.financial-access-panel fieldset { display:grid; grid-template-columns:repeat(2,1fr); gap:7px; margin:0; padding:13px; border:1px solid var(--line); border-radius:10px; }
+.financial-access-panel legend { padding:0 6px; color:var(--muted); font-size:.58rem; font-weight:750; }
+.financial-access-panel fieldset label { display:flex; align-items:center; flex-direction:row; }
+.financial-access-panel input { accent-color:var(--brand); }
+.financial-request-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.financial-status-message { display:grid; gap:5px; padding:16px; border:1px solid var(--line); border-radius:10px; background:var(--paper); }
+.financial-status-message strong { font-size:.72rem; }
+.financial-status-message.is-approved { border-color:#b9d7c8; background:#f2faf6; }
+.broker-financial-review { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.broker-financial-review > div { display:grid; gap:4px; padding:12px; border:1px solid var(--line); border-radius:9px; background:var(--paper); }
+.broker-financial-review span,.broker-financial-review small { color:var(--muted); font-size:.57rem; }
+.broker-financial-review strong { font-size:.66rem; line-height:1.45; }
+.broker-financial-review blockquote { grid-column:1 / -1; margin:0; padding:13px; border-left:3px solid var(--brand); background:var(--paper); color:#405249; font-size:.65rem; line-height:1.5; }
+.broker-financial-review form { grid-column:1 / -1; display:flex; justify-content:flex-end; gap:8px; }
 .secure-room .panel__header h2 { margin:6px 0 0; }
 .room-lock { padding:34px; text-align:center; }
 .room-lock > span { font-size:1.8rem; }
@@ -962,11 +1025,19 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .deal-thread article { width:95%; }
   .detail-heading,.begin-panel { align-items: flex-start; flex-direction: column; }
   .detail-metrics { grid-template-columns: 1fr; }
-  .detail-grid,.acquisition-workspace,.request-grid,.valuation-area { grid-template-columns: 1fr; }
+  .detail-grid,.acquisition-workspace,.request-grid,.valuation-area,.financial-request-grid,.broker-financial-review { grid-template-columns: 1fr; }
   .acquisition-resources { grid-template-columns: 1fr; padding: 17px; }
   .acquisition-steps { display: flex; overflow-x: auto; gap: 5px; }
   .acquisition-steps > p { display: none; }
   .acquisition-steps button { min-width: 150px; }
+  .checklist-overall-progress { min-width:145px; margin:0; }
+  .workflow-connection,.decision-gate { align-items:flex-start; flex-direction:column; }
+  .professional-review-card { grid-template-columns:1fr; }
+  .professional-review-card a,.professional-review-card p,.professional-review-card small { grid-column:1; grid-row:auto; }
+  .nda-template-editor { grid-template-columns:1fr; }
+  .nda-template-editor .span-two,.nda-template-editor .span-three { grid-column:1; }
+  .financial-access-panel fieldset { grid-template-columns:1fr; }
+  .broker-financial-review blockquote,.broker-financial-review form { grid-column:1; }
   .valuation-form { grid-template-columns: 1fr; }
   .stage-actions { align-items: stretch; flex-direction: column; }
   .opportunity-filters { grid-template-columns: 1fr; }

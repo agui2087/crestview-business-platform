@@ -37,9 +37,9 @@ export default async function MarketplacePage({ params, searchParams }: PageProp
         </div>
         <div className="marketplace-flow" aria-label="How Crestview marketplace works">
           <span><strong>1</strong> Find a business</span>
-          <span><strong>2</strong> Request access</span>
-          <span><strong>3</strong> Sign the NDA</span>
-          <span><strong>4</strong> Review documents</span>
+          <span><strong>2</strong> Open and sign the NDA</span>
+          <span><strong>3</strong> Request financial access</span>
+          <span><strong>4</strong> Broker reviews your request</span>
         </div>
         <form className="marketplace-filter" method="get">
           <label>
@@ -82,7 +82,7 @@ export default async function MarketplacePage({ params, searchParams }: PageProp
               </div>
               <ul>{listing.public_highlights.map((item) => <li key={item}>✓ {item}</li>)}</ul>
               <details className="request-panel">
-                <summary>View details and request access <span>→</span></summary>
+                <summary>{listing.nda_automatic ? "Review the NDA instantly" : "Request the listing NDA"} <span>→</span></summary>
                 <form action={createInquiry}>
                   <input type="hidden" name="locale" value={locale} />
                   <input type="hidden" name="listing_id" value={listing.id} />
@@ -103,17 +103,12 @@ export default async function MarketplacePage({ params, searchParams }: PageProp
                       </select>
                     </label>
                   </div>
-                  <fieldset>
-                    <legend>Information requested</legend>
-                    {["NDA","Financial statements","Confidential information memorandum","Tax returns","Equipment and asset list"].map((item) => (
-                      <label key={item}><input type="checkbox" name="requested_items" value={item} defaultChecked={["NDA","Financial statements","Confidential information memorandum"].includes(item)} /> {item}</label>
-                    ))}
-                  </fieldset>
                   <label className="request-message">Message to broker
-                    <textarea name="message" defaultValue={`Hello,\n\nI am interested in ${listing.title}. Please send the NDA and available financial information so I can complete an initial review. I understand that confidential materials should remain inside the secure Crestview deal workspace.\n\nThank you.`} required />
+                    <textarea name="message" defaultValue={`Hello,\n\nI am interested in ${listing.title} and would like to review the listing NDA. I understand that financial information requires a separate request and broker approval after the NDA is signed.\n\nThank you.`} required />
                   </label>
-                  <p className="advisor-note">You will see the complete message before it is sent. Sending this request does not create an offer or commitment.</p>
-                  <button className="button button--primary" type="submit">Send request to broker</button>
+                  <p className="nda-delivery-note"><strong>{listing.nda_automatic ? "Instant NDA delivery" : "Broker-provided NDA"}</strong><span>{listing.nda_automatic ? "The agreement will open immediately. The broker is notified only after you sign it or request financial access." : "The broker will receive a single request to provide the agreement."}</span></p>
+                  <p className="advisor-note">Requesting or signing an NDA does not create an offer, financing commitment, or approval to receive financial records.</p>
+                  <button className="button button--primary" type="submit">{listing.nda_automatic ? "Open NDA" : "Request NDA"}</button>
                 </form>
               </details>
             </article>

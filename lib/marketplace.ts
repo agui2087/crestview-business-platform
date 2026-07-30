@@ -16,6 +16,7 @@ export type MarketplaceListing = {
   public_highlights: string[];
   status: string;
   updated_at: string;
+  nda_automatic?: boolean;
 };
 
 export type DealInquiry = {
@@ -27,6 +28,13 @@ export type DealInquiry = {
   initial_message: string;
   status: string;
   updated_at: string;
+  requested_items?: string[];
+  acquisition_experience?: string | null;
+  funding_readiness?: string | null;
+  financial_access_status?: string;
+  financial_request_message?: string | null;
+  financial_request_timeline?: string | null;
+  financial_request_capital?: string | null;
   marketplace_listings?: { title: string; city: string; state_code: string } | null;
 };
 
@@ -46,6 +54,7 @@ export const demoMarketplaceListings: MarketplaceListing[] = [
     public_highlights: ["Recurring service contracts", "Experienced management team", "Seller transition available"],
     status: "published",
     updated_at: "2026-07-28T12:00:00.000Z",
+    nda_automatic: true,
   },
   {
     id: "demo-seattle-landscape",
@@ -62,6 +71,7 @@ export const demoMarketplaceListings: MarketplaceListing[] = [
     public_highlights: ["Dense recurring routes", "Low customer concentration", "Fleet included"],
     status: "published",
     updated_at: "2026-07-27T12:00:00.000Z",
+    nda_automatic: true,
   },
   {
     id: "demo-sf-b2b",
@@ -78,6 +88,7 @@ export const demoMarketplaceListings: MarketplaceListing[] = [
     public_highlights: ["Repeat enterprise clients", "Remote delivery team", "Documented operating playbook"],
     status: "published",
     updated_at: "2026-07-26T12:00:00.000Z",
+    nda_automatic: true,
   },
 ];
 
@@ -91,6 +102,13 @@ export const demoInquiries: DealInquiry[] = [
     initial_message: "I would like to review the NDA, financial statements, and confidential information memorandum.",
     status: "nda_sent",
     updated_at: "2026-07-29T10:30:00.000Z",
+    requested_items: [],
+    acquisition_experience: "first-time",
+    funding_readiness: "exploring",
+    financial_access_status: "not_requested",
+    financial_request_message: null,
+    financial_request_timeline: null,
+    financial_request_capital: null,
     marketplace_listings: { title: demoMarketplaceListings[0].title, city: "Portland", state_code: "OR" },
   },
 ];
@@ -101,11 +119,16 @@ export async function getMarketplaceListings() {
     const supabase = await createSupabaseServerClient();
     const { data, error } = await supabase
       .from("marketplace_listings")
-      .select("id,broker_id,title,summary,industry,city,state_code,asking_price,annual_revenue,cash_flow,financing_available,public_highlights,status,updated_at")
+      .select("id,broker_id,title,summary,industry,city,state_code,asking_price,annual_revenue,cash_flow,financing_available,public_highlights,status,updated_at,listing_nda_templates(auto_send)")
       .eq("status", "published")
       .order("updated_at", { ascending: false });
     if (error || !data?.length) return demoMarketplaceListings;
-    return data as MarketplaceListing[];
+    return data.map((listing) => ({
+      ...listing,
+      nda_automatic: Array.isArray(listing.listing_nda_templates)
+        ? Boolean(listing.listing_nda_templates[0]?.auto_send)
+        : Boolean((listing.listing_nda_templates as { auto_send?: boolean } | null)?.auto_send),
+    })) as MarketplaceListing[];
   } catch {
     return demoMarketplaceListings;
   }

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AcquisitionPlanner } from "@/components/acquisition-planner";
+import { GuidedAcquisitionWorkspace } from "@/components/guided-acquisition-workspace";
 import { PlatformShell } from "@/components/platform-shell";
 import { getOpportunity, opportunities } from "@/lib/demo-data";
 import { isLocale } from "@/lib/i18n";
@@ -26,7 +27,12 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
     step_notes: Record<string, string>;
     valuation_inputs: Record<string, string>;
   } | null = null;
-  let diligence: Array<{ id: string; category: string; title: string; status: string; due_date: string | null }> = [];
+  let diligence: Array<{ id: string; category: string; title: string; status: string; due_date: string | null; reason: string | null; guidance_source: string; source_url: string | null; risk_level: string; assigned_role: string | null }> = [];
+  let guidanceProfile: { industry_type: string; purchase_structure: string; financing_type: string; state_code: string; has_employees: boolean; includes_real_estate: boolean; includes_inventory: boolean; first_acquisition: boolean } | null = null;
+  let evidence: Array<{ id: string; diligence_item_id: string; label: string; evidence_type: string; source_url: string | null; verification_status: string }> = [];
+  let professionals: Array<{ id: string; role: string; display_name: string; organization: string | null; responsibility: string | null; status: string }> = [];
+  let transition: Array<{ id: string; horizon: string; category: string; title: string; owner: string | null; status: string }> = [];
+  let sba: { purchase_price: number; buyer_injection: number; seller_note: number; working_capital: number; annual_cash_flow: number; interest_rate: number; term_years: number; lender_status: string } | null = null;
   let interactions: Array<{ id: string; interaction_type: string; summary: string; contact_name: string | null; occurred_at: string }> = [];
   let activities: Array<{ id: string; description: string; created_at: string }> = [];
   let notes: Array<{ id: string; body: string; created_at: string }> = [];
@@ -42,14 +48,24 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
         .eq("opportunity_key", opportunity.id)
         .maybeSingle();
       workspace = data ?? null;
-      const [{ data: diligenceData }, { data: interactionData }, { data: activityData }, { data: noteData }, { data: listData }] = await Promise.all([
-        supabase.from("diligence_items").select("id,category,title,status,due_date").eq("user_id", user.id).eq("opportunity_key", opportunity.id).order("category"),
+      const [{ data: diligenceData }, { data: interactionData }, { data: activityData }, { data: noteData }, { data: listData }, { data: profileData }, { data: evidenceData }, { data: professionalData }, { data: transitionData }, { data: sbaData }] = await Promise.all([
+        supabase.from("diligence_items").select("id,category,title,status,due_date,reason,guidance_source,source_url,risk_level,assigned_role").eq("user_id", user.id).eq("opportunity_key", opportunity.id).order("category"),
         supabase.from("broker_interactions").select("id,interaction_type,summary,contact_name,occurred_at").eq("user_id", user.id).eq("opportunity_key", opportunity.id).order("occurred_at", { ascending: false }).limit(10),
         supabase.from("deal_activities").select("id,description,created_at").eq("user_id", user.id).eq("opportunity_key", opportunity.id).order("created_at", { ascending: false }).limit(12),
         supabase.from("opportunity_notes").select("id,body,created_at").eq("user_id", user.id).eq("opportunity_key", opportunity.id).order("created_at", { ascending: false }).limit(20),
         supabase.from("opportunity_lists").select("id,name").eq("user_id", user.id).order("name"),
+        supabase.from("deal_guidance_profiles").select("industry_type,purchase_structure,financing_type,state_code,has_employees,includes_real_estate,includes_inventory,first_acquisition").eq("user_id", user.id).eq("opportunity_key", opportunity.id).maybeSingle(),
+        supabase.from("diligence_evidence").select("id,diligence_item_id,label,evidence_type,source_url,verification_status").eq("user_id", user.id).eq("opportunity_key", opportunity.id).order("created_at"),
+        supabase.from("deal_professionals").select("id,role,display_name,organization,responsibility,status").eq("user_id", user.id).eq("opportunity_key", opportunity.id).order("role"),
+        supabase.from("transition_items").select("id,horizon,category,title,owner,status").eq("user_id", user.id).eq("opportunity_key", opportunity.id).order("horizon"),
+        supabase.from("sba_readiness_profiles").select("purchase_price,buyer_injection,seller_note,working_capital,annual_cash_flow,interest_rate,term_years,lender_status").eq("user_id", user.id).eq("opportunity_key", opportunity.id).maybeSingle(),
       ]);
       diligence = diligenceData ?? [];
+      guidanceProfile = profileData ?? null;
+      evidence = evidenceData ?? [];
+      professionals = professionalData ?? [];
+      transition = transitionData ?? [];
+      sba = sbaData ?? null;
       interactions = interactionData ?? [];
       activities = activityData ?? [];
       notes = noteData ?? [];
@@ -79,7 +95,7 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
         </div>
         <div className="source-warning">{es ? "Información proporcionada por el vendedor o corredor. Crestview no ha verificado el anuncio. Última revisión" : "Seller or broker reported information. Crestview has not independently verified the listing. Last checked"} {opportunity.lastChecked}.</div>
         <nav className="deal-workspace-nav" aria-label="Deal workspace sections">
-          <a href="#summary">{es ? "Resumen" : "Summary"}</a><a href="#valuation">{es ? "Plan de adquisición" : "Acquisition plan"}</a><a href="#diligence">{es ? "Diligencia" : "Diligence"}</a><a href="#broker">{es ? "Actividad del corredor" : "Broker activity"}</a><a href="#notes">{es ? "Notas privadas" : "Private notes"}</a>
+          <a href="#summary">{es ? "Resumen" : "Summary"}</a><a href="#valuation">{es ? "Plan de adquisición" : "Acquisition plan"}</a><a href="#guided-plan">{es ? "Espacio guiado" : "Guided workspace"}</a><a href="#diligence">{es ? "Diligencia" : "Diligence"}</a><a href="#broker">{es ? "Actividad del corredor" : "Broker activity"}</a><a href="#notes">{es ? "Notas privadas" : "Private notes"}</a>
         </nav>
         <div className="detail-metrics" id="summary">
           {[[es ? "Precio solicitado" : "Asking price",opportunity.price],[es ? "Ingresos" : "Revenue",opportunity.revenue],[es ? "Flujo de caja / SDE" : "Cash flow / SDE",opportunity.cashFlow],["EBITDA",opportunity.ebitda]].map(([label,value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}
@@ -107,6 +123,12 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
           <p>{es ? "El puntaje usa solo datos públicos y penaliza información faltante. No es una recomendación de inversión." : "The score uses only public listing data and penalizes missing information. It is not an investment recommendation."}</p>
         </section>
         <div id="valuation"><AcquisitionPlanner opportunity={opportunity} initialWorkspace={workspace} locale={locale} /></div>
+        {workspace && workspace.stage !== "saved" && <GuidedAcquisitionWorkspace
+          locale={locale} opportunityKey={opportunity.id} industry={opportunity.industry}
+          defaultPrice={opportunity.priceValue ?? 0} defaultCashFlow={opportunity.cashFlowValue ?? 0}
+          profile={guidanceProfile} diligence={diligence} evidence={evidence}
+          professionals={professionals} transition={transition} sba={sba}
+        />}
         <section className="notes-lists-grid" id="notes">
           <article className="operations-card">
             <header><div><span>Private research</span><h2>Opportunity notes</h2></div></header>

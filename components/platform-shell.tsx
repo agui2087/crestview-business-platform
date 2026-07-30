@@ -7,6 +7,9 @@ import type { Locale } from "@/lib/i18n";
 
 const navItems = [
   ["overview", "Overview", "Resumen"],
+  ["marketplace", "Marketplace", "Mercado"],
+  ["listings", "Broker listings", "Anuncios del corredor"],
+  ["inbox", "Deal inbox", "Bandeja de negocios"],
   ["opportunities", "Opportunities", "Oportunidades"],
   ["lists", "Saved lists", "Listas guardadas"],
   ["pipeline", "Pipeline", "Proceso"],
@@ -19,7 +22,8 @@ const navItems = [
 ] as const;
 
 const navGroups = [
-  { label: ["Workspace", "Espacio de trabajo"], slugs: ["overview", "opportunities", "lists", "pipeline"] },
+  { label: ["Marketplace", "Mercado"], slugs: ["overview", "marketplace", "listings", "inbox"] },
+  { label: ["Acquisition workspace", "Espacio de adquisición"], slugs: ["opportunities", "lists", "pipeline"] },
   { label: ["Operations", "Operaciones"], slugs: ["tasks", "documents", "reports", "workforce"] },
   { label: ["Account", "Cuenta"], slugs: ["plans", "settings"] },
 ] as const;
@@ -106,6 +110,7 @@ export async function PlatformShell({
           <div className="user-chip">
             {user.email.toLowerCase() === "agui2087@outlook.com" && <Link className="admin-switch" href={`/${locale}/dashboard/admin`}>{locale === "es" ? "Vista admin" : "Admin view"}</Link>}
             <Link href={`/${locale}`}>{locale === "es" ? "Sitio web" : "Website"}</Link>
+            <Link className="notification-link" href={`/${locale}/dashboard/inbox`} aria-label={locale === "es" ? "Notificaciones" : "Notifications"}>●</Link>
             <strong>{user.displayName}</strong>
             <span title={user.displayName}>{initials}</span>
             <a href={user.source === "local" ? `/api/local-auth/signout?return_to=/${locale}` : chatGPTSignOutPath(`/${locale}`)}>{locale === "es" ? "Salir" : "Sign out"}</a>

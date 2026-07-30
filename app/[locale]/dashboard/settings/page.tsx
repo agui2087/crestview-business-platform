@@ -3,6 +3,7 @@ import { PageHeading, PlatformShell } from "@/components/platform-shell";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { isLocale } from "@/lib/i18n";
 import { saveAccountProfile, saveBuyerPreferences } from "./actions";
+import { saveMarketplaceRoles } from "../marketplace/actions";
 
 type Preferences = {
   industries: string[];
@@ -29,14 +30,14 @@ export default async function SettingsPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ saved?: string; error?: string }>;
+  searchParams: Promise<{ saved?: string; error?: string; roles?: string }>;
 }) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
   const es = locale === "es";
   const messages = await searchParams;
   let preferences = defaults;
-  let profile = { display_name: "", job_title: "", phone: "", organization_name: "Crestview Holdings" };
+  let profile = { display_name: "", job_title: "", phone: "", organization_name: "Crestview Holdings", account_roles: ["buyer"] as string[] };
 
   if (isSupabaseConfigured()) {
     const supabase = await createSupabaseServerClient();
@@ -48,12 +49,13 @@ export default async function SettingsPage({
         .eq("user_id", user.id)
         .maybeSingle();
       if (data) preferences = data as Preferences;
-      const { data: profileData } = await supabase.from("profiles").select("display_name,job_title,phone,organization_name").eq("user_id", user.id).maybeSingle();
+      const { data: profileData } = await supabase.from("profiles").select("display_name,job_title,phone,organization_name,account_roles").eq("user_id", user.id).maybeSingle();
       if (profileData) profile = {
         display_name: profileData.display_name ?? "",
         job_title: profileData.job_title ?? "",
         phone: profileData.phone ?? "",
         organization_name: profileData.organization_name ?? "Crestview Holdings",
+        account_roles: profileData.account_roles ?? ["buyer"],
       };
     }
   }
@@ -72,6 +74,16 @@ export default async function SettingsPage({
             <label>{es ? "Teléfono" : "Phone"}<input name="phone" defaultValue={profile.phone}/></label>
           </div>
           <button className="button button--primary">{es ? "Guardar perfil" : "Save profile"}</button>
+        </form>
+        <form className="settings-panel" action={saveMarketplaceRoles}>
+          <input type="hidden" name="locale" value={locale} />
+          <div><span>Marketplace roles</span><h2>How you use Crestview</h2><p>Use Crestview as a buyer, a broker or seller, or both. You can change this at any time.</p></div>
+          {messages.roles && <p className="auth-success">Your marketplace roles were updated.</p>}
+          <div className="role-settings">
+            <label><input type="checkbox" name="buyer" defaultChecked={profile.account_roles.includes("buyer")} /><span><strong>Buyer</strong><small>Browse listings, request information, sign NDAs, and review documents.</small></span></label>
+            <label><input type="checkbox" name="broker" defaultChecked={profile.account_roles.includes("broker")} /><span><strong>Broker or seller</strong><small>Publish listings, screen inquiries, send NDAs, and manage deal rooms.</small></span></label>
+          </div>
+          <button className="button button--primary" type="submit">Save marketplace roles</button>
         </form>
         <form className="settings-panel" id="listing-alerts" action={saveBuyerPreferences}>
           <input type="hidden" name="locale" value={locale} />

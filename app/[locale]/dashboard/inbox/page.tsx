@@ -20,6 +20,7 @@ export default async function InboxPage({ params, searchParams }: PageProps<"/[l
     userId = (await (await createSupabaseServerClient()).auth.getUser()).data.user?.id;
   }
   const inquiries = await getMyInquiries(userId);
+  const featured = inquiries[0];
   return (
     <PlatformShell locale={locale} active="inbox">
       <div className="dashboard-content">
@@ -38,20 +39,24 @@ export default async function InboxPage({ params, searchParams }: PageProps<"/[l
             ))}
           </aside>
           <section className="conversation-preview panel">
-            <div className="panel__header"><h2>What happens here</h2></div>
-            <div className="inbox-feature-list">
-              <article><span>1</span><div><strong>Buyer sends a structured request</strong><p>The broker sees acquisition experience, funding readiness, requested items, and the buyer’s complete message.</p></div></article>
-              <article><span>2</span><div><strong>Broker screens and responds</strong><p>Each response remains attached to the opportunity rather than becoming another disconnected email thread.</p></div></article>
-              <article><span>3</span><div><strong>Notifications move the deal forward</strong><p>Both sides receive notices for messages, signatures, uploaded documents, meetings, and status changes.</p></div></article>
-            </div>
-            {inquiries[0] && !inquiries[0].id.startsWith("demo-") && <>
+            {featured ? <>
+              <div className="panel__header"><div><span className="source-label">Most recent conversation</span><h2>{featured.marketplace_listings?.title ?? featured.subject}</h2></div><span className="stage">{featured.status.replaceAll("_", " ")}</span></div>
+              <p className="inbox-preview-message">{featured.initial_message}</p>
+              <div className="inbox-next-step">
+                <span>Next step</span>
+                <strong>{featured.status === "nda_sent" ? "Review and sign the confidentiality agreement" : "Continue the conversation in the secure workspace"}</strong>
+                <p>Messages, signatures, documents, and status changes stay together in one protected record.</p>
+              </div>
+              <Link className="button button--primary inbox-open-workspace" href={`/${locale}/dashboard/deals/${featured.id}`}>Open secure workspace →</Link>
+            </> : <div className="empty-state"><strong>Your deal inbox is ready</strong><p>Request information from a marketplace listing to start a secure conversation.</p><Link className="button button--primary" href={`/${locale}/dashboard/marketplace`}>Browse marketplace</Link></div>}
+            {featured && !featured.id.startsWith("demo-") && <>
               <form className="quick-reply" action={sendMessage}>
-                <input type="hidden" name="locale" value={locale} /><input type="hidden" name="inquiry_id" value={inquiries[0].id} />
+                <input type="hidden" name="locale" value={locale} /><input type="hidden" name="inquiry_id" value={featured.id} />
                 <textarea name="body" placeholder="Write a secure message…" required />
                 <button className="button button--primary" type="submit">Send message</button>
               </form>
               <form className="status-control" action={advanceInquiry}>
-                <input type="hidden" name="locale" value={locale} /><input type="hidden" name="inquiry_id" value={inquiries[0].id} />
+                <input type="hidden" name="locale" value={locale} /><input type="hidden" name="inquiry_id" value={featured.id} />
                 <select name="status"><option value="screening">Begin screening</option><option value="approved">Approve buyer</option><option value="declined">Decline request</option></select>
                 <button className="button button--light" type="submit">Update status</button>
               </form>

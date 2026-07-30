@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeading, PlatformShell } from "@/components/platform-shell";
 import { getMarketplaceListings, formatMoney } from "@/lib/marketplace";
@@ -7,10 +8,20 @@ import { createInquiry } from "./actions";
 
 export const metadata: Metadata = { title: "Marketplace" };
 
-export default async function MarketplacePage({ params }: PageProps<"/[locale]/dashboard/marketplace">) {
+export default async function MarketplacePage({ params, searchParams }: PageProps<"/[locale]/dashboard/marketplace">) {
   const { locale } = await params;
+  const query = await searchParams;
   if (!isLocale(locale)) notFound();
   const listings = await getMarketplaceListings();
+  const city = typeof query.city === "string" ? query.city : "";
+  const industry = typeof query.industry === "string" ? query.industry : "";
+  const visibleListings = listings.filter((listing) => {
+    const matchesCity = !city || `${listing.city}, ${listing.state_code}` === city;
+    const matchesIndustry = !industry || listing.industry === industry;
+    return matchesCity && matchesIndustry;
+  });
+  const cities = [...new Set(listings.map((listing) => `${listing.city}, ${listing.state_code}`))];
+  const industries = [...new Set(listings.map((listing) => listing.industry))];
   return (
     <PlatformShell locale={locale} active="marketplace">
       <div className="dashboard-content marketplace-page">
@@ -24,8 +35,36 @@ export default async function MarketplacePage({ params }: PageProps<"/[locale]/d
           <div><strong>Secure</strong><span>NDA-gated deal rooms</span></div>
           <div><strong>Connected</strong><span>Buyer and broker messaging</span></div>
         </div>
+        <div className="marketplace-flow" aria-label="How Crestview marketplace works">
+          <span><strong>1</strong> Find a business</span>
+          <span><strong>2</strong> Request access</span>
+          <span><strong>3</strong> Sign the NDA</span>
+          <span><strong>4</strong> Review documents</span>
+        </div>
+        <form className="marketplace-filter" method="get">
+          <label>
+            <span>Location</span>
+            <select name="city" defaultValue={city}>
+              <option value="">All major markets</option>
+              {cities.map((value) => <option value={value} key={value}>{value}</option>)}
+            </select>
+          </label>
+          <label>
+            <span>Industry</span>
+            <select name="industry" defaultValue={industry}>
+              <option value="">All industries</option>
+              {industries.map((value) => <option value={value} key={value}>{value}</option>)}
+            </select>
+          </label>
+          <button className="button button--primary" type="submit">Show matches</button>
+          {(city || industry) && <Link className="filter-reset" href={`/${locale}/dashboard/marketplace`}>Clear filters</Link>}
+        </form>
+        <div className="results-heading">
+          <div><strong>{visibleListings.length} {visibleListings.length === 1 ? "opportunity" : "opportunities"}</strong><span>Broker-posted and ready for review</span></div>
+          <Link href={`/${locale}/dashboard/settings#listing-alerts`}>Set listing alerts →</Link>
+        </div>
         <div className="marketplace-listings">
-          {listings.map((listing) => (
+          {visibleListings.map((listing) => (
             <article className="marketplace-card" key={listing.id}>
               <header>
                 <div>
@@ -43,7 +82,7 @@ export default async function MarketplacePage({ params }: PageProps<"/[locale]/d
               </div>
               <ul>{listing.public_highlights.map((item) => <li key={item}>✓ {item}</li>)}</ul>
               <details className="request-panel">
-                <summary>Request deal information <span>→</span></summary>
+                <summary>View details and request access <span>→</span></summary>
                 <form action={createInquiry}>
                   <input type="hidden" name="locale" value={locale} />
                   <input type="hidden" name="listing_id" value={listing.id} />
@@ -80,6 +119,7 @@ export default async function MarketplacePage({ params }: PageProps<"/[locale]/d
             </article>
           ))}
         </div>
+        {!visibleListings.length && <div className="empty-state"><strong>No exact matches yet</strong><p>Clear a filter or set a listing alert and Crestview will keep watch for you.</p><Link className="button button--primary" href={`/${locale}/dashboard/settings#listing-alerts`}>Set listing alert</Link></div>}
       </div>
     </PlatformShell>
   );

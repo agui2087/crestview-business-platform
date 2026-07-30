@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeading, PlatformShell } from "@/components/platform-shell";
 import { getCrestviewUser } from "@/lib/current-user";
@@ -23,7 +24,12 @@ export default async function ListingsPage({ params, searchParams }: PageProps<"
   return (
     <PlatformShell locale={locale} active="listings">
       <div className="dashboard-content">
-        <PageHeading eyebrow="Broker workspace" title="Your business listings" body="Publish opportunities, control confidential information, and manage every buyer inquiry from one place." />
+        <PageHeading
+          eyebrow="Broker workspace"
+          title="Your business listings"
+          body="Publish opportunities, control confidential information, and manage every buyer inquiry from one place."
+          action={<Link className="button button--primary" href={`/${locale}/dashboard/listings?new=1#new-listing`}>+ Add a listing</Link>}
+        />
         {query.created && <p className="notice">Your listing was saved successfully.</p>}
         {query.error && <p className="auth-error">We could not save that listing. Confirm that the marketplace migration is installed and try again.</p>}
         <div className="broker-summary">
@@ -32,10 +38,17 @@ export default async function ListingsPage({ params, searchParams }: PageProps<"
           <article><span>Buyer inquiries</span><strong>1</strong></article>
           <article><span>Awaiting signature</span><strong>1</strong></article>
         </div>
-        <details className="listing-editor" open={!listings.length}>
-          <summary>Create a new listing <span>Public and confidential fields stay separate</span></summary>
+        <div className="broker-flow">
+          <span><strong>1</strong> Add public details</span>
+          <span><strong>2</strong> Publish the opportunity</span>
+          <span><strong>3</strong> Screen buyer requests</span>
+          <span><strong>4</strong> Open a secure deal room</span>
+        </div>
+        <details className="listing-editor" id="new-listing" open={!listings.length || query.new === "1"}>
+          <summary><span><strong>Create a new listing</strong><small>Public and confidential fields stay separate</small></span><b>+</b></summary>
           <form action={createListing}>
             <input type="hidden" name="locale" value={locale} />
+            <div className="form-section-heading"><span>01</span><div><strong>Public listing details</strong><small>Buyers can see these fields before requesting access.</small></div></div>
             <div className="listing-form-grid">
               <label className="span-two">Listing title<input name="title" placeholder="Established commercial services company" minLength={5} maxLength={140} required /></label>
               <label>Industry<input name="industry" placeholder="Commercial Services" required /></label>
@@ -46,6 +59,9 @@ export default async function ListingsPage({ params, searchParams }: PageProps<"
               <label>Cash flow / SDE<input name="cash_flow" inputMode="decimal" placeholder="$425,000" /></label>
               <label className="span-two">Public summary<textarea name="summary" placeholder="Describe the business without exposing confidential details." minLength={20} required /></label>
               <label className="span-two">Public highlights<textarea name="public_highlights" placeholder={"Recurring customer contracts\nExperienced management team\nSeller transition available"} /></label>
+            </div>
+            <div className="form-section-heading confidential"><span>02</span><div><strong>Confidential deal notes</strong><small>Visible only inside an approved, NDA-protected workspace.</small></div></div>
+            <div className="listing-form-grid">
               <label className="span-two confidential-field">Confidential notes<textarea name="confidential_notes" placeholder="Details only approved buyers should see after completing the NDA process." /></label>
             </div>
             <div className="listing-form-options">
@@ -58,7 +74,7 @@ export default async function ListingsPage({ params, searchParams }: PageProps<"
         <div className="listing-management">
           {listings.map((listing) => (
             <article key={listing.id}>
-              <div><span>{listing.status.replaceAll("_", " ")}</span><h2>{listing.title}</h2><p>{listing.city}, {listing.state_code} · {formatMoney(listing.asking_price)}</p></div>
+              <div><span>{listing.status.replaceAll("_", " ")}</span><h2>{listing.title}</h2><p>{listing.city}, {listing.state_code} · {formatMoney(listing.asking_price)}</p><Link href={`/${locale}/dashboard/inbox`}>View buyer activity →</Link></div>
               {!listing.id.startsWith("demo-") && <form action={updateListingStatus}>
                 <input type="hidden" name="locale" value={locale} />
                 <input type="hidden" name="listing_id" value={listing.id} />

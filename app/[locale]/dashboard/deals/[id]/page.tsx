@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeading, PlatformShell } from "@/components/platform-shell";
 import { dealStages, demoInquiries, demoMarketplaceListings } from "@/lib/marketplace";
@@ -69,11 +70,17 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
   return (
     <PlatformShell locale={locale} active="inbox">
       <div className="dashboard-content deal-room-page">
+        <div className="workspace-back"><Link href={`/${locale}/dashboard/inbox`}>← Back to deal inbox</Link><span>Private workspace</span></div>
         <PageHeading eyebrow="Secure deal workspace" title={workspace.title} body="One protected record for messages, NDA activity, confidential documents, and every step toward a possible offer." />
         {query.nda && <p className="notice">The NDA was {query.nda === "signed" ? "signed and the deal room is unlocked" : "sent successfully"}.</p>}
         {workspace.isDemo && <p className="data-notice"><strong>Interactive preview</strong><span>This example shows the complete workflow. Live broker-created listings use the same protected workspace and database permissions.</span></p>}
         <div className="deal-stage-rail">
           {dealStages.map(([key,label], index) => <div className={index <= currentStageIndex ? "is-complete" : ""} key={key}><span>{index < currentStageIndex ? "✓" : index + 1}</span><strong>{label}</strong></div>)}
+        </div>
+        <div className="deal-overview-strip">
+          <div><span>Current stage</span><strong>{dealStages[currentStageIndex]?.[1] ?? "Inquiry sent"}</strong></div>
+          <div><span>Your role</span><strong>{workspace.isBuyer ? "Buyer" : "Broker / seller"}</strong></div>
+          <div><span>Next action</span><strong>{workspace.inquiry.status === "nda_sent" ? "Sign the NDA" : roomUnlocked ? "Review deal documents" : "Continue screening"}</strong></div>
         </div>
         <div className="deal-room-grid">
           <section className="panel deal-thread">

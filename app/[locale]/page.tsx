@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Brand } from "@/components/brand";
+import { LocaleSwitcher } from "@/components/locale-switcher";
 import { getChatGPTUser } from "@/app/chatgpt-auth";
 import { getDictionary, isLocale } from "@/lib/i18n";
 
@@ -16,7 +17,6 @@ export default async function LandingPage({
   if (!isLocale(locale)) notFound();
 
   const copy = getDictionary(locale);
-  const otherLocale = locale === "en" ? "es" : "en";
   const user = await getChatGPTUser();
 
   return (
@@ -31,15 +31,7 @@ export default async function LandingPage({
             <Link href={`/${locale}/pricing`}>{locale === "es" ? "Planes" : "Pricing"}</Link>
           </nav>
           <div className="header-actions">
-            <Link
-              className="locale-link"
-              href={`/${otherLocale}`}
-              lang={otherLocale}
-              hrefLang={otherLocale}
-              aria-label={locale === "en" ? "Ver en español" : "View in English"}
-            >
-              {otherLocale.toUpperCase()}
-            </Link>
+            <LocaleSwitcher locale={locale} />
             <Link className="button button--light" href={user ? `/${locale}/dashboard` : `/${locale}/sign-in`}>
               {user ? (locale === "es" ? "Abrir panel" : "Open dashboard") : copy.nav.signIn}
             </Link>

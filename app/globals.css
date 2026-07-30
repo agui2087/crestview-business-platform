@@ -505,6 +505,16 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .workflow-connection strong { font-size:.72rem; }
 .workflow-connection p { margin:0; color:var(--muted); font-size:.62rem; line-height:1.45; }
 .workflow-connection a { flex:0 0 auto; color:var(--brand); font-size:.65rem; font-weight:800; }
+.request-builder,.trusted-help,.stage-notes-wrap { margin-top:14px; border:1px solid var(--line); border-radius:12px; background:#fff; }
+.request-builder > summary,.trusted-help > summary,.stage-notes-wrap > summary { padding:14px 16px; color:var(--brand); font-size:.66rem; font-weight:800; cursor:pointer; list-style:none; }
+.request-builder > summary::-webkit-details-marker,.trusted-help > summary::-webkit-details-marker,.stage-notes-wrap > summary::-webkit-details-marker { display:none; }
+.request-builder > summary::after,.trusted-help > summary::after,.stage-notes-wrap > summary::after { content:"+"; float:right; font-size:.86rem; }
+.request-builder[open] > summary::after,.trusted-help[open] > summary::after,.stage-notes-wrap[open] > summary::after { content:"−"; }
+.request-builder .request-grid { padding:0 14px 14px; }
+.trusted-help { background:var(--paper); }
+.trusted-help .acquisition-resources { margin:0; border:0; border-top:1px solid var(--line); border-radius:0; }
+.trusted-help .professional-review-card { margin:0 14px 14px; }
+.stage-notes-wrap .stage-notes { margin:0; padding:0 14px 14px; }
 .outreach-card { background: var(--brand-soft); }
 .outreach-card > span { color: var(--brand); font-size: .61rem; font-weight: 780; text-transform: uppercase; }
 .outreach-card p { color: #405249; font-size: .7rem; line-height: 1.6; }
@@ -750,6 +760,15 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .nda-template-editor label > small { font-size:.54rem; line-height:1.4; }
 .nda-template-editor .nda-confirmation { display:flex; flex-direction:row; align-items:flex-start; font-weight:650; }
 .nda-template-editor .nda-confirmation input { margin-top:2px; padding:0; accent-color:var(--brand); }
+.nda-upload-primary { padding:14px; border:1px dashed #a9cab9; border-radius:10px; background:#fff; }
+.nda-advanced { border-top:1px solid #d9e8df; }
+.nda-advanced > summary,.listing-optional-section > summary { padding:13px 0 2px; color:var(--brand); font-size:.62rem; font-weight:800; cursor:pointer; }
+.nda-advanced > div { display:grid; grid-template-columns:.7fr 1.3fr; gap:12px; padding-top:12px; }
+.listing-optional-section { margin-top:14px; padding:0 15px 14px; border:1px solid var(--line); border-radius:11px; background:var(--paper); }
+.listing-optional-section .listing-form-grid { margin-top:12px; }
+.listing-submit-row { display:flex; align-items:center; justify-content:space-between; gap:18px; margin-top:16px; padding-top:16px; border-top:1px solid var(--line); }
+.listing-submit-row label { display:flex; align-items:center; gap:7px; color:var(--muted); font-size:.65rem; font-weight:700; }
+.listing-submit-row input { accent-color:var(--brand); }
 .listing-management { display:grid; gap:9px; margin-top:14px; }
 .listing-management article { display:flex; align-items:center; justify-content:space-between; gap:18px; padding:18px 20px; border:1px solid var(--line); border-radius:13px; background:white; }
 .listing-management article > div > span { color:var(--brand); font-size:.57rem; font-weight:800; text-transform:uppercase; }
@@ -800,6 +819,15 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .deal-overview-strip > div { display:grid; gap:5px; padding:14px 16px; background:#fff; }
 .deal-overview-strip span { color:var(--muted); font-size:.56rem; }
 .deal-overview-strip strong { color:var(--brand); font-size:.7rem; }
+.deal-simple-flow { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:0 0 14px; }
+.deal-simple-flow > div { display:flex; align-items:center; gap:10px; padding:12px; border:1px solid var(--line); border-radius:11px; background:#fff; }
+.deal-simple-flow > div > span { flex:0 0 auto; width:26px; height:26px; display:grid; place-items:center; border-radius:50%; background:var(--paper); color:var(--muted); font-size:.58rem; font-weight:850; }
+.deal-simple-flow > div > div { display:grid; gap:2px; }
+.deal-simple-flow strong { font-size:.65rem; }
+.deal-simple-flow small { color:var(--muted); font-size:.54rem; line-height:1.35; }
+.deal-simple-flow .is-current { border-color:#a9cab9; background:#f5faf7; }
+.deal-simple-flow .is-current > span,.deal-simple-flow .is-done > span { background:var(--brand); color:#fff; }
+.deal-simple-flow .is-done { background:var(--brand-soft); }
 .deal-room-grid { display:grid; grid-template-columns:1.25fr .75fr; gap:14px; }
 .deal-thread article { width:85%; margin:9px 0; padding:12px; border-radius:0 11px 11px 11px; background:var(--paper); }
 .deal-thread article.is-mine { margin-left:auto; border-radius:11px 0 11px 11px; background:var(--brand-soft); }
@@ -824,7 +852,12 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .financial-access-panel textarea { min-height:90px; resize:vertical; }
 .financial-access-panel fieldset { display:grid; grid-template-columns:repeat(2,1fr); gap:7px; margin:0; padding:13px; border:1px solid var(--line); border-radius:10px; }
 .financial-access-panel legend { padding:0 6px; color:var(--muted); font-size:.58rem; font-weight:750; }
-.financial-access-panel fieldset label { display:flex; align-items:center; flex-direction:row; }
+.financial-access-panel fieldset label { display:flex; align-items:flex-start; flex-direction:row; gap:9px; padding:9px; border:1px solid transparent; border-radius:8px; background:var(--paper); }
+.financial-access-panel fieldset label:has(input:checked) { border-color:#b9d7c8; background:#f2faf6; }
+.financial-access-panel fieldset label > span { display:grid; gap:2px; }
+.financial-access-panel fieldset label strong { color:var(--ink); font-size:.63rem; }
+.financial-access-panel fieldset label small { color:var(--muted); font-size:.54rem; font-weight:500; line-height:1.35; }
+.financial-access-panel fieldset input { margin-top:2px; }
 .financial-access-panel input { accent-color:var(--brand); }
 .financial-request-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
 .financial-status-message { display:grid; gap:5px; padding:16px; border:1px solid var(--line); border-radius:10px; background:var(--paper); }
@@ -1023,6 +1056,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .conversation-list > a > .stage { grid-column:2; }
   .quick-reply,.room-upload form { grid-template-columns:1fr; }
   .deal-thread article { width:95%; }
+  .deal-simple-flow { grid-template-columns:1fr; }
   .detail-heading,.begin-panel { align-items: flex-start; flex-direction: column; }
   .detail-metrics { grid-template-columns: 1fr; }
   .detail-grid,.acquisition-workspace,.request-grid,.valuation-area,.financial-request-grid,.broker-financial-review { grid-template-columns: 1fr; }
@@ -1036,6 +1070,8 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .professional-review-card a,.professional-review-card p,.professional-review-card small { grid-column:1; grid-row:auto; }
   .nda-template-editor { grid-template-columns:1fr; }
   .nda-template-editor .span-two,.nda-template-editor .span-three { grid-column:1; }
+  .nda-advanced > div { grid-template-columns:1fr; }
+  .listing-submit-row { align-items:stretch; flex-direction:column; }
   .financial-access-panel fieldset { grid-template-columns:1fr; }
   .broker-financial-review blockquote,.broker-financial-review form { grid-column:1; }
   .valuation-form { grid-template-columns: 1fr; }

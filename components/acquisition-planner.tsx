@@ -403,9 +403,9 @@ export function AcquisitionPlanner({
 
   const requestItems = opportunity.missing;
   const selectedRequestList = selectedRequestItems.length
-    ? ` and provide the following information where available:\n\n${selectedRequestItems.map((item) => `• ${item}`).join("\n")}`
+    ? `\n\nFor my initial review, I would like to request:\n${selectedRequestItems.map((item) => `• ${item}`).join("\n")}`
     : "";
-  const brokerRequest = `Hello${opportunity.brokerName ? ` ${opportunity.brokerName}` : ""},\n\nMy name is ${user.displayName}, and I am interested in listing ${opportunity.sourceId}, “${opportunity.title}.” Please confirm that it is still available${selectedRequestList}.\n\nPlease also share the NDA and supporting documents required for an initial review. I will treat all information as confidential and subject to the applicable NDA.\n\nThank you,\n${user.displayName}`;
+  const brokerRequest = `Hello${opportunity.brokerName ? ` ${opportunity.brokerName}` : ""},\n\nI am interested in “${opportunity.title}” (${opportunity.sourceId}). Please confirm that it is still available.${selectedRequestList}\n\nI am happy to complete the listing NDA before reviewing confidential records.\n\nThank you,\n${user.displayName}`;
   function toggleRequestItem(item: string) {
     setSelectedRequestItems((currentItems) =>
       currentItems.includes(item)
@@ -506,8 +506,8 @@ export function AcquisitionPlanner({
           </label>)}
         </div>}
 
-        {current === 1 && <div className="request-grid"><div className="check-card"><div className="check-card__heading"><h3>Information to request</h3><span>{selectedRequestItems.length} selected</span></div>{requestItems.map((item) => <label key={item}><input type="checkbox" checked={selectedRequestItems.includes(item)} onChange={() => toggleRequestItem(item)} />{item}</label>)}</div><div className="outreach-card"><span>Broker request draft · updates live</span><pre aria-live="polite">{brokerRequest}</pre><div className="outreach-actions"><button type="button" onClick={copyBrokerRequest}>{copied ? "Copied ✓" : "Copy request"}</button>{opportunity.brokerEmail && <a href={`mailto:${opportunity.brokerEmail}?subject=${encodeURIComponent(`Inquiry about listing ${opportunity.sourceId}`)}&body=${encodeURIComponent(brokerRequest)}`}>Open in email</a>}</div></div></div>}
-        {current === 1 && <div className="workflow-connection"><div><span>Automated when available</span><strong>Broker-posted Crestview listings deliver the NDA instantly</strong><p>Sign the listing agreement first. Financial records remain locked until you submit a separate readiness request and the broker approves it.</p></div><a href={`/${locale}/dashboard/marketplace`}>Open broker marketplace →</a></div>}
+        {current === 1 && <div className="workflow-connection"><div><span>Simple two-step request</span><strong>Sign the NDA first, then ask for records</strong><p>Crestview listings deliver the broker’s NDA automatically. The broker only needs to review your financial-record request.</p></div><a href={`/${locale}/dashboard/marketplace`}>Go to marketplace →</a></div>}
+        {current === 1 && <details className="request-builder"><summary>Need to contact a broker outside Crestview?</summary><div className="request-grid"><div className="check-card"><div className="check-card__heading"><h3>Choose what to request</h3><span>{selectedRequestItems.length} selected</span></div>{requestItems.map((item) => <label key={item}><input type="checkbox" checked={selectedRequestItems.includes(item)} onChange={() => toggleRequestItem(item)} />{item}</label>)}</div><div className="outreach-card"><span>Message draft</span><pre aria-live="polite">{brokerRequest}</pre><div className="outreach-actions"><button type="button" onClick={copyBrokerRequest}>{copied ? "Copied ✓" : "Copy message"}</button>{opportunity.brokerEmail && <a href={`mailto:${opportunity.brokerEmail}?subject=${encodeURIComponent(`Inquiry about listing ${opportunity.sourceId}`)}&body=${encodeURIComponent(brokerRequest)}`}>Open email</a>}</div></div></div></details>}
 
         {current === 2 && <div className="valuation-area">
           <div className="valuation-form">
@@ -539,27 +539,33 @@ export function AcquisitionPlanner({
           <span>{es ? "Cómo usar esta información" : "How to use what you learn"}</span>
           <ul>{useInformation[current].map((item) => <li key={item}>{item}</li>)}</ul>
         </div>
-        <div className="acquisition-resources">
-          <div><span>{es ? "Referencias útiles" : "Helpful references"}</span><p>{es ? "Abre estas fuentes confiables en una pestaña nueva. Confirma términos y disponibilidad directamente con cada profesional o prestamista." : "Open these trusted sources in a new tab. Confirm terms and availability directly with each professional or lender."}</p></div>
-          <div>{stageResources.map((resource) => <a href={resource.href} target="_blank" rel="noreferrer" key={resource.href}><strong>{resource.label} ↗</strong><span>{resource.description}</span></a>)}</div>
-        </div>
-        <div className="professional-review-card">
-          <div><span>{es ? "Revisión profesional recomendada" : "Professional review recommended"}</span><strong>{professionalGuidance[0]}</strong></div>
-          <p>{professionalGuidance[1]}</p>
-          <a href={professionalGuidance[2]} target="_blank" rel="noreferrer">{es ? "Abrir fuente oficial" : "Open official source"} ↗</a>
-          <small>{es ? "Información educativa general. Los requisitos dependen de la transacción y ubicación. Crestview no brinda asesoría legal, fiscal, contable o financiera." : "General educational information. Requirements vary by transaction and location. Crestview does not provide legal, tax, accounting, lending, or investment advice."}</small>
-        </div>
+        <details className="trusted-help">
+          <summary>{es ? "Fuentes confiables y ayuda profesional" : "Trusted sources and professional help"}</summary>
+          <div className="acquisition-resources">
+            <div><span>{es ? "Referencias útiles" : "Helpful references"}</span><p>{es ? "Confirma los detalles directamente con cada profesional o prestamista." : "Confirm important details directly with the appropriate professional or lender."}</p></div>
+            <div>{stageResources.map((resource) => <a href={resource.href} target="_blank" rel="noreferrer" key={resource.href}><strong>{resource.label} ↗</strong><span>{resource.description}</span></a>)}</div>
+          </div>
+          <div className="professional-review-card">
+            <div><span>{es ? "Ayuda recomendada" : "Recommended help"}</span><strong>{professionalGuidance[0]}</strong></div>
+            <p>{professionalGuidance[1]}</p>
+            <a href={professionalGuidance[2]} target="_blank" rel="noreferrer">{es ? "Abrir fuente oficial" : "Open official source"} ↗</a>
+            <small>{es ? "Información educativa general. Crestview no brinda asesoría legal, fiscal, contable o financiera." : "General educational information. Crestview does not provide legal, tax, accounting, lending, or investment advice."}</small>
+          </div>
+        </details>
         <div className="step-finish-note">
           <span>{es ? "Listo para continuar cuando" : "Ready to continue when"}</span>
           <p>{readyWhen[current]}</p>
         </div>
-        <label className="stage-notes">Notes and evidence<textarea value={stepNotes[String(current)] ?? ""} onChange={(event) => setStepNotes((existing) => ({ ...existing, [String(current)]: event.target.value }))} onBlur={() => persist()} placeholder="Record what you verified, what is still missing, and who owns the next action." /></label>
+        <details className="stage-notes-wrap">
+          <summary>{es ? "Agregar notas (opcional)" : "Add notes (optional)"}</summary>
+          <label className="stage-notes">Notes and evidence<textarea value={stepNotes[String(current)] ?? ""} onChange={(event) => setStepNotes((existing) => ({ ...existing, [String(current)]: event.target.value }))} onBlur={() => persist()} placeholder="What did you verify? What is still missing? Who owns the next action?" /></label>
+        </details>
         <div className="decision-gate">
           <div><span>{es ? "Decisión de esta etapa" : "Stage decision"}</span><strong>{es ? "¿Qué debes hacer ahora?" : "What should happen next?"}</strong><p>{es ? "Registra una decisión clara. Puedes cambiarla después." : "Record a clear decision. You can change it later."}</p></div>
           <div>
-            <button className={currentDecision === "continue" ? "is-selected" : ""} type="button" onClick={() => recordDecision("continue")}>Continue</button>
-            <button className={currentDecision === "pause" ? "is-selected" : ""} type="button" onClick={() => recordDecision("pause")}>Pause and investigate</button>
-            <button className={currentDecision === "pass" ? "is-selected" : ""} type="button" onClick={() => recordDecision("pass")}>Pass</button>
+            <button className={currentDecision === "continue" ? "is-selected" : ""} type="button" onClick={() => recordDecision("continue")}>Ready for next step</button>
+            <button className={currentDecision === "pause" ? "is-selected" : ""} type="button" onClick={() => recordDecision("pause")}>I need more time</button>
+            <button className={currentDecision === "pass" ? "is-selected" : ""} type="button" onClick={() => recordDecision("pass")}>Not a fit</button>
           </div>
         </div>
         {saveMessage && <p className="workspace-save-message" aria-live="polite">{saveMessage}</p>}
@@ -567,7 +573,7 @@ export function AcquisitionPlanner({
         <div className="stage-actions">
           <button className="button button--light" disabled={current === 0} onClick={() => setCurrent((value) => Math.max(0, value - 1))}>Back</button>
           <button className="button button--light" disabled={isSaving} onClick={() => persist()}>{isSaving ? "Saving…" : "Save progress"}</button>
-          {!atLastStep && <><button className="skip-link" onClick={() => setSkipOpen(true)}>Skip this step</button><button className="button button--primary" disabled={isSaving || currentDecision !== "continue"} onClick={() => advance("complete")}>Complete stage and continue</button></>}
+          {!atLastStep && <><button className="skip-link" onClick={() => setSkipOpen(true)}>Do this later</button><button className="button button--primary" disabled={isSaving || currentDecision !== "continue"} onClick={() => advance("complete")}>Save and continue</button></>}
         </div>
       </div>
 

@@ -39,13 +39,12 @@ export default async function ListingsPage({ params, searchParams }: PageProps<"
           <article><span>Awaiting signature</span><strong>1</strong></article>
         </div>
         <div className="broker-flow">
-          <span><strong>1</strong> Add public details</span>
-          <span><strong>2</strong> Publish the opportunity</span>
-          <span><strong>3</strong> Let buyers sign the NDA instantly</span>
-          <span><strong>4</strong> Approve financial access manually</span>
+          <span><strong>1</strong> Create the listing</span>
+          <span><strong>2</strong> Add your standard NDA</span>
+          <span><strong>3</strong> Review serious buyers</span>
         </div>
         <details className="listing-editor" id="new-listing" open={!listings.length || query.new === "1"}>
-          <summary><span><strong>Create a new listing</strong><small>Public and confidential fields stay separate</small></span><b>+</b></summary>
+          <summary><span><strong>Create a new listing</strong><small>Only the listing details are required. Everything else is optional.</small></span><b>+</b></summary>
           <form action={createListing}>
             <input type="hidden" name="locale" value={locale} />
             <div className="form-section-heading"><span>01</span><div><strong>Public listing details</strong><small>Buyers can see these fields before requesting access.</small></div></div>
@@ -60,27 +59,36 @@ export default async function ListingsPage({ params, searchParams }: PageProps<"
               <label className="span-two">Public summary<textarea name="summary" placeholder="Describe the business without exposing confidential details." minLength={20} required /></label>
               <label className="span-two">Public highlights<textarea name="public_highlights" placeholder={"Recurring customer contracts\nExperienced management team\nSeller transition available"} /></label>
             </div>
-            <div className="form-section-heading confidential"><span>02</span><div><strong>Confidential deal notes</strong><small>Visible only inside an approved, NDA-protected workspace.</small></div></div>
-            <div className="listing-form-grid">
-              <label className="span-two confidential-field">Confidential notes<textarea name="confidential_notes" placeholder="Details only approved buyers should see after completing the NDA process." /></label>
-            </div>
-            <div className="form-section-heading nda-automation"><span>03</span><div><strong>Reusable listing NDA</strong><small>Buyers can receive and sign this agreement instantly without sending you a preliminary request.</small></div></div>
+            <div className="form-section-heading nda-automation"><span>02</span><div><strong>Add your NDA</strong><small>Upload it once. Buyers can review and sign it without waiting for you.</small></div></div>
             <div className="nda-template-editor">
-              <label>Agreement name<input name="nda_document_name" defaultValue="Confidentiality agreement" /></label>
-              <label className="span-two">Upload the attorney-approved NDA
+              <label className="span-three nda-upload-primary">Upload your approved NDA
                 <input name="nda_file" type="file" accept="application/pdf,.pdf" />
-                <small>PDF only, up to 10 MB. The exact version signed by each buyer is recorded.</small>
+                <small>PDF only, up to 10 MB. Crestview records exactly which version each buyer signs.</small>
               </label>
-              <label className="span-three">Optional plain-language summary<textarea name="nda_template_body" placeholder="Briefly explain what the agreement protects. The uploaded agreement remains the controlling document." /></label>
-              <label className="nda-confirmation span-three"><input type="checkbox" name="nda_attested" /> I confirm that I am authorized to use this agreement and have reviewed whether it is appropriate for this listing.</label>
-              <label className="nda-confirmation span-three"><input type="checkbox" name="auto_send_nda" defaultChecked /> Automatically make this NDA available to signed-in buyers</label>
+              <label className="nda-confirmation span-three"><input type="checkbox" name="nda_attested" /> I am authorized to use this NDA and have had it reviewed for this listing.</label>
+              <input type="hidden" name="auto_send_nda" value="on" />
+              <details className="nda-advanced span-three">
+                <summary>Optional NDA details</summary>
+                <div>
+                  <label>Agreement name<input name="nda_document_name" defaultValue="Confidentiality agreement" /></label>
+                  <label>Plain-language summary<textarea name="nda_template_body" placeholder="Briefly explain what the NDA protects. The PDF remains the controlling document." /></label>
+                </div>
+              </details>
             </div>
-            <p className="advisor-note">Crestview records the document version and electronic acceptance. It does not draft or approve the agreement. Have an attorney review reusable NDA language.</p>
-            <div className="listing-form-options">
-              <label><input type="checkbox" name="financing_available" /> Seller financing may be available</label>
-              <label><input type="checkbox" name="publish" /> Publish immediately</label>
+            <details className="listing-optional-section">
+              <summary>Add private notes and selling options</summary>
+              <div className="listing-form-grid">
+                <label className="span-two confidential-field">Private broker notes<textarea name="confidential_notes" placeholder="Notes for the protected deal workspace. These never appear on the public listing." /></label>
+              </div>
+              <div className="listing-form-options">
+                <label><input type="checkbox" name="financing_available" /> Seller financing may be available</label>
+              </div>
+            </details>
+            <p className="advisor-note">Crestview stores the NDA and records electronic acceptance; it does not draft or approve legal terms. Use an attorney-reviewed agreement.</p>
+            <div className="listing-submit-row">
+              <label><input type="checkbox" name="publish" /> Publish as soon as I save</label>
+              <button className="button button--primary" type="submit">Save listing</button>
             </div>
-            <button className="button button--primary" type="submit">Save listing</button>
           </form>
         </details>
         <div className="listing-management">

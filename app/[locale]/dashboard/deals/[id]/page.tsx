@@ -79,17 +79,19 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
     <PlatformShell locale={locale} active="inbox">
       <div className="dashboard-content deal-room-page">
         <div className="workspace-back"><Link href={`/${locale}/dashboard/inbox`}>← Back to deal inbox</Link><span>Private workspace</span></div>
-        <PageHeading eyebrow="Secure deal workspace" title={workspace.title} body="One protected record for messages, NDA activity, confidential documents, and every step toward a possible offer." />
+        <PageHeading eyebrow="Secure deal workspace" title={workspace.title} body="Sign the NDA, request records, and keep every conversation and document together." />
         {query.nda && <p className="notice">The NDA was {query.nda === "signed" ? "signed and the deal room is unlocked" : "sent successfully"}.</p>}
         {query.financial && <p className="notice">{query.financial === "requested" ? "Your financial-information request was sent to the broker." : `Financial access was updated: ${String(query.financial).replaceAll("_", " ")}.`}</p>}
         {workspace.isDemo && <p className="data-notice"><strong>Interactive preview</strong><span>This example shows the complete workflow. Live broker-created listings use the same protected workspace and database permissions.</span></p>}
-        <div className="deal-stage-rail">
-          {dealStages.map(([key,label], index) => <div className={index <= currentStageIndex ? "is-complete" : ""} key={key}><span>{index < currentStageIndex ? "✓" : index + 1}</span><strong>{label}</strong></div>)}
-        </div>
         <div className="deal-overview-strip">
           <div><span>Current stage</span><strong>{dealStages[currentStageIndex]?.[1] ?? "Inquiry sent"}</strong></div>
           <div><span>Your role</span><strong>{workspace.isBuyer ? "Buyer" : "Broker / seller"}</strong></div>
           <div><span>Next action</span><strong>{workspace.inquiry.status === "nda_sent" ? "Sign the NDA" : workspace.isBuyer && roomUnlocked && financialStatus === "not_requested" ? "Request financial access" : financialStatus === "requested" ? "Broker reviews financial request" : financialApproved ? "Review approved documents" : "Continue screening"}</strong></div>
+        </div>
+        <div className="deal-simple-flow" aria-label="Deal room steps">
+          <div className={roomUnlocked ? "is-done" : "is-current"}><span>{roomUnlocked ? "✓" : "1"}</span><div><strong>Sign NDA</strong><small>Review and accept the listing agreement</small></div></div>
+          <div className={financialApproved ? "is-done" : roomUnlocked ? "is-current" : ""}><span>{financialApproved ? "✓" : "2"}</span><div><strong>Request records</strong><small>The broker decides what to release</small></div></div>
+          <div className={financialApproved ? "is-current" : ""}><span>3</span><div><strong>Review securely</strong><small>Use the deal room and conversation</small></div></div>
         </div>
         <div className="deal-room-grid">
           <section className="panel deal-thread">
@@ -121,19 +123,24 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
           </aside>
         </div>
         {roomUnlocked && <section className="panel financial-access-panel">
-          <div className="panel__header"><div><span className="source-label">Separate broker approval</span><h2>Confidential financial information</h2></div><span className={`stage financial-${financialStatus}`}>{financialStatus.replaceAll("_", " ")}</span></div>
+          <div className="panel__header"><div><span className="source-label">Step 2</span><h2>Request business records</h2></div><span className={`stage financial-${financialStatus}`}>{financialStatus.replaceAll("_", " ")}</span></div>
           {workspace.isBuyer && financialStatus === "not_requested" && !workspace.isDemo && <form action={requestFinancialAccess}>
             <input type="hidden" name="locale" value={locale} /><input type="hidden" name="inquiry_id" value={id} />
-            <p>Signing the NDA does not automatically release tax returns, detailed financial statements, payroll, customer records, or contracts. Tell the broker what you need and why.</p>
-            <fieldset><legend>Documents requested</legend>
-              {["Confidential information memorandum","Profit and loss statements","Business tax returns","Balance sheets","Bank or revenue support","Customer concentration","Payroll summary","Asset and equipment list"].map((item) => <label key={item}><input type="checkbox" name="financial_requested_items" value={item} /> {item}</label>)}
+            <p>Choose what you need for an initial review. The broker can approve, ask a question, or decline.</p>
+            <fieldset><legend>What would you like to review?</legend>
+              {[
+                ["Financial statements", "Profit and loss statements and balance sheets"],
+                ["Tax returns", "Recent business tax returns"],
+                ["Revenue support", "Bank, sales, or customer concentration support"],
+                ["Operations", "Payroll, equipment, contracts, and operating records"],
+              ].map(([item, help], index) => <label key={item}><input type="checkbox" name="financial_requested_items" value={item} defaultChecked={index < 2} /><span><strong>{item}</strong><small>{help}</small></span></label>)}
             </fieldset>
             <div className="financial-request-grid">
-              <label>Acquisition timeline<select name="financial_request_timeline" defaultValue="Within 6 months"><option>Within 90 days</option><option>Within 6 months</option><option>Within 12 months</option><option>Still exploring</option></select></label>
-              <label>Capital or financing readiness<select name="financial_request_capital" defaultValue="Exploring financing"><option>Proof of funds available</option><option>Lender prequalified</option><option>Exploring financing</option><option>Seller financing requested</option></select></label>
+              <label>When might you buy?<select name="financial_request_timeline" defaultValue="Within 6 months"><option>Within 90 days</option><option>Within 6 months</option><option>Within 12 months</option><option>Just exploring</option></select></label>
+              <label>How would you fund it?<select name="financial_request_capital" defaultValue="Exploring financing"><option>Cash or proof of funds available</option><option>Prequalified with a lender</option><option>Exploring financing</option><option>Interested in seller financing</option></select></label>
             </div>
-            <label>Why you are requesting access<textarea name="financial_request_message" minLength={20} placeholder="Explain your interest, relevant experience, intended review, and any information the broker should consider." required /></label>
-            <button className="button button--primary" type="submit">Send financial-access request</button>
+            <label>Short note to the broker<textarea name="financial_request_message" minLength={20} placeholder="Example: I operate a similar business and hope to buy within six months. I would like to confirm earnings before scheduling a call." required /></label>
+            <button className="button button--primary" type="submit">Send request</button>
           </form>}
           {workspace.isBuyer && financialStatus === "requested" && <div className="financial-status-message"><strong>Request awaiting broker review</strong><p>The broker can approve access, request more information, or decline. You will receive a notification when they decide.</p></div>}
           {workspace.isBuyer && financialStatus === "more_information" && <div className="financial-status-message"><strong>The broker needs more information</strong><p>Use the secure conversation above to answer the broker’s questions, then submit an updated request.</p></div>}

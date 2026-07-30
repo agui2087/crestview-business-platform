@@ -94,7 +94,7 @@ export default async function ListingsPage({ params, searchParams }: PageProps<"
         <div className="listing-management">
           {listings.map((listing) => (
             <article key={listing.id}>
-              <div><span>{listing.status.replaceAll("_", " ")}</span><h2>{listing.title}</h2><p>{listing.city}, {listing.state_code} · {formatMoney(listing.asking_price)}</p><Link href={`/${locale}/dashboard/inbox`}>View buyer activity →</Link></div>
+              <div><span>{listing.status.replaceAll("_", " ")}</span><h2>{listing.title}</h2><p>{listing.city}, {listing.state_code} · {formatMoney(listing.asking_price)}</p><div className="listing-quality-meter"><i><b style={{ width: `${listing.quality_score ?? 70}%` }} /></i><small>{listing.quality_score ?? 70}% listing quality</small>{(listing.quality_score ?? 70) < 90 && <em>Add complete financials, highlights, and an automatic NDA to improve buyer confidence.</em>}</div><Link href={`/${locale}/dashboard/inbox`}>View buyer activity →</Link></div>
               {!listing.id.startsWith("demo-") && <form action={updateListingStatus}>
                 <input type="hidden" name="locale" value={locale} />
                 <input type="hidden" name="listing_id" value={listing.id} />

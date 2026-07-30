@@ -22,20 +22,26 @@ export default async function DashboardPage({ params }: PageProps<"/[locale]/das
   let tasks: Task[] = [];
   let diligenceCount = 0;
   let flaggedCount = 0;
+  let primaryRole = "buyer";
+  let brokerQueueCount = 0;
   if (isSupabaseConfigured() && user.source === "supabase") {
     const supabase = await createSupabaseServerClient();
     const { data: { user: authUser } } = await supabase.auth.getUser();
     if (authUser) {
-      const [{ data: dealData }, { data: taskData }, { count: diligence }, { count: flagged }] = await Promise.all([
+      const [{ data: dealData }, { data: taskData }, { count: diligence }, { count: flagged }, { data: profile }, { count: brokerQueue }] = await Promise.all([
         supabase.from("saved_opportunities").select("id,opportunity_key,stage,next_action,updated_at").eq("user_id", authUser.id).order("updated_at", { ascending: false }).limit(8),
         supabase.from("deal_tasks").select("id,title,due_date,priority,opportunity_key").eq("user_id", authUser.id).eq("status", "open").order("due_date").limit(6),
         supabase.from("diligence_items").select("*", { count: "exact", head: true }).eq("user_id", authUser.id).neq("status", "verified"),
         supabase.from("diligence_items").select("*", { count: "exact", head: true }).eq("user_id", authUser.id).eq("status", "flagged"),
+        supabase.from("profiles").select("primary_role").eq("user_id", authUser.id).maybeSingle(),
+        supabase.from("deal_inquiries").select("*", { count: "exact", head: true }).eq("broker_id", authUser.id).or("status.in.(submitted,nda_signed,offer),financial_access_status.eq.requested"),
       ]);
       deals = (dealData ?? []) as Deal[];
       tasks = (taskData ?? []) as Task[];
       diligenceCount = diligence ?? 0;
       flaggedCount = flagged ?? 0;
+      primaryRole = profile?.primary_role ?? "buyer";
+      brokerQueueCount = brokerQueue ?? 0;
     }
   }
   const activeDeals = deals.filter((deal) => !["saved", "complete", "passed"].includes(deal.stage)).length;
@@ -46,8 +52,20 @@ export default async function DashboardPage({ params }: PageProps<"/[locale]/das
           eyebrow={`${locale === "es" ? "Hola" : "Hello"}, ${user.displayName.split(" ")[0]}`}
           title={text.overview.title}
           body={text.overview.body}
-          action={<Link className="button button--primary" href={`/${locale}/dashboard/opportunities`}>{text.common.browse}</Link>}
+          action={<Link className="button button--primary" href={primaryRole === "broker" ? `/${locale}/dashboard/listings` : `/${locale}/dashboard/opportunities`}>{primaryRole === "broker" ? "Manage listings" : text.common.browse}</Link>}
         />
+        <section className={`role-home-card role-home-card--${primaryRole}`}>
+          <div>
+            <span>{primaryRole === "broker" ? "Broker workspace" : primaryRole === "advisor" ? "Advisor workspace" : "Buyer workspace"}</span>
+            <h2>{primaryRole === "broker" ? "Review qualified buyer activity without chasing routine NDA requests." : primaryRole === "advisor" ? "Keep client diligence, documents, and open questions together." : "Move from search to a confident acquisition decision."}</h2>
+            <p>{primaryRole === "broker" ? "NDA delivery is automatic. Your action queue only surfaces buyers, financial requests, and offers that need judgment." : primaryRole === "advisor" ? "Open the pipeline to review deal progress or continue a secure deal conversation." : "Complete your buyer profile once, then reuse it when requesting information from brokers."}</p>
+          </div>
+          <div>
+            {primaryRole === "broker" && <><strong>{brokerQueueCount}</strong><span>items need attention</span><Link href={`/${locale}/dashboard/inbox`}>Open action queue →</Link></>}
+            {primaryRole === "buyer" && <><Link className="button button--primary" href={`/${locale}/dashboard/settings`}>Complete buyer profile</Link><Link href={`/${locale}/dashboard/marketplace`}>Browse broker listings →</Link></>}
+            {primaryRole === "advisor" && <><Link className="button button--primary" href={`/${locale}/dashboard/pipeline`}>Review client pipeline</Link><Link href={`/${locale}/dashboard/inbox`}>Open deal inbox →</Link></>}
+          </div>
+        </section>
         <div className="metric-grid">
           {[
             [text.overview.saved, String(deals.length), locale === "es" ? "Guardadas en tu cuenta" : "Stored in your account"],

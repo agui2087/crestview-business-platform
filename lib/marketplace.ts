@@ -16,6 +16,7 @@ export type MarketplaceListing = {
   public_highlights: string[];
   status: string;
   updated_at: string;
+  quality_score?: number;
   nda_automatic?: boolean;
 };
 
@@ -35,6 +36,7 @@ export type DealInquiry = {
   financial_request_message?: string | null;
   financial_request_timeline?: string | null;
   financial_request_capital?: string | null;
+  financial_requested_at?: string | null;
   marketplace_listings?: { title: string; city: string; state_code: string } | null;
 };
 
@@ -119,7 +121,7 @@ export async function getMarketplaceListings() {
     const supabase = await createSupabaseServerClient();
     const { data, error } = await supabase
       .from("marketplace_listings")
-      .select("id,broker_id,title,summary,industry,city,state_code,asking_price,annual_revenue,cash_flow,financing_available,public_highlights,status,updated_at,listing_nda_templates(auto_send)")
+      .select("id,broker_id,title,summary,industry,city,state_code,asking_price,annual_revenue,cash_flow,financing_available,public_highlights,status,updated_at,quality_score,listing_nda_templates(auto_send)")
       .eq("status", "published")
       .order("updated_at", { ascending: false });
     if (error || !data?.length) return demoMarketplaceListings;
@@ -140,11 +142,16 @@ export async function getMyListings(userId?: string) {
     const supabase = await createSupabaseServerClient();
     const { data, error } = await supabase
       .from("marketplace_listings")
-      .select("id,broker_id,title,summary,industry,city,state_code,asking_price,annual_revenue,cash_flow,financing_available,public_highlights,status,updated_at")
+      .select("id,broker_id,title,summary,industry,city,state_code,asking_price,annual_revenue,cash_flow,financing_available,public_highlights,status,updated_at,quality_score,listing_nda_templates(auto_send)")
       .eq("broker_id", userId)
       .order("updated_at", { ascending: false });
     if (error || !data?.length) return demoMarketplaceListings.slice(0, 1);
-    return data as MarketplaceListing[];
+    return data.map((listing) => ({
+      ...listing,
+      nda_automatic: Array.isArray(listing.listing_nda_templates)
+        ? Boolean(listing.listing_nda_templates[0]?.auto_send)
+        : Boolean((listing.listing_nda_templates as { auto_send?: boolean } | null)?.auto_send),
+    })) as MarketplaceListing[];
   } catch {
     return demoMarketplaceListings.slice(0, 1);
   }
@@ -156,7 +163,7 @@ export async function getMyInquiries(userId?: string) {
     const supabase = await createSupabaseServerClient();
     const { data, error } = await supabase
       .from("deal_inquiries")
-      .select("id,listing_id,buyer_id,broker_id,subject,initial_message,status,updated_at,marketplace_listings(title,city,state_code)")
+      .select("id,listing_id,buyer_id,broker_id,subject,initial_message,status,updated_at,requested_items,acquisition_experience,funding_readiness,financial_access_status,financial_request_message,financial_request_timeline,financial_request_capital,financial_requested_at,marketplace_listings(title,city,state_code)")
       .or(`buyer_id.eq.${userId},broker_id.eq.${userId}`)
       .order("updated_at", { ascending: false });
     if (error || !data?.length) return demoInquiries;

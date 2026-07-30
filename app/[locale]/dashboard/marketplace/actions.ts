@@ -35,8 +35,14 @@ function optionalNumber(value: FormDataEntryValue | null) {
 
 export async function saveMarketplaceRoles(formData: FormData) {
   const { locale, supabase, user } = await context(formData);
-  const roles = ["buyer", "broker"].filter((role) => formData.get(role) === "on");
-  await supabase.from("profiles").update({ account_roles: roles.length ? roles : ["buyer"] }).eq("user_id", user.id);
+  const roles = ["buyer", "broker", "advisor"].filter((role) => formData.get(role) === "on");
+  const savedRoles = roles.length ? roles : ["buyer"];
+  const primaryRole = savedRoles.includes("broker") ? "broker" : savedRoles.includes("buyer") ? "buyer" : "advisor";
+  await supabase.from("profiles").update({
+    account_roles: savedRoles,
+    primary_role: primaryRole,
+    onboarding_completed: true,
+  }).eq("user_id", user.id);
   revalidatePath(`/${locale}/dashboard`, "layout");
   redirect(`/${locale}/dashboard/settings?roles=1`);
 }
@@ -90,6 +96,15 @@ export async function createListing(formData: FormData) {
     });
     if (ndaError) redirect(`/${locale}/dashboard/listings?error=nda`);
   }
+  const qualityScore = Math.min(100,
+    30
+    + [parsed.data.asking_price, parsed.data.annual_revenue, parsed.data.cash_flow].filter(Boolean).length * 10
+    + (String(formData.get("public_highlights") ?? "").trim() ? 10 : 0)
+    + (ndaStoragePath ? 20 : 0)
+    + (formData.get("financing_available") === "on" ? 5 : 0)
+    + (String(formData.get("confidential_notes") ?? "").trim() ? 5 : 0)
+  );
+  await supabase.from("marketplace_listings").update({ quality_score: qualityScore }).eq("id", listing.id).eq("broker_id", user.id);
   revalidatePath(`/${locale}/dashboard/listings`);
   revalidatePath(`/${locale}/dashboard/marketplace`);
   redirect(`/${locale}/dashboard/listings?created=1`);
@@ -253,6 +268,7 @@ export async function signNda(formData: FormData) {
   await Promise.all([
     supabase.from("deal_inquiries").update({ status: "nda_signed", updated_at: now }).eq("id", inquiryId),
     supabase.from("marketplace_notifications").insert({ user_id: nda.broker_id, inquiry_id: inquiryId, kind: "nda_signed", title: "NDA signed", body: `${signerName} signed the NDA. The secure deal room is now available.`, href: `/${locale}/dashboard/deals/${inquiryId}` }),
+    supabase.from("marketplace_audit_events").insert({ actor_id: user.id, inquiry_id: inquiryId, event_type: "nda_signed", details: { signer_name: signerName, fingerprint } }),
   ]);
   revalidatePath(`/${locale}/dashboard/deals/${inquiryId}`);
   redirect(`/${locale}/dashboard/deals/${inquiryId}?nda=signed`);
@@ -291,6 +307,7 @@ export async function requestFinancialAccess(formData: FormData) {
       inquiry_id: inquiryId, actor_id: user.id, to_status: inquiry.status,
       note: "Buyer requested broker approval for confidential financial information.",
     }),
+    supabase.from("marketplace_audit_events").insert({ actor_id: user.id, inquiry_id: inquiryId, event_type: "financial_access_requested", details: { requested_items: requestedItems, timeline, capital } }),
   ]);
   revalidatePath(`/${locale}/dashboard/deals/${inquiryId}`);
   redirect(`/${locale}/dashboard/deals/${inquiryId}?financial=requested`);
@@ -326,6 +343,7 @@ export async function decideFinancialAccess(formData: FormData) {
       from_status: inquiry.status, to_status: decision === "approved" ? "document_review" : inquiry.status,
       note,
     }),
+    supabase.from("marketplace_audit_events").insert({ actor_id: user.id, inquiry_id: inquiryId, event_type: "financial_access_decided", details: { decision } }),
   ]);
   revalidatePath(`/${locale}/dashboard/deals/${inquiryId}`);
   redirect(`/${locale}/dashboard/deals/${inquiryId}?financial=${decision}`);
@@ -338,17 +356,49 @@ export async function addDealRoomDocument(formData: FormData) {
   if (!inquiry) redirect(`/${locale}/dashboard/deals/${inquiryId}?error=forbidden`);
   const title = z.string().trim().min(2).max(160).parse(formData.get("title"));
   const accessLevel = String(formData.get("access_level") ?? "nda_signed");
-  const tasks = [
+  const category = String(formData.get("category") ?? "Other");
+  await Promise.all([
     supabase.from("deal_room_documents").insert({
       inquiry_id: inquiryId, uploaded_by: user.id, title,
-      category: String(formData.get("category") ?? "Other"),
+      category,
       external_url: String(formData.get("external_url") ?? "").trim() || null,
       access_level: accessLevel,
+      permission_note: accessLevel === "approved" ? "Buyer access requires broker approval" : accessLevel === "broker_only" ? "Broker only" : "Available after NDA",
     }),
-  ];
-  if (accessLevel === "nda_signed") tasks.push(
-    supabase.from("marketplace_notifications").insert({ user_id: inquiry.buyer_id, inquiry_id: inquiryId, kind: "document", title: "New deal-room document", body: `${title} is now available for review.`, href: `/${locale}/dashboard/deals/${inquiryId}` }),
-  );
-  await Promise.all(tasks);
+    supabase.from("marketplace_audit_events").insert({ actor_id: user.id, inquiry_id: inquiryId, event_type: "document_added", details: { title, category, access_level: accessLevel } }),
+  ]);
+  if (accessLevel === "nda_signed") {
+    await supabase.from("marketplace_notifications").insert({ user_id: inquiry.buyer_id, inquiry_id: inquiryId, kind: "document", title: "New deal-room document", body: `${title} is now available for review.`, href: `/${locale}/dashboard/deals/${inquiryId}` });
+  }
+  if (category === "Offer / LOI") {
+    await Promise.all([
+      supabase.from("deal_inquiries").update({ status: "offer", updated_at: new Date().toISOString() }).eq("id", inquiryId).eq("broker_id", user.id),
+      supabase.from("deal_status_events").insert({ inquiry_id: inquiryId, actor_id: user.id, to_status: "offer", note: "An offer or LOI was added to the deal room." }),
+    ]);
+  }
   revalidatePath(`/${locale}/dashboard/deals/${inquiryId}`);
+}
+
+export async function markNotificationRead(formData: FormData) {
+  const { locale, supabase, user } = await context(formData);
+  const notificationId = z.string().uuid().parse(formData.get("notification_id"));
+  await supabase.from("marketplace_notifications").update({ read_at: new Date().toISOString() })
+    .eq("id", notificationId).eq("user_id", user.id);
+  revalidatePath(`/${locale}/dashboard/inbox`);
+}
+
+export async function reportMarketplaceItem(formData: FormData) {
+  const { locale, supabase, user } = await context(formData);
+  const listingId = z.string().uuid().nullable().catch(null).parse(formData.get("listing_id"));
+  const inquiryId = z.string().uuid().nullable().catch(null).parse(formData.get("inquiry_id"));
+  const reason = z.enum(["incorrect_information","suspicious_activity","confidentiality","other"]).parse(formData.get("reason"));
+  const details = z.string().trim().max(1500).catch("").parse(formData.get("details"));
+  await supabase.from("marketplace_reports").insert({
+    reporter_id: user.id,
+    listing_id: listingId,
+    inquiry_id: inquiryId,
+    reason,
+    details: details || null,
+  });
+  redirect(`/${locale}/dashboard/inbox?reported=1`);
 }

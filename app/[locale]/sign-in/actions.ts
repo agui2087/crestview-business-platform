@@ -8,7 +8,7 @@ const credentialsSchema = z.object({
   email: z.string().email().max(254),
   password: z.string().min(8).max(128),
   displayName: z.string().trim().min(2).max(80).optional(),
-  accountRole: z.enum(["buyer", "broker"]).optional(),
+  accountRole: z.enum(["buyer", "broker", "advisor"]).optional(),
   locale: z.enum(["en", "es"]),
 });
 
@@ -34,6 +34,7 @@ export async function signUp(formData: FormData) {
         display_name: input.displayName,
         locale: input.locale,
         account_roles: [input.accountRole ?? "buyer"],
+        primary_role: input.accountRole ?? "buyer",
       },
       emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"}/${input.locale}/dashboard`,
     },

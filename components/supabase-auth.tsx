@@ -38,6 +38,7 @@ export function SupabaseAuth({
             <legend>How will you use Crestview?</legend>
             <label><input type="radio" name="accountRole" value="buyer" defaultChecked /><span><strong>Buyer</strong><small>Browse opportunities, request information, sign NDAs, and review deal documents.</small></span></label>
             <label><input type="radio" name="accountRole" value="broker" /><span><strong>Broker or seller</strong><small>Publish listings, screen buyers, send NDAs, and manage secure deal rooms.</small></span></label>
+            <label><input type="radio" name="accountRole" value="advisor" /><span><strong>Advisor</strong><small>Help a buyer organize diligence, documents, decisions, and closing work.</small></span></label>
           </fieldset>
           </>
         )}

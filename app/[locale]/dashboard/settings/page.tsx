@@ -8,21 +8,31 @@ import { saveMarketplaceRoles } from "../marketplace/actions";
 type Preferences = {
   industries: string[];
   locations: string[];
+  minimum_price: number | null;
   maximum_price: number | null;
   minimum_cash_flow: number | null;
   owner_involvement: string;
   seller_financing_preferred: boolean;
   experience_level: string;
+  acquisition_timeline: string;
+  funding_status: string;
+  proof_of_funds_status: string;
+  buyer_summary: string | null;
 };
 
 const defaults: Preferences = {
   industries: [],
   locations: [],
+  minimum_price: null,
   maximum_price: null,
   minimum_cash_flow: null,
   owner_involvement: "flexible",
   seller_financing_preferred: false,
   experience_level: "first_time",
+  acquisition_timeline: "exploring",
+  funding_status: "exploring",
+  proof_of_funds_status: "not_provided",
+  buyer_summary: null,
 };
 
 export default async function SettingsPage({
@@ -45,7 +55,7 @@ export default async function SettingsPage({
     if (user) {
       const { data } = await supabase
         .from("buyer_preferences")
-        .select("industries, locations, maximum_price, minimum_cash_flow, owner_involvement, seller_financing_preferred, experience_level")
+        .select("industries, locations, minimum_price, maximum_price, minimum_cash_flow, owner_involvement, seller_financing_preferred, experience_level, acquisition_timeline, funding_status, proof_of_funds_status, buyer_summary")
         .eq("user_id", user.id)
         .maybeSingle();
       if (data) preferences = data as Preferences;
@@ -79,9 +89,10 @@ export default async function SettingsPage({
           <input type="hidden" name="locale" value={locale} />
           <div><span>Marketplace roles</span><h2>How you use Crestview</h2><p>Use Crestview as a buyer, a broker or seller, or both. You can change this at any time.</p></div>
           {messages.roles && <p className="auth-success">Your marketplace roles were updated.</p>}
-          <div className="role-settings">
+          <div className="role-settings role-settings--three">
             <label><input type="checkbox" name="buyer" defaultChecked={profile.account_roles.includes("buyer")} /><span><strong>Buyer</strong><small>Browse listings, request information, sign NDAs, and review documents.</small></span></label>
             <label><input type="checkbox" name="broker" defaultChecked={profile.account_roles.includes("broker")} /><span><strong>Broker or seller</strong><small>Publish listings, screen inquiries, send NDAs, and manage deal rooms.</small></span></label>
+            <label><input type="checkbox" name="advisor" defaultChecked={profile.account_roles.includes("advisor")} /><span><strong>Advisor</strong><small>Help organize diligence, documents, decisions, and closing work.</small></span></label>
           </div>
           <button className="button button--primary" type="submit">Save marketplace roles</button>
         </form>
@@ -89,8 +100,8 @@ export default async function SettingsPage({
           <input type="hidden" name="locale" value={locale} />
           <div>
             <span>{es ? "Perfil del comprador" : "Buyer profile"}</span>
-            <h2>{es ? "Criterios de adquisición y alertas" : "Acquisition criteria and listing alerts"}</h2>
-            <p>{es ? "Estas preferencias mejoran las coincidencias personalizadas y controlarán futuras alertas." : "These preferences power personalized matches and will later control new-listing notifications."}</p>
+            <h2>{es ? "Tu perfil reutilizable" : "Your reusable buyer profile"}</h2>
+            <p>{es ? "Completa esto una vez para mejorar coincidencias y solicitudes futuras." : "Complete this once so brokers can understand your fit without making you repeat the same information."}</p>
           </div>
           {messages.saved && <p className="auth-success">{es ? "Tus preferencias fueron guardadas." : "Your buyer preferences were saved."}</p>}
           {messages.error && <p className="auth-error">Crestview could not save these preferences. Please try again.</p>}
@@ -105,6 +116,9 @@ export default async function SettingsPage({
             </label>
             <label>Maximum asking price
               <input name="maximum_price" defaultValue={preferences.maximum_price ?? ""} inputMode="numeric" placeholder="2500000" />
+            </label>
+            <label>Minimum asking price
+              <input name="minimum_price" defaultValue={preferences.minimum_price ?? ""} inputMode="numeric" placeholder="250000" />
             </label>
             <label>Minimum cash flow
               <input name="minimum_cash_flow" defaultValue={preferences.minimum_cash_flow ?? ""} inputMode="numeric" placeholder="300000" />
@@ -124,10 +138,33 @@ export default async function SettingsPage({
                 <option value="professional">Professional buyer or sponsor</option>
               </select>
             </label>
+            <label>Purchase timeline
+              <select name="acquisition_timeline" defaultValue={preferences.acquisition_timeline}>
+                <option value="within_90_days">Within 90 days</option>
+                <option value="within_6_months">Within 6 months</option>
+                <option value="within_12_months">Within 12 months</option>
+                <option value="exploring">Just exploring</option>
+              </select>
+            </label>
+            <label>Funding readiness
+              <select name="funding_status" defaultValue={preferences.funding_status}>
+                <option value="cash_ready">Cash available</option>
+                <option value="prequalified">Lender prequalified</option>
+                <option value="exploring">Exploring financing</option>
+                <option value="seller_financing">Interested in seller financing</option>
+              </select>
+            </label>
+            <label className="span-two">Short buyer introduction
+              <textarea name="buyer_summary" defaultValue={preferences.buyer_summary ?? ""} placeholder="Briefly describe your background, acquisition goal, and relevant operating experience." />
+            </label>
           </div>
           <label className="preference-check">
             <input type="checkbox" name="seller_financing_preferred" defaultChecked={preferences.seller_financing_preferred} />
             Prefer opportunities offering seller financing
+          </label>
+          <label className="preference-check">
+            <input type="checkbox" name="proof_of_funds_available" defaultChecked={preferences.proof_of_funds_status !== "not_provided"} />
+            Proof of funds is available if a broker requests it
           </label>
           <button className="button button--primary" type="submit">{es ? "Guardar perfil" : "Save buyer profile"}</button>
         </form>

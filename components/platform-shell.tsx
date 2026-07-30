@@ -5,6 +5,7 @@ import { LocaleSwitcher } from "@/components/locale-switcher";
 import { chatGPTSignOutPath } from "@/app/chatgpt-auth";
 import { getCrestviewUser } from "@/lib/current-user";
 import type { Locale } from "@/lib/i18n";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const navItems = [
   ["overview", "Overview", "Resumen"],
@@ -47,6 +48,21 @@ export async function PlatformShell({
   children: React.ReactNode;
 }) {
   const user = await getCrestviewUser(locale);
+  const roles = "accountRoles" in user ? user.accountRoles : ["buyer"];
+  const isBroker = roles.includes("broker");
+  const isBuyer = roles.includes("buyer") || roles.includes("advisor");
+  const visible = (slug: NavSlug) => {
+    if (slug === "listings" || slug === "workforce") return isBroker;
+    if (["opportunities", "lists", "pipeline"].includes(slug)) return isBuyer;
+    return true;
+  };
+  let unreadNotifications = 0;
+  if (user.source === "supabase") {
+    const supabase = await createSupabaseServerClient();
+    const { count } = await supabase.from("marketplace_notifications")
+      .select("*", { count: "exact", head: true }).is("read_at", null);
+    unreadNotifications = count ?? 0;
+  }
   const initials = user.displayName
     .split(/\s+/)
     .filter(Boolean)
@@ -66,7 +82,7 @@ export async function PlatformShell({
               <span className="mobile-nav__icon" aria-hidden="true">☰</span>
             </summary>
             <nav aria-label="Mobile dashboard navigation">
-              {navItems.map(([slug, english, spanish]) => (
+              {navItems.filter(([slug]) => visible(slug)).map(([slug, english, spanish]) => (
                 <Link
                   className={slug === active ? "is-active" : ""}
                   href={navHref(locale, slug)}
@@ -83,7 +99,7 @@ export async function PlatformShell({
           {navGroups.map((group) => (
             <div className="sidebar-nav__group" key={group.label[0]}>
               <span>{locale === "es" ? group.label[1] : group.label[0]}</span>
-              {group.slugs.map((slug) => {
+              {group.slugs.filter(visible).map((slug) => {
                 const item = navItems.find(([candidate]) => candidate === slug)!;
                 return (
                   <Link className={slug === active ? "is-active" : ""} href={navHref(locale, slug)} key={slug}>
@@ -95,12 +111,12 @@ export async function PlatformShell({
             </div>
           ))}
         </nav>
-        <div className="listing-alert">
+        {isBuyer && <div className="listing-alert">
           <span className="listing-alert__icon" aria-hidden="true">◎</span>
           <strong>{locale === "es" ? "Recibe alertas de anuncios" : "Get listing alerts"}</strong>
           <p>{locale === "es" ? "Recibe una notificación cuando se publique un negocio que coincida con tus preferencias." : "Receive a notification when a business matching your preferences is listed."}</p>
           <Link href={`/${locale}/dashboard/settings#listing-alerts`}>{locale === "es" ? "Configurar preferencias →" : "Set preferences →"}</Link>
-        </div>
+        </div>}
       </aside>
       <section className="dashboard-main">
         <header className="dashboard-topbar">
@@ -112,7 +128,7 @@ export async function PlatformShell({
             <LocaleSwitcher locale={locale} compact />
             {user.email.toLowerCase() === "agui2087@outlook.com" && <Link className="admin-switch" href={`/${locale}/dashboard/admin`}>{locale === "es" ? "Vista admin" : "Admin view"}</Link>}
             <Link href={`/${locale}`}>{locale === "es" ? "Sitio web" : "Website"}</Link>
-            <Link className="notification-link" href={`/${locale}/dashboard/inbox`} aria-label={locale === "es" ? "Notificaciones" : "Notifications"}>●</Link>
+            <Link className="notification-link" href={`/${locale}/dashboard/inbox#notifications`} aria-label={`${locale === "es" ? "Notificaciones" : "Notifications"}${unreadNotifications ? ` (${unreadNotifications} unread)` : ""}`}>{unreadNotifications ? <b>{Math.min(unreadNotifications, 9)}</b> : "○"}</Link>
             <strong>{user.displayName}</strong>
             <span title={user.displayName}>{initials}</span>
             <a href={user.source === "local" ? `/api/local-auth/signout?return_to=/${locale}` : chatGPTSignOutPath(`/${locale}`)}>{locale === "es" ? "Salir" : "Sign out"}</a>

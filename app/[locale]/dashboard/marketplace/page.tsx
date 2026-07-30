@@ -41,6 +41,7 @@ export default async function MarketplacePage({ params, searchParams }: PageProp
           <span><strong>3</strong> Request financial access</span>
           <span><strong>4</strong> Broker reviews your request</span>
         </div>
+        <p className="marketplace-disclosure"><strong>Know the source:</strong> Listing facts and documents are provided by the broker or seller. Crestview records access and workflow history but does not independently verify every claim. Confirm material information with qualified legal, accounting, and lending professionals before relying on it.</p>
         <form className="marketplace-filter" method="get">
           <label>
             <span>Location</span>
@@ -74,6 +75,7 @@ export default async function MarketplacePage({ params, searchParams }: PageProp
                 </div>
                 <span className="stage">Active</span>
               </header>
+              <div className="listing-confidence"><span>Listing completeness</span><i><b style={{ width: `${listing.quality_score ?? 70}%` }} /></i><strong>{listing.quality_score ?? 70}%</strong></div>
               <p className="marketplace-card__summary">{listing.summary}</p>
               <div className="marketplace-card__metrics">
                 <div><span>Asking price</span><strong>{formatMoney(listing.asking_price)}</strong></div>

@@ -27,11 +27,16 @@ export async function saveBuyerPreferences(formData: FormData) {
     user_id: user.id,
     industries: splitList("industries"),
     locations: splitList("locations"),
+    minimum_price: moneyValue(formData.get("minimum_price")),
     maximum_price: moneyValue(formData.get("maximum_price")),
     minimum_cash_flow: moneyValue(formData.get("minimum_cash_flow")),
     owner_involvement: String(formData.get("owner_involvement") ?? "flexible"),
     seller_financing_preferred: formData.get("seller_financing_preferred") === "on",
     experience_level: String(formData.get("experience_level") ?? "first_time"),
+    acquisition_timeline: String(formData.get("acquisition_timeline") ?? "exploring"),
+    funding_status: String(formData.get("funding_status") ?? "exploring"),
+    proof_of_funds_status: formData.get("proof_of_funds_available") === "on" ? "available" : "not_provided",
+    buyer_summary: String(formData.get("buyer_summary") ?? "").trim() || null,
     updated_at: new Date().toISOString(),
   }, { onConflict: "user_id" });
 
@@ -53,6 +58,7 @@ export async function saveAccountProfile(formData: FormData) {
     phone: String(formData.get("phone") ?? "").trim() || null,
     organization_name: String(formData.get("organization_name") ?? "").trim() || "Crestview Holdings",
     locale: localeValue,
+    onboarding_completed: true,
     updated_at: new Date().toISOString(),
   }).eq("user_id", user.id);
   revalidatePath(`/${localeValue}/dashboard`, "layout");

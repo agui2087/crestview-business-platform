@@ -6,7 +6,7 @@ import { getCrestviewUser } from "@/lib/current-user";
 import { getMyInquiries } from "@/lib/marketplace";
 import { isLocale } from "@/lib/i18n";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
-import { advanceInquiry, sendMessage } from "../marketplace/actions";
+import { advanceInquiry, markNotificationRead, sendMessage } from "../marketplace/actions";
 
 export const metadata: Metadata = { title: "Deal inbox" };
 
@@ -16,17 +16,80 @@ export default async function InboxPage({ params, searchParams }: PageProps<"/[l
   if (!isLocale(locale)) notFound();
   const user = await getCrestviewUser(locale);
   let userId: string | undefined;
+  let notifications: { id: string; title: string; body: string; inquiry_id: string | null; read_at: string | null; created_at: string }[] = [];
+  let isBroker = false;
+  let buyerProfiles = new Map<string, { display_name: string | null; verification_status: string; acquisition_timeline: string | null; funding_status: string | null; proof_of_funds_status: string; buyer_summary: string | null }>();
   if (isSupabaseConfigured() && user.source === "supabase") {
-    userId = (await (await createSupabaseServerClient()).auth.getUser()).data.user?.id;
+    const supabase = await createSupabaseServerClient();
+    userId = (await supabase.auth.getUser()).data.user?.id;
+    if (userId) {
+      const [{ data: profile }, { data: notificationData }] = await Promise.all([
+        supabase.from("profiles").select("account_roles").eq("user_id", userId).maybeSingle(),
+        supabase.from("marketplace_notifications").select("id,title,body,inquiry_id,read_at,created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(25),
+      ]);
+      isBroker = ((profile?.account_roles as string[] | null) ?? []).includes("broker");
+      notifications = notificationData ?? [];
+    }
   }
   const inquiries = await getMyInquiries(userId);
+  if (isBroker && userId && inquiries.length) {
+    const supabase = await createSupabaseServerClient();
+    const buyerIds = [...new Set(inquiries.filter((inquiry) => inquiry.broker_id === userId).map((inquiry) => inquiry.buyer_id))];
+    if (buyerIds.length) {
+      const [{ data: profiles }, { data: preferences }] = await Promise.all([
+        supabase.from("profiles").select("user_id,display_name,verification_status").in("user_id", buyerIds),
+        supabase.from("buyer_preferences").select("user_id,acquisition_timeline,funding_status,proof_of_funds_status,buyer_summary").in("user_id", buyerIds),
+      ]);
+      buyerProfiles = new Map(buyerIds.map((buyerId) => {
+        const profile = profiles?.find((item) => item.user_id === buyerId);
+        const preferencesRow = preferences?.find((item) => item.user_id === buyerId);
+        return [buyerId, {
+          display_name: profile?.display_name ?? null,
+          verification_status: profile?.verification_status ?? "unverified",
+          acquisition_timeline: preferencesRow?.acquisition_timeline ?? null,
+          funding_status: preferencesRow?.funding_status ?? null,
+          proof_of_funds_status: preferencesRow?.proof_of_funds_status ?? "not_provided",
+          buyer_summary: preferencesRow?.buyer_summary ?? null,
+        }];
+      }));
+    }
+  }
   const featured = inquiries[0];
+  const brokerQueue = isBroker && userId ? inquiries.filter((inquiry) => inquiry.broker_id === userId && (
+    ["submitted", "nda_signed", "offer"].includes(inquiry.status) || inquiry.financial_access_status === "requested"
+  )) : [];
   return (
     <PlatformShell locale={locale} active="inbox">
       <div className="dashboard-content">
         <PageHeading eyebrow="Messages and notifications" title="Deal inbox" body="Keep buyer requests, broker responses, NDA notices, and document updates connected to the right opportunity." />
         {query.sent && <p className="notice">Your information request was sent to the broker.</p>}
         {query.draft && <p className="notice">This example request is ready. A live broker listing will send it directly into the broker’s inbox.</p>}
+        {isBroker && <section className="broker-action-queue">
+          <div className="section-inline-heading"><div><span className="source-label">Broker workspace</span><h2>Action queue</h2></div><span>{brokerQueue.length} need attention</span></div>
+          {brokerQueue.length ? <div className="broker-queue-grid">{brokerQueue.map((inquiry) => {
+            const buyer = buyerProfiles.get(inquiry.buyer_id);
+            const action = inquiry.financial_access_status === "requested" ? "Review financial request" : inquiry.status === "submitted" ? "Review new buyer" : inquiry.status === "nda_signed" ? "NDA signed — decide next step" : "Review offer or LOI";
+            return <Link href={`/${locale}/dashboard/deals/${inquiry.id}`} key={inquiry.id}>
+              <div><span>{action}</span><strong>{inquiry.marketplace_listings?.title ?? inquiry.subject}</strong></div>
+              <p>{buyer?.display_name ?? "Prospective buyer"} · {buyer?.acquisition_timeline ?? inquiry.financial_request_timeline ?? "Timeline not provided"}</p>
+              <div className="buyer-readiness-tags"><small>{buyer?.funding_status ?? inquiry.financial_request_capital ?? "Funding not provided"}</small><small className={buyer?.proof_of_funds_status === "verified" ? "is-verified" : ""}>Funds: {buyer?.proof_of_funds_status?.replaceAll("_", " ") ?? "not provided"}</small></div>
+              {buyer?.buyer_summary && <blockquote>{buyer.buyer_summary}</blockquote>}
+              <b>Open workspace →</b>
+            </Link>;
+          })}</div> : <p className="panel-empty broker-queue-empty">Nothing needs your attention right now. Automated NDA requests and routine updates stay out of your queue.</p>}
+        </section>}
+        <section className="notification-center" id="notifications">
+          <div className="section-inline-heading"><div><span className="source-label">Updates</span><h2>Notifications</h2></div><span>{notifications.filter((item) => !item.read_at).length} unread</span></div>
+          <div className="notification-list">
+            {notifications.map((notification) => <article className={notification.read_at ? "" : "is-unread"} key={notification.id}>
+              <span aria-hidden="true">{notification.read_at ? "○" : "●"}</span>
+              <div><strong>{notification.title}</strong><p>{notification.body}</p><small>{new Date(notification.created_at).toLocaleString(locale)}</small></div>
+              {notification.inquiry_id && <Link href={`/${locale}/dashboard/deals/${notification.inquiry_id}`}>Open</Link>}
+              {!notification.read_at && <form action={markNotificationRead}><input type="hidden" name="locale" value={locale} /><input type="hidden" name="notification_id" value={notification.id} /><button type="submit">Mark read</button></form>}
+            </article>)}
+            {!notifications.length && <p className="panel-empty">Deal updates will appear here. Important changes are also shown inside each secure workspace.</p>}
+          </div>
+        </section>
         <div className="inbox-layout">
           <aside className="conversation-list">
             <header><strong>Conversations</strong><span>{inquiries.length} active</span></header>

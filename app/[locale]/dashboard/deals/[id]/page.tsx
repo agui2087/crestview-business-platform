@@ -6,7 +6,7 @@ import { dealStages, demoInquiries, demoMarketplaceListings } from "@/lib/market
 import { getCrestviewUser } from "@/lib/current-user";
 import { isLocale } from "@/lib/i18n";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
-import { addDealRoomDocument, advanceInquiry, decideFinancialAccess, requestFinancialAccess, sendMessage, sendNda, signNda } from "../../marketplace/actions";
+import { addDealRoomDocument, advanceInquiry, decideFinancialAccess, reportMarketplaceItem, requestFinancialAccess, sendMessage, sendNda, signNda } from "../../marketplace/actions";
 
 export const metadata: Metadata = { title: "Secure deal workspace" };
 
@@ -17,8 +17,9 @@ type WorkspaceData = {
   messages: { id: string; body: string; sender_id: string; created_at: string }[];
   nda: { status: string; document_name: string; template_body: string | null; storage_path?: string | null; template_version?: number; signed_at: string | null; signer_name: string | null } | null;
   ndaUrl: string | null;
-  documents: { id: string; title: string; category: string; external_url: string | null; version: number; created_at: string }[];
+  documents: { id: string; title: string; category: string; external_url: string | null; access_level?: string; permission_note?: string | null; version: number; created_at: string }[];
   events: { id: string; to_status: string; note: string | null; created_at: string }[];
+  listingFinancials?: { asking_price: number | null; annual_revenue: number | null; cash_flow: number | null };
   isDemo: boolean;
 };
 
@@ -43,15 +44,15 @@ async function getWorkspace(id: string, userId?: string): Promise<WorkspaceData>
     };
   }
   const supabase = await createSupabaseServerClient();
-  const { data: inquiry } = await supabase.from("deal_inquiries").select("id,listing_id,buyer_id,broker_id,subject,initial_message,status,updated_at,requested_items,acquisition_experience,funding_readiness,financial_access_status,financial_request_message,financial_request_timeline,financial_request_capital,marketplace_listings(title,city,state_code)").eq("id", id).or(`buyer_id.eq.${userId},broker_id.eq.${userId}`).maybeSingle();
+  const { data: inquiry } = await supabase.from("deal_inquiries").select("id,listing_id,buyer_id,broker_id,subject,initial_message,status,updated_at,requested_items,acquisition_experience,funding_readiness,financial_access_status,financial_request_message,financial_request_timeline,financial_request_capital,marketplace_listings(title,city,state_code,asking_price,annual_revenue,cash_flow)").eq("id", id).or(`buyer_id.eq.${userId},broker_id.eq.${userId}`).maybeSingle();
   if (!inquiry) return getWorkspace("demo-inquiry");
   const [{ data: messages }, { data: nda }, { data: documents }, { data: events }] = await Promise.all([
     supabase.from("deal_messages").select("id,body,sender_id,created_at").eq("inquiry_id", id).order("created_at"),
     supabase.from("deal_ndas").select("status,document_name,template_body,storage_path,template_version,signed_at,signer_name").eq("inquiry_id", id).maybeSingle(),
-    supabase.from("deal_room_documents").select("id,title,category,external_url,version,created_at").eq("inquiry_id", id).eq("is_active", true).order("created_at"),
+    supabase.from("deal_room_documents").select("id,title,category,external_url,access_level,permission_note,version,created_at").eq("inquiry_id", id).eq("is_active", true).order("created_at"),
     supabase.from("deal_status_events").select("id,to_status,note,created_at").eq("inquiry_id", id).order("created_at"),
   ]);
-  const listing = inquiry.marketplace_listings as unknown as { title: string } | null;
+  const listing = inquiry.marketplace_listings as unknown as { title: string; asking_price?: number | null; annual_revenue?: number | null; cash_flow?: number | null } | null;
   let ndaUrl: string | null = null;
   if (nda?.storage_path) {
     const { data } = await supabase.storage.from("deal-files").createSignedUrl(nda.storage_path, 60 * 15);
@@ -60,6 +61,7 @@ async function getWorkspace(id: string, userId?: string): Promise<WorkspaceData>
   return {
     inquiry: inquiry as unknown as typeof demoInquiries[number], title: listing?.title ?? inquiry.subject,
     isBuyer: inquiry.buyer_id === userId, isDemo: false, messages: messages ?? [], nda, ndaUrl, documents: documents ?? [], events: events ?? [],
+    listingFinancials: { asking_price: listing?.asking_price ?? null, annual_revenue: listing?.annual_revenue ?? null, cash_flow: listing?.cash_flow ?? null },
   };
 }
 
@@ -75,6 +77,13 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
   const roomUnlocked = ["nda_signed","document_review","meeting","offer","closed"].includes(workspace.inquiry.status);
   const financialStatus = workspace.inquiry.financial_access_status ?? "not_requested";
   const financialApproved = financialStatus === "approved";
+  const financials = workspace.listingFinancials;
+  const priceToCashFlow = financials?.asking_price && financials.cash_flow ? financials.asking_price / financials.cash_flow : null;
+  const cashFlowMargin = financials?.annual_revenue && financials.cash_flow ? financials.cash_flow / financials.annual_revenue : null;
+  const documentGroups = ["Overview","Financial","Tax","Operations","Legal","Employees","Assets"].map((category) => ({
+    category,
+    documents: workspace.documents.filter((document) => document.category === category || (category === "Overview" && ["Offering materials","Other"].includes(document.category))),
+  })).filter((group) => group.documents.length);
   return (
     <PlatformShell locale={locale} active="inbox">
       <div className="dashboard-content deal-room-page">
@@ -160,13 +169,25 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
           {!workspace.isBuyer && financialStatus !== "requested" && <div className="financial-status-message"><strong>{financialApproved ? "Financial access is approved" : "No financial request needs review"}</strong><p>NDA delivery is automatic. You are only interrupted when a signed buyer requests sensitive financial information.</p></div>}
           {workspace.isDemo && <div className="financial-status-message"><strong>Financial requests remain manual</strong><p>Live buyers submit readiness information after signing. The broker then chooses whether to release approved documents.</p></div>}
         </section>}
+        {roomUnlocked && <section className="panel financial-review-summary">
+          <div className="panel__header"><div><span className="source-label">Guided review</span><h2>Financial snapshot</h2></div><span className="stage">{financialApproved ? "Records approved" : "Public figures only"}</span></div>
+          <div className="financial-review-metrics">
+            <div><span>Asking price</span><strong>{financials?.asking_price ? `$${financials.asking_price.toLocaleString()}` : "Not provided"}</strong></div>
+            <div><span>Revenue</span><strong>{financials?.annual_revenue ? `$${financials.annual_revenue.toLocaleString()}` : "Not provided"}</strong></div>
+            <div><span>Cash flow / SDE</span><strong>{financials?.cash_flow ? `$${financials.cash_flow.toLocaleString()}` : "Not provided"}</strong></div>
+            <div><span>Price ÷ cash flow</span><strong>{priceToCashFlow ? `${priceToCashFlow.toFixed(2)}×` : "Needs records"}</strong></div>
+            <div><span>Cash-flow margin</span><strong>{cashFlowMargin ? `${Math.round(cashFlowMargin * 100)}%` : "Needs records"}</strong></div>
+            <div><span>Supporting documents</span><strong>{workspace.documents.length}</strong></div>
+          </div>
+          <p>Use these figures as a starting point. Reconcile them with tax returns, statements, and source records before relying on them.</p>
+        </section>}
         <section className={`panel secure-room ${roomUnlocked || workspace.isDemo ? "is-unlocked" : "is-locked"}`}>
           <div className="panel__header"><div><span className="source-label">Permission-controlled documents</span><h2>Secure deal room</h2></div><span className="stage">{roomUnlocked ? financialApproved ? "Financial access approved" : "NDA access only" : "NDA required"}</span></div>
           {!roomUnlocked && !workspace.isDemo && <div className="room-lock"><span>🔒</span><h3>Sign the NDA to unlock documents</h3><p>Only approved participants can access confidential materials. Every upload and status change remains attached to this deal.</p></div>}
-          {(roomUnlocked || workspace.isDemo) && <div className="room-documents">{workspace.documents.map((document) => <article key={document.id}><span>▤</span><div><strong>{document.title}</strong><small>{document.category} · Version {document.version}</small></div>{document.external_url ? <a href={document.external_url} target="_blank" rel="noreferrer">Open</a> : <span className="stage">Protected</span>}</article>)}</div>}
+          {(roomUnlocked || workspace.isDemo) && <div className="document-folders">{documentGroups.map((group) => <section key={group.category}><header><strong>{group.category}</strong><span>{group.documents.length}</span></header><div className="room-documents">{group.documents.map((document) => <article key={document.id}><span>▤</span><div><strong>{document.title}</strong><small>Version {document.version} · {document.permission_note ?? (document.access_level === "approved" ? "Broker approval required" : document.access_level === "broker_only" ? "Broker only" : "Available after NDA")}</small></div>{document.external_url ? <a href={document.external_url} target="_blank" rel="noreferrer">Open</a> : <span className="stage">Protected</span>}</article>)}</div></section>)}</div>}
           {!workspace.isBuyer && !workspace.isDemo && <details className="room-upload"><summary>Add a secure document</summary><form action={addDealRoomDocument}>
             <input type="hidden" name="locale" value={locale} /><input type="hidden" name="inquiry_id" value={id} />
-            <input name="title" placeholder="Document title" required /><select name="category"><option>Financial</option><option>Offering materials</option><option>Legal</option><option>Operations</option><option>Other</option></select>
+            <input name="title" placeholder="Document title" required /><select name="category"><option>Overview</option><option>Financial</option><option>Tax</option><option>Operations</option><option>Legal</option><option>Employees</option><option>Assets</option><option>Offer / LOI</option><option>Other</option></select>
             <input name="external_url" type="url" placeholder="Secure document URL (optional)" /><select name="access_level"><option value="nda_signed">Available after NDA</option><option value="approved">Broker approval required</option><option value="broker_only">Broker only</option></select>
             <button className="button button--primary" type="submit">Add document</button>
           </form></details>}
@@ -179,6 +200,17 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
             <button className="button button--primary" type="submit">Update stage</button>
           </form>}</section>
         </div>
+        {!workspace.isDemo && <details className="trust-report">
+          <summary>Report a concern about this listing or participant</summary>
+          <form action={reportMarketplaceItem}>
+            <input type="hidden" name="locale" value={locale} />
+            <input type="hidden" name="inquiry_id" value={id} />
+            <input type="hidden" name="listing_id" value={workspace.inquiry.listing_id} />
+            <label>Reason<select name="reason" required><option value="incorrect_information">Inaccurate information</option><option value="suspicious_activity">Suspicious behavior</option><option value="confidentiality">Document or confidentiality concern</option><option value="other">Other</option></select></label>
+            <label>What happened?<textarea name="details" minLength={10} required /></label>
+            <button className="button button--light" type="submit">Send report for review</button>
+          </form>
+        </details>}
       </div>
     </PlatformShell>
   );

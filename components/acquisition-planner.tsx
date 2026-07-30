@@ -6,14 +6,14 @@ import type { Opportunity } from "@/lib/demo-data";
 import { saveAcquisitionWorkspace } from "@/app/[locale]/dashboard/opportunities/actions";
 
 const stagesEn = [
-  ["Initial screening", "Confirm fit, seller expectations, licenses, and basic financial availability."],
-  ["Confidentiality and information request", "Execute the NDA and request financial, operational, customer, employee, and legal records."],
-  ["Valuation", "Normalize earnings, test valuation ranges, and identify unsupported adjustments."],
-  ["Financing readiness", "Review equity needs, lender fit, debt coverage, working capital, and seller-financing terms."],
-  ["Indication of interest or LOI", "Document price, structure, exclusivity, diligence access, contingencies, and timing with counsel."],
-  ["Due diligence", "Validate financial, tax, legal, operational, customer, employee, technology, insurance, and compliance claims."],
-  ["Definitive agreement and closing", "Finalize allocation, representations, consents, financing, escrow, transition, and closing deliverables."],
-  ["Purchase complete", "Confirm funds and documents, transfer control, begin transition, and track post-closing obligations."],
+  ["Decide if the business fits", "Check the essential facts before spending time or money on a transaction that does not fit your goals."],
+  ["Sign the NDA and request information", "Use the listing NDA first, then send a separate request for financial and confidential records."],
+  ["Verify earnings and estimate value", "Compare reported earnings with evidence, test several value ranges, and identify unsupported adjustments."],
+  ["Confirm financing", "Understand the full cash requirement, lender fit, debt coverage, working capital, and seller-financing terms."],
+  ["Prepare the offer or LOI", "Write down the proposed price, structure, protections, diligence access, and timing with professional review."],
+  ["Verify the business", "Validate financial, tax, legal, operational, customer, employee, technology, insurance, and compliance claims."],
+  ["Prepare and complete closing", "Finalize allocation, agreements, consents, financing, funds, access, and transition deliverables."],
+  ["Transfer ownership and follow the 90-day plan", "Confirm control transferred and organize the first week, first month, and first 90 days."],
 ] as const;
 
 const stagesEs = [
@@ -35,8 +35,23 @@ const checklistItemsEn = [
     "Identify licenses, certifications, or experience you would need",
     "Write down your reason to continue, pause, or pass",
   ],
-  [],
-  [],
+  [
+    "Open and review the exact NDA supplied for this listing",
+    "Confirm your legal name and sign the NDA electronically",
+    "Choose the financial and operating documents needed for your initial review",
+    "Explain your acquisition timeline and financing readiness",
+    "Send the separate financial-access request for broker approval",
+    "Record any documents the broker declined, delayed, or asked you to clarify",
+  ],
+  [
+    "Compare reported earnings with tax returns, financial statements, and available bank support",
+    "List every owner add-back and identify the evidence supporting it",
+    "Estimate the cost of replacing the seller’s work and benefits",
+    "Calculate conservative, expected, and optimistic earnings cases",
+    "Compare more than one valuation method or market reference",
+    "Record a preliminary value range and the assumptions that could change it",
+    "Have an accountant or valuation professional review material assumptions",
+  ],
   [
     "Estimate the total cash needed, including the down payment, fees, and working capital",
     "Confirm how much cash you can invest without creating personal financial strain",
@@ -90,8 +105,23 @@ const checklistItemsEs = [
     "Identifica licencias, certificaciones o experiencia necesarias",
     "Escribe tu razón para continuar, pausar o abandonar",
   ],
-  [],
-  [],
+  [
+    "Abre y revisa el NDA exacto proporcionado para esta oportunidad",
+    "Confirma tu nombre legal y firma el NDA electrónicamente",
+    "Elige los documentos financieros y operativos necesarios para la revisión inicial",
+    "Explica tu plazo de adquisición y preparación financiera",
+    "Envía la solicitud separada de acceso financiero para aprobación del corredor",
+    "Registra documentos rechazados, demorados o que requieren aclaración",
+  ],
+  [
+    "Compara ganancias con declaraciones fiscales, estados financieros y respaldo bancario disponible",
+    "Enumera cada ajuste del propietario y la evidencia que lo respalda",
+    "Calcula el costo de reemplazar el trabajo y beneficios del vendedor",
+    "Calcula escenarios conservador, esperado y optimista",
+    "Compara más de un método de valoración o referencia de mercado",
+    "Registra un rango preliminar y los supuestos que podrían cambiarlo",
+    "Solicita revisión de supuestos importantes por un contador o profesional de valoración",
+  ],
   [
     "Calcula el efectivo total necesario, incluyendo anticipo, gastos y capital de trabajo",
     "Confirma cuánto puedes invertir sin crear presión financiera personal",
@@ -348,10 +378,18 @@ export function AcquisitionPlanner({
 
   function toggleChecklistItem(itemIndex: number) {
     const key = itemKey(current, itemIndex);
-    setStepStatuses((existing) => ({
-      ...existing,
-      [key]: existing[key] === "complete" ? "open" : "complete",
-    }));
+    const nextStatuses = {
+      ...stepStatuses,
+      [key]: stepStatuses[key] === "complete" ? "open" : "complete",
+    };
+    setStepStatuses(nextStatuses);
+    persist(current, nextStatuses);
+  }
+
+  function recordDecision(decision: "continue" | "pause" | "pass") {
+    const nextStatuses = { ...stepStatuses, [`decision:${current}`]: decision };
+    setStepStatuses(nextStatuses);
+    persist(current, nextStatuses);
   }
 
   if (!started) {
@@ -395,6 +433,21 @@ export function AcquisitionPlanner({
   const atLastStep = current === stages.length - 1;
   const currentChecklist = checklistItems[current];
   const completedChecklistItems = currentChecklist.filter((_, index) => stepStatuses[itemKey(current, index)] === "complete").length;
+  const allChecklistItems = checklistItems.reduce((total, items) => total + items.length, 0);
+  const allCompletedItems = checklistItems.reduce((total, items, step) =>
+    total + items.filter((_, index) => stepStatuses[itemKey(step, index)] === "complete").length, 0);
+  const overallProgress = allChecklistItems ? Math.round((allCompletedItems / allChecklistItems) * 100) : 0;
+  const currentDecision = stepStatuses[`decision:${current}`] ?? "";
+  const professionalGuidance = [
+    ["Business advisor", "Use an SBA resource partner to test fit, ownership demands, and the acquisition plan.", "https://www.sba.gov/local-assistance"],
+    ["Attorney", "Confirm the NDA is appropriate and understand its restrictions before relying on it.", "https://www.usa.gov/legal-aid"],
+    ["Accountant or valuation professional", "Review earnings adjustments, tax records, and material valuation assumptions.", "https://www.sba.gov/business-guide/plan-your-business/buy-existing-business-or-franchise"],
+    ["Acquisition lender", "Confirm eligible uses, cash contribution, underwriting assumptions, and lender conditions.", "https://www.sba.gov/funding-programs/loans/7a-loans"],
+    ["Attorney and tax advisor", "Review binding terms, structure, allocation, contingencies, and tax consequences before signing.", "https://www.sba.gov/business-guide/grow-your-business/merge-acquire-businesses"],
+    ["Attorney and accountant", "Investigate exceptions and connect each material claim to original evidence.", "https://www.sba.gov/business-guide/plan-your-business/buy-existing-business-or-franchise"],
+    ["Attorney, accountant, and lender", "Confirm documents, allocation, approvals, funds, and closing conditions.", "https://www.irs.gov/forms-pubs/about-form-8594"],
+    ["Accountant and operating advisors", "Track tax filings, transition promises, access transfers, and post-closing deadlines.", "https://www.sba.gov/business-guide/grow-your-business/merge-acquire-businesses"],
+  ][current];
   const generalResources = [
     {
       label: es ? "Guía de SBA para comprar un negocio" : "SBA guide to buying an existing business",
@@ -430,6 +483,7 @@ export function AcquisitionPlanner({
     <section className="acquisition-workspace">
       <aside className="acquisition-steps">
         <p>{es ? "Lista de adquisición" : "Acquisition checklist"}</p>
+        <div className="checklist-overall-progress"><strong>{overallProgress}%</strong><span>{es ? "progreso total" : "overall progress"}</span><i><b style={{ width: `${overallProgress}%` }} /></i></div>
         {stages.map(([title], index) => (
           <button className={index === current ? "is-current" : stepStatuses[String(index)] === "complete" ? "is-complete" : stepStatuses[String(index)] === "skipped" ? "is-skipped" : ""} onClick={() => setCurrent(index)} key={title}>
             <span>{stepStatuses[String(index)] === "complete" ? "✓" : stepStatuses[String(index)] === "skipped" ? "!" : index + 1}</span>{title}
@@ -453,6 +507,7 @@ export function AcquisitionPlanner({
         </div>}
 
         {current === 1 && <div className="request-grid"><div className="check-card"><div className="check-card__heading"><h3>Information to request</h3><span>{selectedRequestItems.length} selected</span></div>{requestItems.map((item) => <label key={item}><input type="checkbox" checked={selectedRequestItems.includes(item)} onChange={() => toggleRequestItem(item)} />{item}</label>)}</div><div className="outreach-card"><span>Broker request draft · updates live</span><pre aria-live="polite">{brokerRequest}</pre><div className="outreach-actions"><button type="button" onClick={copyBrokerRequest}>{copied ? "Copied ✓" : "Copy request"}</button>{opportunity.brokerEmail && <a href={`mailto:${opportunity.brokerEmail}?subject=${encodeURIComponent(`Inquiry about listing ${opportunity.sourceId}`)}&body=${encodeURIComponent(brokerRequest)}`}>Open in email</a>}</div></div></div>}
+        {current === 1 && <div className="workflow-connection"><div><span>Automated when available</span><strong>Broker-posted Crestview listings deliver the NDA instantly</strong><p>Sign the listing agreement first. Financial records remain locked until you submit a separate readiness request and the broker approves it.</p></div><a href={`/${locale}/dashboard/marketplace`}>Open broker marketplace →</a></div>}
 
         {current === 2 && <div className="valuation-area">
           <div className="valuation-form">
@@ -488,17 +543,31 @@ export function AcquisitionPlanner({
           <div><span>{es ? "Referencias útiles" : "Helpful references"}</span><p>{es ? "Abre estas fuentes confiables en una pestaña nueva. Confirma términos y disponibilidad directamente con cada profesional o prestamista." : "Open these trusted sources in a new tab. Confirm terms and availability directly with each professional or lender."}</p></div>
           <div>{stageResources.map((resource) => <a href={resource.href} target="_blank" rel="noreferrer" key={resource.href}><strong>{resource.label} ↗</strong><span>{resource.description}</span></a>)}</div>
         </div>
+        <div className="professional-review-card">
+          <div><span>{es ? "Revisión profesional recomendada" : "Professional review recommended"}</span><strong>{professionalGuidance[0]}</strong></div>
+          <p>{professionalGuidance[1]}</p>
+          <a href={professionalGuidance[2]} target="_blank" rel="noreferrer">{es ? "Abrir fuente oficial" : "Open official source"} ↗</a>
+          <small>{es ? "Información educativa general. Los requisitos dependen de la transacción y ubicación. Crestview no brinda asesoría legal, fiscal, contable o financiera." : "General educational information. Requirements vary by transaction and location. Crestview does not provide legal, tax, accounting, lending, or investment advice."}</small>
+        </div>
         <div className="step-finish-note">
           <span>{es ? "Listo para continuar cuando" : "Ready to continue when"}</span>
           <p>{readyWhen[current]}</p>
         </div>
-        <label className="stage-notes">Notes and evidence<textarea value={stepNotes[String(current)] ?? ""} onChange={(event) => setStepNotes((existing) => ({ ...existing, [String(current)]: event.target.value }))} placeholder="Record what you verified, what is still missing, and who owns the next action." /></label>
+        <label className="stage-notes">Notes and evidence<textarea value={stepNotes[String(current)] ?? ""} onChange={(event) => setStepNotes((existing) => ({ ...existing, [String(current)]: event.target.value }))} onBlur={() => persist()} placeholder="Record what you verified, what is still missing, and who owns the next action." /></label>
+        <div className="decision-gate">
+          <div><span>{es ? "Decisión de esta etapa" : "Stage decision"}</span><strong>{es ? "¿Qué debes hacer ahora?" : "What should happen next?"}</strong><p>{es ? "Registra una decisión clara. Puedes cambiarla después." : "Record a clear decision. You can change it later."}</p></div>
+          <div>
+            <button className={currentDecision === "continue" ? "is-selected" : ""} type="button" onClick={() => recordDecision("continue")}>Continue</button>
+            <button className={currentDecision === "pause" ? "is-selected" : ""} type="button" onClick={() => recordDecision("pause")}>Pause and investigate</button>
+            <button className={currentDecision === "pass" ? "is-selected" : ""} type="button" onClick={() => recordDecision("pass")}>Pass</button>
+          </div>
+        </div>
         {saveMessage && <p className="workspace-save-message" aria-live="polite">{saveMessage}</p>}
         <p className="advisor-note">Crestview provides organizational tools and illustrative calculations, not legal, tax, accounting, lending, or investment advice.</p>
         <div className="stage-actions">
           <button className="button button--light" disabled={current === 0} onClick={() => setCurrent((value) => Math.max(0, value - 1))}>Back</button>
           <button className="button button--light" disabled={isSaving} onClick={() => persist()}>{isSaving ? "Saving…" : "Save progress"}</button>
-          {!atLastStep && <><button className="skip-link" onClick={() => setSkipOpen(true)}>Skip this step</button><button className="button button--primary" disabled={isSaving} onClick={() => advance("complete")}>Mark complete and continue</button></>}
+          {!atLastStep && <><button className="skip-link" onClick={() => setSkipOpen(true)}>Skip this step</button><button className="button button--primary" disabled={isSaving || currentDecision !== "continue"} onClick={() => advance("complete")}>Complete stage and continue</button></>}
         </div>
       </div>
 

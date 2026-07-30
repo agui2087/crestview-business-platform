@@ -1,0 +1,86 @@
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { PageHeading, PlatformShell } from "@/components/platform-shell";
+import { getMarketplaceListings, formatMoney } from "@/lib/marketplace";
+import { isLocale } from "@/lib/i18n";
+import { createInquiry } from "./actions";
+
+export const metadata: Metadata = { title: "Marketplace" };
+
+export default async function MarketplacePage({ params }: PageProps<"/[locale]/dashboard/marketplace">) {
+  const { locale } = await params;
+  if (!isLocale(locale)) notFound();
+  const listings = await getMarketplaceListings();
+  return (
+    <PlatformShell locale={locale} active="marketplace">
+      <div className="dashboard-content marketplace-page">
+        <PageHeading
+          eyebrow="Crestview marketplace"
+          title="Businesses ready for serious buyers"
+          body="Explore broker-posted opportunities, request confidential information, and move each conversation into one secure workspace."
+        />
+        <div className="marketplace-trust">
+          <div><strong>{listings.length}</strong><span>Active opportunities</span></div>
+          <div><strong>Secure</strong><span>NDA-gated deal rooms</span></div>
+          <div><strong>Connected</strong><span>Buyer and broker messaging</span></div>
+        </div>
+        <div className="marketplace-listings">
+          {listings.map((listing) => (
+            <article className="marketplace-card" key={listing.id}>
+              <header>
+                <div>
+                  <span className="source-label">Broker-posted opportunity</span>
+                  <h2>{listing.title}</h2>
+                  <p>{listing.city}, {listing.state_code} · {listing.industry}</p>
+                </div>
+                <span className="stage">Active</span>
+              </header>
+              <p className="marketplace-card__summary">{listing.summary}</p>
+              <div className="marketplace-card__metrics">
+                <div><span>Asking price</span><strong>{formatMoney(listing.asking_price)}</strong></div>
+                <div><span>Revenue</span><strong>{formatMoney(listing.annual_revenue)}</strong></div>
+                <div><span>Cash flow</span><strong>{formatMoney(listing.cash_flow)}</strong></div>
+              </div>
+              <ul>{listing.public_highlights.map((item) => <li key={item}>✓ {item}</li>)}</ul>
+              <details className="request-panel">
+                <summary>Request deal information <span>→</span></summary>
+                <form action={createInquiry}>
+                  <input type="hidden" name="locale" value={locale} />
+                  <input type="hidden" name="listing_id" value={listing.id} />
+                  <div className="request-form-grid">
+                    <label>Acquisition experience
+                      <select name="acquisition_experience" defaultValue="first-time">
+                        <option value="first-time">First-time buyer</option>
+                        <option value="operator">Experienced operator</option>
+                        <option value="investor">Investor / sponsor</option>
+                        <option value="strategic">Strategic acquirer</option>
+                      </select>
+                    </label>
+                    <label>Funding readiness
+                      <select name="funding_readiness" defaultValue="exploring">
+                        <option value="exploring">Exploring financing</option>
+                        <option value="prequalified">Financing prequalified</option>
+                        <option value="proof-ready">Proof of funds available</option>
+                      </select>
+                    </label>
+                  </div>
+                  <fieldset>
+                    <legend>Information requested</legend>
+                    {["NDA","Financial statements","Confidential information memorandum","Tax returns","Equipment and asset list"].map((item) => (
+                      <label key={item}><input type="checkbox" name="requested_items" value={item} defaultChecked={["NDA","Financial statements","Confidential information memorandum"].includes(item)} /> {item}</label>
+                    ))}
+                  </fieldset>
+                  <label className="request-message">Message to broker
+                    <textarea name="message" defaultValue={`Hello,\n\nI am interested in ${listing.title}. Please send the NDA and available financial information so I can complete an initial review. I understand that confidential materials should remain inside the secure Crestview deal workspace.\n\nThank you.`} required />
+                  </label>
+                  <p className="advisor-note">You will see the complete message before it is sent. Sending this request does not create an offer or commitment.</p>
+                  <button className="button button--primary" type="submit">Send request to broker</button>
+                </form>
+              </details>
+            </article>
+          ))}
+        </div>
+      </div>
+    </PlatformShell>
+  );
+}

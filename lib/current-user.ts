@@ -14,13 +14,14 @@ export async function getCrestviewUser(locale: Locale) {
     if (!user) redirect(`/${locale}/sign-in`);
     const { data: profile } = await supabase
       .from("profiles")
-      .select("display_name, locale, organization_name")
+      .select("display_name, locale, organization_name, account_roles")
       .eq("user_id", user.id)
       .maybeSingle();
     return {
       ...authUser,
       displayName: profile?.display_name ?? authUser.displayName,
       organizationName: profile?.organization_name ?? "Crestview Holdings",
+      accountRoles: profile?.account_roles ?? ["buyer"],
       locale: profile?.locale === "es" ? "es" : locale,
     };
   }

@@ -28,11 +28,18 @@ export function SupabaseAuth({
       <form action={mode === "create" ? signUp : signIn}>
         <input type="hidden" name="locale" value={locale} />
         {mode === "create" && (
+          <>
           <div className="field">
             <label htmlFor="displayName">Your name</label>
             <input id="displayName" name="displayName" autoComplete="name" minLength={2} maxLength={80} required />
             <small>This name appears throughout Crestview, including in personalized broker request drafts.</small>
           </div>
+          <fieldset className="role-picker">
+            <legend>How will you use Crestview?</legend>
+            <label><input type="radio" name="accountRole" value="buyer" defaultChecked /><span><strong>Buyer</strong><small>Browse opportunities, request information, sign NDAs, and review deal documents.</small></span></label>
+            <label><input type="radio" name="accountRole" value="broker" /><span><strong>Broker or seller</strong><small>Publish listings, screen buyers, send NDAs, and manage secure deal rooms.</small></span></label>
+          </fieldset>
+          </>
         )}
         <div className="field">
           <label htmlFor="email">Email</label>

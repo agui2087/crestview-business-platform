@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Brand } from "@/components/brand";
+import { LocaleSwitcher } from "@/components/locale-switcher";
 import { chatGPTSignOutPath, getChatGPTUser } from "@/app/chatgpt-auth";
 import { isLocale } from "@/lib/i18n";
 
@@ -69,7 +70,6 @@ export default async function PricingPage({
   const user = await getChatGPTUser();
 
   const es = locale === "es";
-  const other = es ? "en" : "es";
   const createAccount = es ? "Crear una cuenta" : "Create account";
   const createAccountHref = `/${locale}/create-account`;
 
@@ -210,7 +210,7 @@ export default async function PricingPage({
       <Brand locale={locale} />
       <nav className="nav" aria-label={es ? "Navegación de precios" : "Pricing navigation"}><Link href={`/${locale}`}>{es ? "Inicio" : "Home"}</Link><strong>{es ? "Planes" : "Plans"}</strong></nav>
       <div className="header-actions">
-        <Link className="locale-link" href={`/${other}/pricing`}>{other.toUpperCase()}</Link>
+        <LocaleSwitcher locale={locale} />
         {user ? <>
           <Link className="button button--light" href={`/${locale}/dashboard`}>{es ? "Panel" : "Dashboard"}</Link>
           <form action="/api/stripe/portal" method="post">

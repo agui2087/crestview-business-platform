@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Brand } from "@/components/brand";
 import { LocalAuth } from "@/components/local-auth";
+import { LocaleSwitcher } from "@/components/locale-switcher";
 import { SupabaseAuth } from "@/components/supabase-auth";
 import { chatGPTSignInHref, getChatGPTUser, isStandaloneRequest } from "@/app/chatgpt-auth";
 import { getDictionary, isLocale } from "@/lib/i18n";
@@ -29,6 +30,7 @@ export default async function SignInPage({
     <main className="auth-page">
       <aside className="auth-aside">
         <Brand locale={locale} inverse />
+        <LocaleSwitcher locale={locale} inverse />
         <div className="auth-quote">
           <p>“{auth.quote}”</p>
           <span>{auth.attribution}</span>

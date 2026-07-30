@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Brand } from "@/components/brand";
 import { UserProvider } from "@/components/user-provider";
+import { LocaleSwitcher } from "@/components/locale-switcher";
 import { chatGPTSignOutPath } from "@/app/chatgpt-auth";
 import { getCrestviewUser } from "@/lib/current-user";
 import type { Locale } from "@/lib/i18n";
@@ -108,6 +109,7 @@ export async function PlatformShell({
             {"organizationName" in user ? user.organizationName : "Crestview Holdings"}
           </div>
           <div className="user-chip">
+            <LocaleSwitcher locale={locale} compact />
             {user.email.toLowerCase() === "agui2087@outlook.com" && <Link className="admin-switch" href={`/${locale}/dashboard/admin`}>{locale === "es" ? "Vista admin" : "Admin view"}</Link>}
             <Link href={`/${locale}`}>{locale === "es" ? "Sitio web" : "Website"}</Link>
             <Link className="notification-link" href={`/${locale}/dashboard/inbox`} aria-label={locale === "es" ? "Notificaciones" : "Notifications"}>●</Link>

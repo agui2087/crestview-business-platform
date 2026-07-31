@@ -7,6 +7,7 @@ import { getOpportunity, opportunities } from "@/lib/demo-data";
 import { isLocale } from "@/lib/i18n";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { calculateDealScore } from "@/lib/deal-score";
+import type { DocumentFinding } from "@/lib/deal-intelligence";
 import { addBrokerInteraction, addDiligenceItem, addDiligenceTemplate, addOpportunityNote, addOpportunityToList, beginAcquisition, saveOpportunity, updateDiligenceItem } from "../actions";
 
 export function generateStaticParams() {
@@ -33,6 +34,8 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
   let professionals: Array<{ id: string; role: string; display_name: string; organization: string | null; responsibility: string | null; status: string }> = [];
   let transition: Array<{ id: string; horizon: string; category: string; title: string; owner: string | null; status: string }> = [];
   let sba: { purchase_price: number; buyer_injection: number; seller_note: number; working_capital: number; annual_cash_flow: number; interest_rate: number; term_years: number; lender_status: string } | null = null;
+  let findings: DocumentFinding[] = [];
+  let hasPro = false;
   let interactions: Array<{ id: string; interaction_type: string; summary: string; contact_name: string | null; occurred_at: string }> = [];
   let activities: Array<{ id: string; description: string; created_at: string }> = [];
   let notes: Array<{ id: string; body: string; created_at: string }> = [];
@@ -48,7 +51,7 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
         .eq("opportunity_key", opportunity.id)
         .maybeSingle();
       workspace = data ?? null;
-      const [{ data: diligenceData }, { data: interactionData }, { data: activityData }, { data: noteData }, { data: listData }, { data: profileData }, { data: evidenceData }, { data: professionalData }, { data: transitionData }, { data: sbaData }] = await Promise.all([
+      const [{ data: diligenceData }, { data: interactionData }, { data: activityData }, { data: noteData }, { data: listData }, { data: profileData }, { data: evidenceData }, { data: professionalData }, { data: transitionData }, { data: sbaData }, { data: findingData }, { data: entitlementData }] = await Promise.all([
         supabase.from("diligence_items").select("id,category,title,status,due_date,reason,guidance_source,source_url,risk_level,assigned_role").eq("user_id", user.id).eq("opportunity_key", opportunity.id).order("category"),
         supabase.from("broker_interactions").select("id,interaction_type,summary,contact_name,occurred_at").eq("user_id", user.id).eq("opportunity_key", opportunity.id).order("occurred_at", { ascending: false }).limit(10),
         supabase.from("deal_activities").select("id,description,created_at").eq("user_id", user.id).eq("opportunity_key", opportunity.id).order("created_at", { ascending: false }).limit(12),
@@ -59,6 +62,8 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
         supabase.from("deal_professionals").select("id,role,display_name,organization,responsibility,status").eq("user_id", user.id).eq("opportunity_key", opportunity.id).order("role"),
         supabase.from("transition_items").select("id,horizon,category,title,owner,status").eq("user_id", user.id).eq("opportunity_key", opportunity.id).order("horizon"),
         supabase.from("sba_readiness_profiles").select("purchase_price,buyer_injection,seller_note,working_capital,annual_cash_flow,interest_rate,term_years,lender_status").eq("user_id", user.id).eq("opportunity_key", opportunity.id).maybeSingle(),
+        supabase.from("deal_document_findings").select("id,source_document,metric_name,reported_value,normalized_value,period_label,source_url,confidence,review_status,notes").eq("user_id", user.id).eq("opportunity_key", opportunity.id).order("created_at", { ascending: false }),
+        supabase.from("billing_entitlements").select("active,expires_at").eq("user_id", user.id).eq("product_code", "crestview_pro").maybeSingle(),
       ]);
       diligence = diligenceData ?? [];
       guidanceProfile = profileData ?? null;
@@ -66,6 +71,8 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
       professionals = professionalData ?? [];
       transition = transitionData ?? [];
       sba = sbaData ?? null;
+      findings = (findingData ?? []) as DocumentFinding[];
+      hasPro = Boolean(entitlementData?.active && (!entitlementData.expires_at || new Date(entitlementData.expires_at) > new Date()));
       interactions = interactionData ?? [];
       activities = activityData ?? [];
       notes = noteData ?? [];
@@ -126,8 +133,11 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
         {workspace && workspace.stage !== "saved" && <GuidedAcquisitionWorkspace
           locale={locale} opportunityKey={opportunity.id} industry={opportunity.industry}
           defaultPrice={opportunity.priceValue ?? 0} defaultCashFlow={opportunity.cashFlowValue ?? 0}
+          missingInformation={opportunity.missing.length}
+          listingCompleteness={Math.round(([opportunity.priceValue, opportunity.revenueValue, opportunity.cashFlowValue, opportunity.ebitdaValue, opportunity.brokerEmail ?? opportunity.brokerPhone].filter(Boolean).length / 5) * 100)}
           profile={guidanceProfile} diligence={diligence} evidence={evidence}
           professionals={professionals} transition={transition} sba={sba}
+          findings={findings} hasPro={hasPro}
         />}
         <section className="notes-lists-grid" id="notes">
           <article className="operations-card">

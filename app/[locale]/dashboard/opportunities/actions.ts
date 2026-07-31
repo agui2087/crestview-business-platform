@@ -187,6 +187,49 @@ export async function addDiligenceEvidence(formData: FormData) {
   revalidatePath(`/${locale}/dashboard/opportunities/${opportunityKey}`);
 }
 
+async function hasActiveProEntitlement(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  userId: string,
+) {
+  const { data } = await supabase.from("billing_entitlements")
+    .select("active,expires_at")
+    .eq("user_id", userId)
+    .eq("product_code", "crestview_pro")
+    .maybeSingle();
+  return Boolean(data?.active && (!data.expires_at || new Date(data.expires_at) > new Date()));
+}
+
+export async function addDocumentFinding(formData: FormData) {
+  const { locale, opportunityKey, supabase, user } = await authenticatedRequest(formData);
+  if (!(await hasActiveProEntitlement(supabase, user.id))) redirect(`/${locale}/pricing#buyer-pricing`);
+  const sourceDocument = String(formData.get("source_document") ?? "").trim();
+  const metricName = String(formData.get("metric_name") ?? "").trim();
+  const reportedValue = String(formData.get("reported_value") ?? "").trim();
+  const normalizedRaw = String(formData.get("normalized_value") ?? "").trim();
+  if (sourceDocument && metricName && reportedValue) {
+    await supabase.from("deal_document_findings").insert({
+      user_id: user.id,
+      opportunity_key: opportunityKey,
+      diligence_item_id: String(formData.get("diligence_item_id") ?? "") || null,
+      source_document: sourceDocument,
+      metric_name: metricName,
+      reported_value: reportedValue,
+      normalized_value: normalizedRaw ? Number(normalizedRaw) : null,
+      period_label: String(formData.get("period_label") ?? "").trim() || null,
+      source_url: String(formData.get("source_url") ?? "").trim() || null,
+      confidence: String(formData.get("confidence") ?? "document_supported"),
+      notes: String(formData.get("notes") ?? "").trim() || null,
+    });
+    await supabase.from("deal_activities").insert({
+      user_id: user.id,
+      opportunity_key: opportunityKey,
+      activity_type: "document_finding",
+      description: `A document-backed ${metricName} finding was recorded from ${sourceDocument}.`,
+    });
+  }
+  revalidatePath(`/${locale}/dashboard/opportunities/${opportunityKey}`);
+}
+
 export async function saveSbaReadiness(formData: FormData) {
   const { locale, opportunityKey, supabase, user } = await authenticatedRequest(formData);
   const number = (name: string, fallback = 0) => Math.max(0, Number(formData.get(name)) || fallback);

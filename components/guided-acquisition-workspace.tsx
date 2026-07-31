@@ -1,6 +1,7 @@
 import { calculateSbaReadiness, readinessSummary, type GuidanceProfile } from "@/lib/guided-acquisition";
+import { buildCommandCenter, findDocumentConflicts, type DocumentFinding } from "@/lib/deal-intelligence";
 import {
-  addDealProfessional, addDiligenceEvidence, generateGuidedPlan,
+  addDealProfessional, addDiligenceEvidence, addDocumentFinding, generateGuidedPlan,
   saveSbaReadiness, updateTransitionItem,
 } from "@/app/[locale]/dashboard/opportunities/actions";
 
@@ -16,11 +17,13 @@ type Sba = { purchase_price: number; buyer_injection: number; seller_note: numbe
 const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 
 export function GuidedAcquisitionWorkspace({
-  locale, opportunityKey, industry, defaultPrice, defaultCashFlow, profile, diligence, evidence, professionals, transition, sba,
+  locale, opportunityKey, industry, defaultPrice, defaultCashFlow, missingInformation,
+  listingCompleteness, profile, diligence, evidence, professionals, transition, sba, findings, hasPro,
 }: {
   locale: string; opportunityKey: string; industry: string; defaultPrice: number; defaultCashFlow: number;
+  missingInformation: number; listingCompleteness: number;
   profile: GuidanceProfile | null; diligence: Diligence[]; evidence: Evidence[]; professionals: Professional[];
-  transition: Transition[]; sba: Sba | null;
+  transition: Transition[]; sba: Sba | null; findings: DocumentFinding[]; hasPro: boolean;
 }) {
   const es = locale === "es";
   const readiness = readinessSummary(diligence);
@@ -43,12 +46,44 @@ export function GuidedAcquisitionWorkspace({
   };
   const evidenceByItem = new Map<string, Evidence[]>();
   evidence.forEach((item) => evidenceByItem.set(item.diligence_item_id, [...(evidenceByItem.get(item.diligence_item_id) ?? []), item]));
+  const conflicts = findDocumentConflicts(findings);
+  const command = buildCommandCenter({
+    diligence, evidenceCount: evidence.length, professionalsCount: professionals.length,
+    transition, lenderStatus: sba?.lender_status ?? null, findings,
+  });
+  const verifiedClaims = diligence.filter((item) => item.status === "verified").length;
+  const documentedClaims = evidence.length + findings.filter((item) => item.confidence !== "buyer_entered").length;
 
   return <section className="guided-workspace" id="guided-plan">
     <header className="guided-workspace__hero">
       <div><span>{t.eyebrow}</span><h2>{t.title}</h2><p>{t.body}</p></div>
       <div className="readiness-dial" aria-label={`${readiness.progress}% ready`}><strong>{readiness.progress}%</strong><span>{es ? "listo" : "ready"}</span></div>
     </header>
+
+    <section className="command-center">
+      <div className="command-center__next"><span>{es ? "PRÓXIMA MEJOR ACCIÓN" : "NEXT BEST ACTION"}</span><h3>{command.nextAction}</h3><p>{es ? "Crestview prioriza conflictos de documentos, evidencia recibida y riesgos altos antes de tareas de menor impacto." : "Crestview prioritizes document conflicts, received evidence, and high risks before lower-impact work."}</p></div>
+      <div className="command-center__metrics">
+        <div className={command.conflicts ? "is-alert" : ""}><strong>{command.conflicts}</strong><span>{es ? "conflictos" : "conflicts"}</span></div>
+        <div><strong>{command.openHighRisk}</strong><span>{es ? "riesgos altos" : "high risks"}</span></div>
+        <div><strong>{command.received}</strong><span>{es ? "para verificar" : "to verify"}</span></div>
+        <div><strong>{command.evidenceCount}</strong><span>{es ? "evidencias" : "evidence"}</span></div>
+      </div>
+      <div className="command-center__status">
+        <span>{es ? "Prestamista" : "Lender"}</span><strong>{command.lenderStatus.replaceAll("_", " ")}</strong>
+        <span>{es ? "Equipo" : "Team"}</span><strong>{command.professionalsCount} {es ? "profesionales" : "professionals"}</strong>
+      </div>
+    </section>
+
+    <section className="listing-passport">
+      <header><div><span>{es ? "PASAPORTE DE CONFIANZA" : "VERIFIED LISTING PASSPORT"}</span><h3>{es ? "Qué sabemos y cómo lo sabemos" : "What is known—and how it is supported"}</h3></div><b>{listingCompleteness}% {es ? "completo" : "complete"}</b></header>
+      <div className="passport-grid">
+        <div><span>{es ? "Proporcionado por corredor" : "Broker/listing reported"}</span><strong>{listingCompleteness}%</strong><small>{es ? "Datos del anuncio público; no verificados por Crestview." : "Public listing fields; not independently verified by Crestview."}</small></div>
+        <div><span>{es ? "Respaldado por documentos" : "Document supported"}</span><strong>{documentedClaims}</strong><small>{es ? "Hallazgos enlazados a una fuente identificada." : "Findings linked to an identified source."}</small></div>
+        <div><span>{es ? "Verificado" : "Verified"}</span><strong>{verifiedClaims}</strong><small>{es ? "Elementos marcados como revisados y verificados." : "Items marked reviewed and verified."}</small></div>
+        <div className={missingInformation ? "is-missing" : ""}><span>{es ? "Aún falta" : "Still missing"}</span><strong>{missingInformation}</strong><small>{es ? "Preguntas importantes no respondidas en el anuncio." : "Important questions not answered by the listing."}</small></div>
+      </div>
+      <p>{es ? "El pasaporte muestra procedencia y estado; no garantiza que una afirmación sea correcta. Confirma información material con documentos y asesores apropiados." : "The passport shows provenance and status; it does not guarantee a claim is correct. Confirm material information with source documents and appropriate advisors."}</p>
+    </section>
 
     <details className="guided-panel plan-builder" open={!profile}>
       <summary><span>1</span><div><strong>{t.personalize}</strong><small>{es ? "Responde preguntas simples para obtener tareas específicas." : "Answer simple questions to get deal-specific tasks."}</small></div></summary>
@@ -96,6 +131,43 @@ export function GuidedAcquisitionWorkspace({
         {!diligence.length && <div className="guided-empty">{es ? "Personaliza el plan para crear tu lista específica." : "Personalize the plan to create your deal-specific checklist."}</div>}
       </div>
     </details>
+
+    <section className={`document-intelligence ${hasPro ? "is-pro" : "is-locked"}`}>
+      <header><div><span>{es ? "INTELIGENCIA DOCUMENTAL" : "DOCUMENT INTELLIGENCE"}</span><h3>{es ? "Convierte documentos en afirmaciones comprobables" : "Turn documents into traceable deal facts"}</h3><p>{es ? "Cada hallazgo conserva el nombre de su documento, periodo, valor y nivel de confirmación." : "Every finding keeps its source document, period, value, and confirmation level."}</p></div><b>PRO</b></header>
+      {hasPro ? <>
+        <div className="finding-summary">
+          <div><strong>{findings.length}</strong><span>{es ? "hallazgos" : "findings"}</span></div>
+          <div className={conflicts.length ? "is-alert" : ""}><strong>{conflicts.length}</strong><span>{es ? "discrepancias" : "discrepancies"}</span></div>
+          <div><strong>{findings.filter((item) => item.confidence === "professional_confirmed").length}</strong><span>{es ? "confirmados profesionalmente" : "professionally confirmed"}</span></div>
+        </div>
+        {conflicts.map((group) => <article className="conflict-card" key={`${group[0].metric_name}-${group[0].period_label}`}>
+          <span>{es ? "REVISIÓN NECESARIA" : "REVIEW NEEDED"}</span><strong>{group[0].metric_name} · {group[0].period_label ?? (es ? "periodo actual" : "current period")}</strong>
+          <p>{group.map((item) => `${item.source_document}: ${item.reported_value}`).join(" · ")}</p>
+        </article>)}
+        <div className="finding-list">{findings.map((finding) => <article key={finding.id}>
+          <div><span>{finding.metric_name} · {finding.period_label ?? (es ? "sin periodo" : "no period")}</span><strong>{finding.reported_value}</strong></div>
+          <div><span>{finding.source_document}</span><small>{finding.confidence.replaceAll("_", " ")} · {finding.review_status}</small></div>
+          {finding.source_url && <a href={finding.source_url} target="_blank" rel="noreferrer">{es ? "Abrir fuente ↗" : "Open source ↗"}</a>}
+        </article>)}</div>
+        <details className="finding-form"><summary>+ {es ? "Registrar hallazgo de documento" : "Record a document finding"}</summary><form action={addDocumentFinding}>
+          <input type="hidden" name="locale" value={locale}/><input type="hidden" name="opportunity_key" value={opportunityKey}/>
+          <label>{es ? "Documento fuente" : "Source document"}<input name="source_document" required placeholder={es ? "Ej. declaración fiscal 2025" : "e.g. 2025 tax return"}/></label>
+          <label>{es ? "Métrica o afirmación" : "Metric or claim"}<input name="metric_name" required placeholder={es ? "Ej. ingresos" : "e.g. revenue"}/></label>
+          <label>{es ? "Valor mostrado" : "Displayed value"}<input name="reported_value" required placeholder="$850,000"/></label>
+          <label>{es ? "Valor numérico opcional" : "Optional numeric value"}<input name="normalized_value" type="number" step=".01" placeholder="850000"/></label>
+          <label>{es ? "Periodo" : "Period"}<input name="period_label" placeholder="2025"/></label>
+          <label>{es ? "Nivel de respaldo" : "Support level"}<select name="confidence"><option value="document_supported">{es ? "Respaldado por documento" : "Document supported"}</option><option value="professional_confirmed">{es ? "Confirmado profesionalmente" : "Professionally confirmed"}</option><option value="buyer_entered">{es ? "Ingresado por comprador" : "Buyer entered"}</option></select></label>
+          <label className="span-two">{es ? "Enlace seguro opcional" : "Optional secure link"}<input name="source_url" type="url"/></label>
+          <label className="span-two">{es ? "Notas" : "Notes"}<textarea name="notes"/></label>
+          <button className="button button--primary">{es ? "Guardar hallazgo" : "Save finding"}</button>
+        </form></details>
+      </> : <div className="pro-lock">
+        <span>◇</span><h4>{es ? "La ejecución esencial permanece gratis" : "Essential execution stays free"}</h4>
+        <p>{es ? "Pro agrega extracción estructurada, comparación entre documentos, alertas de discrepancias y explicaciones avanzadas. El checklist, pasaporte básico, tareas y progreso siguen disponibles gratis." : "Pro adds structured findings, cross-document comparisons, discrepancy alerts, and advanced explanations. The checklist, basic passport, tasks, and progress remain free."}</p>
+        <a className="button button--primary" href={`/${locale}/pricing#buyer-pricing`}>{es ? "Ver Crestview Pro" : "See Crestview Pro"}</a>
+      </div>}
+      <footer>{es ? "Crestview ayuda a organizar y comparar información; no certifica documentos ni reemplaza la revisión profesional." : "Crestview helps organize and compare information; it does not certify documents or replace professional review."}</footer>
+    </section>
 
     <div className="guided-two-column">
       <details className="guided-panel" open>

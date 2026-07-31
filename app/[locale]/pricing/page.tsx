@@ -80,7 +80,7 @@ export default async function PricingPage({
       cadence: "/siempre",
       description: "Recursos completos para pasar de la búsqueda al cierre sin pagar por el proceso esencial.",
       badge: "Para todos",
-      features: ["Buscar, filtrar y guardar oportunidades", "Proceso completo de adquisición", "Listas de diligencia y recursos", "Calculadoras de valoración", "Documentos, tareas y progreso", "Borradores para contactar al corredor"],
+      features: ["Buscar, filtrar y guardar oportunidades", "Centro de mando y próximos pasos", "Checklist específico para cada negocio", "Pasaporte básico de confianza", "Calculadoras de valoración", "Tareas, evidencia y progreso"],
     },
     {
       name: "Crestview Pro",
@@ -91,7 +91,7 @@ export default async function PricingPage({
       description: "Ayuda avanzada para entender contratos, documentos financieros y el lenguaje de M&A.",
       badge: "Ayuda avanzada",
       featured: true,
-      features: ["Todo lo incluido en Gratis", "Explicaciones de contratos en lenguaje claro", "Resúmenes de documentos con IA", "Explicaciones de términos de M&A", "Señales de riesgo y preguntas sugeridas", "Análisis financiero y comparaciones avanzadas"],
+      features: ["Todo lo incluido en Gratis", "Inteligencia documental con fuentes", "Alertas por discrepancias entre documentos", "Explicaciones avanzadas de riesgos", "Comparaciones financieras avanzadas", "Hallazgos confirmados por profesionales"],
     },
   ] : [
     {
@@ -100,7 +100,7 @@ export default async function PricingPage({
       cadence: "/forever",
       description: "Complete resources for moving from discovery through closing without paying for the essential process.",
       badge: "For everyone",
-      features: ["Search, filter, and save opportunities", "Complete acquisition process", "Diligence checklists and resources", "Valuation calculators", "Documents, tasks, and progress tracking", "Broker outreach drafts"],
+      features: ["Search, filter, and save opportunities", "Deal command center and next steps", "Deal-specific acquisition checklist", "Basic verified listing passport", "Valuation calculators", "Tasks, evidence, and progress tracking"],
     },
     {
       name: "Crestview Pro",
@@ -111,7 +111,7 @@ export default async function PricingPage({
       description: "Advanced help understanding contracts, financial documents, and high-level M&A language.",
       badge: "Advanced guidance",
       featured: true,
-      features: ["Everything included in Free", "Plain-English contract explanations", "AI summaries of uploaded documents", "M&A terminology explanations", "Risk flags and suggested questions", "Advanced financial analysis and comparisons"],
+      features: ["Everything included in Free", "Source-linked document intelligence", "Cross-document discrepancy alerts", "Advanced risk explanations", "Advanced financial comparisons", "Professionally confirmed findings"],
     },
   ];
 

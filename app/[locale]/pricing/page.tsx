@@ -91,7 +91,7 @@ export default async function PricingPage({
       description: "Ayuda avanzada para entender contratos, documentos financieros y el lenguaje de M&A.",
       badge: "Ayuda avanzada",
       featured: true,
-      features: ["Todo lo incluido en Gratis", "Inteligencia documental con fuentes", "Alertas por discrepancias entre documentos", "Explicaciones avanzadas de riesgos", "Comparaciones financieras avanzadas", "Hallazgos confirmados por profesionales"],
+      features: ["Todo lo incluido en Gratis", "Inteligencia documental con fuentes", "Alertas por discrepancias entre documentos", "Explicaciones avanzadas de riesgos", "Comparaciones financieras avanzadas", "Estados de revisión controlados para hallazgos"],
     },
   ] : [
     {
@@ -111,7 +111,7 @@ export default async function PricingPage({
       description: "Advanced help understanding contracts, financial documents, and high-level M&A language.",
       badge: "Advanced guidance",
       featured: true,
-      features: ["Everything included in Free", "Source-linked document intelligence", "Cross-document discrepancy alerts", "Advanced risk explanations", "Advanced financial comparisons", "Professionally confirmed findings"],
+      features: ["Everything included in Free", "Source-linked document intelligence", "Cross-document discrepancy alerts", "Advanced risk explanations", "Advanced financial comparisons", "Controlled review-status tracking for findings"],
     },
   ];
 

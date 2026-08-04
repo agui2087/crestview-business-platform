@@ -1,5 +1,8 @@
 import { calculateSbaReadiness, readinessSummary, type GuidanceProfile } from "@/lib/guided-acquisition";
-import { buildCommandCenter, findDocumentConflicts, type DocumentFinding } from "@/lib/deal-intelligence";
+import {
+  buildCommandCenter, findDocumentConflicts, formatReviewStatus, formatSupportLevel,
+  passportMetrics, type DocumentFinding,
+} from "@/lib/deal-intelligence";
 import {
   addDealProfessional, addDiligenceEvidence, addDocumentFinding, generateGuidedPlan,
   saveSbaReadiness, updateTransitionItem,
@@ -49,10 +52,11 @@ export function GuidedAcquisitionWorkspace({
   const conflicts = findDocumentConflicts(findings);
   const command = buildCommandCenter({
     diligence, evidenceCount: evidence.length, professionalsCount: professionals.length,
-    transition, lenderStatus: sba?.lender_status ?? null, findings,
+    transition, lenderStatus: sba?.lender_status ?? null, findings, locale: es ? "es" : "en",
   });
-  const verifiedClaims = diligence.filter((item) => item.status === "verified").length;
-  const documentedClaims = evidence.length + findings.filter((item) => item.confidence !== "buyer_entered").length;
+  const { documentSupportedClaims, reviewConfirmedClaims } = passportMetrics({
+    findings, evidenceCount: evidence.length,
+  });
 
   return <section className="guided-workspace" id="guided-plan">
     <header className="guided-workspace__hero">
@@ -69,7 +73,7 @@ export function GuidedAcquisitionWorkspace({
         <div><strong>{command.evidenceCount}</strong><span>{es ? "evidencias" : "evidence"}</span></div>
       </div>
       <div className="command-center__status">
-        <span>{es ? "Prestamista" : "Lender"}</span><strong>{command.lenderStatus.replaceAll("_", " ")}</strong>
+        <span>{es ? "Prestamista" : "Lender"}</span><strong>{command.lenderStatusLabel}</strong>
         <span>{es ? "Equipo" : "Team"}</span><strong>{command.professionalsCount} {es ? "profesionales" : "professionals"}</strong>
       </div>
     </section>
@@ -78,8 +82,8 @@ export function GuidedAcquisitionWorkspace({
       <header><div><span>{es ? "PASAPORTE DE CONFIANZA" : "VERIFIED LISTING PASSPORT"}</span><h3>{es ? "Qué sabemos y cómo lo sabemos" : "What is known—and how it is supported"}</h3></div><b>{listingCompleteness}% {es ? "completo" : "complete"}</b></header>
       <div className="passport-grid">
         <div><span>{es ? "Proporcionado por corredor" : "Broker/listing reported"}</span><strong>{listingCompleteness}%</strong><small>{es ? "Datos del anuncio público; no verificados por Crestview." : "Public listing fields; not independently verified by Crestview."}</small></div>
-        <div><span>{es ? "Respaldado por documentos" : "Document supported"}</span><strong>{documentedClaims}</strong><small>{es ? "Hallazgos enlazados a una fuente identificada." : "Findings linked to an identified source."}</small></div>
-        <div><span>{es ? "Verificado" : "Verified"}</span><strong>{verifiedClaims}</strong><small>{es ? "Elementos marcados como revisados y verificados." : "Items marked reviewed and verified."}</small></div>
+        <div><span>{es ? "Respaldado por documentos" : "Document supported"}</span><strong>{documentSupportedClaims}</strong><small>{es ? "Evidencia o hallazgos enlazados a una fuente identificada." : "Evidence or findings linked to an identified source."}</small></div>
+        <div><span>{es ? "Revisión confirmada" : "Review confirmed"}</span><strong>{reviewConfirmedClaims}</strong><small>{es ? "Hallazgos con estado de revisión confirmado; no incluye tareas completadas del checklist." : "Findings with a confirmed review status; completed checklist tasks are not counted here."}</small></div>
         <div className={missingInformation ? "is-missing" : ""}><span>{es ? "Aún falta" : "Still missing"}</span><strong>{missingInformation}</strong><small>{es ? "Preguntas importantes no respondidas en el anuncio." : "Important questions not answered by the listing."}</small></div>
       </div>
       <p>{es ? "El pasaporte muestra procedencia y estado; no garantiza que una afirmación sea correcta. Confirma información material con documentos y asesores apropiados." : "The passport shows provenance and status; it does not guarantee a claim is correct. Confirm material information with source documents and appropriate advisors."}</p>
@@ -133,12 +137,12 @@ export function GuidedAcquisitionWorkspace({
     </details>
 
     <section className={`document-intelligence ${hasPro ? "is-pro" : "is-locked"}`}>
-      <header><div><span>{es ? "INTELIGENCIA DOCUMENTAL" : "DOCUMENT INTELLIGENCE"}</span><h3>{es ? "Convierte documentos en afirmaciones comprobables" : "Turn documents into traceable deal facts"}</h3><p>{es ? "Cada hallazgo conserva el nombre de su documento, periodo, valor y nivel de confirmación." : "Every finding keeps its source document, period, value, and confirmation level."}</p></div><b>PRO</b></header>
+      <header><div><span>{es ? "INTELIGENCIA DOCUMENTAL" : "DOCUMENT INTELLIGENCE"}</span><h3>{es ? "Convierte documentos en afirmaciones comprobables" : "Turn documents into traceable deal facts"}</h3><p>{es ? "Cada hallazgo conserva el documento fuente, periodo, valor y estado de revisión." : "Every finding keeps its source document, period, value, and review status."}</p></div><b>PRO</b></header>
       {hasPro ? <>
         <div className="finding-summary">
           <div><strong>{findings.length}</strong><span>{es ? "hallazgos" : "findings"}</span></div>
           <div className={conflicts.length ? "is-alert" : ""}><strong>{conflicts.length}</strong><span>{es ? "discrepancias" : "discrepancies"}</span></div>
-          <div><strong>{findings.filter((item) => item.confidence === "professional_confirmed").length}</strong><span>{es ? "confirmados profesionalmente" : "professionally confirmed"}</span></div>
+          <div><strong>{findings.filter((item) => item.review_status === "confirmed").length}</strong><span>{es ? "revisión confirmada" : "review confirmed"}</span></div>
         </div>
         {conflicts.map((group) => <article className="conflict-card" key={`${group[0].metric_name}-${group[0].period_label}`}>
           <span>{es ? "REVISIÓN NECESARIA" : "REVIEW NEEDED"}</span><strong>{group[0].metric_name} · {group[0].period_label ?? (es ? "periodo actual" : "current period")}</strong>
@@ -146,7 +150,7 @@ export function GuidedAcquisitionWorkspace({
         </article>)}
         <div className="finding-list">{findings.map((finding) => <article key={finding.id}>
           <div><span>{finding.metric_name} · {finding.period_label ?? (es ? "sin periodo" : "no period")}</span><strong>{finding.reported_value}</strong></div>
-          <div><span>{finding.source_document}</span><small>{finding.confidence.replaceAll("_", " ")} · {finding.review_status}</small></div>
+          <div><span>{finding.source_document}</span><small>{formatSupportLevel(finding.confidence, es ? "es" : "en")} · {formatReviewStatus(finding.review_status, es ? "es" : "en")}</small></div>
           {finding.source_url && <a href={finding.source_url} target="_blank" rel="noreferrer">{es ? "Abrir fuente ↗" : "Open source ↗"}</a>}
         </article>)}</div>
         <details className="finding-form"><summary>+ {es ? "Registrar hallazgo de documento" : "Record a document finding"}</summary><form action={addDocumentFinding}>
@@ -156,7 +160,7 @@ export function GuidedAcquisitionWorkspace({
           <label>{es ? "Valor mostrado" : "Displayed value"}<input name="reported_value" required placeholder="$850,000"/></label>
           <label>{es ? "Valor numérico opcional" : "Optional numeric value"}<input name="normalized_value" type="number" step=".01" placeholder="850000"/></label>
           <label>{es ? "Periodo" : "Period"}<input name="period_label" placeholder="2025"/></label>
-          <label>{es ? "Nivel de respaldo" : "Support level"}<select name="confidence"><option value="document_supported">{es ? "Respaldado por documento" : "Document supported"}</option><option value="professional_confirmed">{es ? "Confirmado profesionalmente" : "Professionally confirmed"}</option><option value="buyer_entered">{es ? "Ingresado por comprador" : "Buyer entered"}</option></select></label>
+          <label>{es ? "Tipo de fuente" : "Source type"}<select name="confidence"><option value="document_supported">{es ? "Respaldado por documento" : "Document supported"}</option><option value="buyer_entered">{es ? "Ingresado por comprador" : "Buyer entered"}</option></select></label>
           <label className="span-two">{es ? "Enlace seguro opcional" : "Optional secure link"}<input name="source_url" type="url"/></label>
           <label className="span-two">{es ? "Notas" : "Notes"}<textarea name="notes"/></label>
           <button className="button button--primary">{es ? "Guardar hallazgo" : "Save finding"}</button>

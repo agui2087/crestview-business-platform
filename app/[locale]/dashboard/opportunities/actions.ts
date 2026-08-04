@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getOpportunity } from "@/lib/demo-data";
 import { isLocale } from "@/lib/i18n";
+import { normalizeBuyerFindingConfidence } from "@/lib/deal-intelligence";
 import { buildGuidedChecklist, type GuidanceProfile } from "@/lib/guided-acquisition";
 
 async function authenticatedRequest(formData: FormData) {
@@ -217,7 +218,8 @@ export async function addDocumentFinding(formData: FormData) {
       normalized_value: normalizedRaw ? Number(normalizedRaw) : null,
       period_label: String(formData.get("period_label") ?? "").trim() || null,
       source_url: String(formData.get("source_url") ?? "").trim() || null,
-      confidence: String(formData.get("confidence") ?? "document_supported"),
+      confidence: normalizeBuyerFindingConfidence(String(formData.get("confidence") ?? "document_supported")),
+      review_status: "unreviewed",
       notes: String(formData.get("notes") ?? "").trim() || null,
     });
     await supabase.from("deal_activities").insert({

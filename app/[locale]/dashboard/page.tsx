@@ -52,7 +52,6 @@ export default async function DashboardPage({ params }: PageProps<"/[locale]/das
           eyebrow={`${locale === "es" ? "Hola" : "Hello"}, ${user.displayName.split(" ")[0]}`}
           title={text.overview.title}
           body={text.overview.body}
-          action={<Link className="button button--primary" href={primaryRole === "broker" ? `/${locale}/dashboard/listings` : `/${locale}/dashboard/opportunities`}>{primaryRole === "broker" ? "Manage listings" : text.common.browse}</Link>}
         />
         <section className={`role-home-card role-home-card--${primaryRole}`}>
           <div>
@@ -60,10 +59,10 @@ export default async function DashboardPage({ params }: PageProps<"/[locale]/das
             <h2>{primaryRole === "broker" ? "Review qualified buyer activity without chasing routine NDA requests." : primaryRole === "advisor" ? "Keep client diligence, documents, and open questions together." : "Move from search to a confident acquisition decision."}</h2>
             <p>{primaryRole === "broker" ? "NDA delivery is automatic. Your action queue only surfaces buyers, financial requests, and offers that need judgment." : primaryRole === "advisor" ? "Open the pipeline to review deal progress or continue a secure deal conversation." : "Complete your buyer profile once, then reuse it when requesting information from brokers."}</p>
           </div>
-          <div>
-            {primaryRole === "broker" && <><strong>{brokerQueueCount}</strong><span>items need attention</span><Link href={`/${locale}/dashboard/inbox`}>Open action queue →</Link></>}
-            {primaryRole === "buyer" && <><Link className="button button--primary" href={`/${locale}/dashboard/settings`}>Complete buyer profile</Link><Link href={`/${locale}/dashboard/marketplace`}>Browse broker listings →</Link></>}
-            {primaryRole === "advisor" && <><Link className="button button--primary" href={`/${locale}/dashboard/pipeline`}>Review client pipeline</Link><Link href={`/${locale}/dashboard/inbox`}>Open deal inbox →</Link></>}
+          <div className="role-home-actions">
+            {primaryRole === "broker" && <><div className="role-home-count"><strong>{brokerQueueCount}</strong><span>items need attention</span></div><Link className="button button--primary" href={`/${locale}/dashboard/inbox`}>Open action queue</Link><Link className="button button--light" href={`/${locale}/dashboard/listings`}>Manage listings</Link></>}
+            {primaryRole === "buyer" && <><Link className="button button--primary" href={`/${locale}/dashboard/settings`}>Complete buyer profile</Link><Link className="button button--light" href={`/${locale}/dashboard/marketplace`}>Browse broker listings</Link><Link className="role-home-tertiary" href={`/${locale}/dashboard/opportunities`}>Browse all opportunities →</Link></>}
+            {primaryRole === "advisor" && <><Link className="button button--primary" href={`/${locale}/dashboard/pipeline`}>Review client pipeline</Link><Link className="button button--light" href={`/${locale}/dashboard/inbox`}>Open deal inbox</Link></>}
           </div>
         </section>
         <div className="metric-grid">

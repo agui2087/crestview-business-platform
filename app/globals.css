@@ -512,6 +512,33 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .check-card label { display: flex; align-items: flex-start; gap: 9px; padding: 9px 0; border-top: 1px solid #e3e8e3; color: #49564f; font-size: .7rem; }
 .check-card label:first-of-type { border-top: 0; }
 .check-card input { margin-top: 1px; accent-color: var(--brand); }
+.check-card label:has(input:checked) { color:#75817b; text-decoration:line-through; text-decoration-color:#adb9b2; }
+.check-card input { flex:0 0 18px; width:18px; height:18px; }
+.financing-help { overflow:hidden; margin-top:14px; border:1px solid #cbded3; border-radius:16px; background:#fff; box-shadow:0 12px 30px rgba(22,79,60,.06); }
+.financing-help > header { display:grid; grid-template-columns:1.2fr .8fr; gap:20px; padding:22px; background:linear-gradient(135deg,#edf7f1,#fff); }
+.financing-help > header > div:first-child > span { color:var(--brand); font-size:.56rem; font-weight:850; letter-spacing:.1em; text-transform:uppercase; }
+.financing-help h3 { margin:5px 0 7px; font-size:1rem; }
+.financing-help header p { margin:0; color:var(--muted); font-size:.62rem; line-height:1.55; }
+.financing-path { display:grid; grid-template-columns:auto 1fr auto auto 1fr auto auto 1fr; align-items:center; gap:6px; padding:12px; border:1px solid #d6e7de; border-radius:11px; background:rgba(255,255,255,.78); }
+.financing-path strong { width:24px; height:24px; display:grid; place-items:center; border-radius:50%; background:var(--brand); color:#fff; font-size:.56rem; }
+.financing-path span { color:#3d5148; font-size:.56rem; font-weight:760; line-height:1.25; }
+.financing-path i { color:#8fa69b; font-style:normal; font-size:.62rem; }
+.financing-resource-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; padding:16px 20px; }
+.financing-resource-grid article { display:flex; flex-direction:column; gap:7px; min-height:205px; padding:15px; border:1px solid var(--line); border-radius:11px; background:var(--paper); }
+.financing-resource-grid article > div:first-child { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.resource-kind { padding:4px 7px; border-radius:999px; background:var(--brand-soft); color:var(--brand); font-size:.48rem; font-weight:850; text-transform:uppercase; }
+.resource-kind--office { background:#e8eef8; color:#385f91; }
+.resource-kind--advisor { background:#fff0d7; color:#8a5b0b; }
+.resource-kind--match { background:#eee8fa; color:#60458d; }
+.financing-resource-grid h4 { margin:2px 0 0; font-size:.73rem; }
+.financing-resource-grid p { flex:1; margin:0; color:var(--muted); font-size:.58rem; line-height:1.5; }
+.financing-resource-grid small { color:#7e8984; font-size:.49rem; }
+.resource-phone,.resource-link { color:var(--brand); font-size:.58rem; font-weight:800; }
+.resource-phone { width:max-content; padding:6px 8px; border-radius:7px; background:var(--brand-soft); }
+.lender-compare-note { display:grid; grid-template-columns:auto 1fr; gap:6px 14px; margin:0 20px 14px; padding:13px 15px; border-radius:10px; background:#f2f6f3; }
+.lender-compare-note strong { color:var(--brand); font-size:.62rem; }
+.lender-compare-note p { margin:0; color:var(--muted); font-size:.57rem; line-height:1.5; }
+.financing-disclaimer { margin:0; padding:13px 20px; border-top:1px solid var(--line); color:#7a7465; background:#fbf8ef; font-size:.52rem; line-height:1.5; }
 .information-use-card { margin-top: 16px; padding: 20px; border: 1px solid #d9dfc4; border-radius: 13px; background: #f7fae9; }
 .information-use-card > span,.acquisition-resources > div:first-child > span,.step-finish-note > span { color: var(--brand); font-size: .62rem; font-weight: 850; letter-spacing: .08em; text-transform: uppercase; }
 .information-use-card ul { display: grid; gap: 9px; margin: 13px 0 0; padding-left: 18px; color: #405249; font-size: .71rem; line-height: 1.55; }
@@ -1182,6 +1209,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .pricing-faq > div { grid-template-columns:1fr; }
   .process-grid,.metric-grid { grid-template-columns: repeat(2,1fr); }
   .journey-grid,.vision-principles { grid-template-columns:1fr; }
+  .financing-help > header { grid-template-columns:1fr; }
   .process-step:nth-child(2) { border-right: 0; }
   .auth-aside { min-height: 420px; }
   .dashboard { grid-template-columns: 1fr; }
@@ -1229,6 +1257,10 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .brand { min-width: 0; }
   .brand > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .header-actions { gap: 7px; }
+  .financing-resource-grid { grid-template-columns:1fr; padding:14px; }
+  .financing-path { grid-template-columns:auto 1fr; }
+  .financing-path i { display:none; }
+  .lender-compare-note { grid-template-columns:1fr; margin:0 14px 12px; }
   .hero { padding-top: 46px; }
   .pricing-hero { padding-top:50px; }
   .pricing-section { padding:56px 0; }

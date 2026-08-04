@@ -3,28 +3,29 @@
 import { useMemo, useState, useTransition } from "react";
 import { useCrestviewUser } from "@/components/user-provider";
 import type { Opportunity } from "@/lib/demo-data";
+import { financingResourcesFor } from "@/lib/financing-resources";
 import { saveAcquisitionWorkspace } from "@/app/[locale]/dashboard/opportunities/actions";
 
 const stagesEn = [
-  ["Decide if the business fits", "Check the essential facts before spending time or money on a transaction that does not fit your goals."],
-  ["Sign the NDA and request information", "Use the listing NDA first, then send a separate request for financial and confidential records."],
-  ["Verify earnings and estimate value", "Compare reported earnings with evidence, test several value ranges, and identify unsupported adjustments."],
-  ["Confirm financing", "Understand the full cash requirement, lender fit, debt coverage, working capital, and seller-financing terms."],
-  ["Prepare the offer or LOI", "Write down the proposed price, structure, protections, diligence access, and timing with professional review."],
-  ["Verify the business", "Validate financial, tax, legal, operational, customer, employee, technology, insurance, and compliance claims."],
-  ["Prepare and complete closing", "Finalize allocation, agreements, consents, financing, funds, access, and transition deliverables."],
-  ["Transfer ownership and follow the 90-day plan", "Confirm control transferred and organize the first week, first month, and first 90 days."],
+  ["Quick fit check", "Confirm this business fits your goals before spending more time or money."],
+  ["NDA and records", "Sign the listing NDA, then request the records you need."],
+  ["Earnings and value", "Check the reported earnings and estimate a reasonable value range."],
+  ["Financing", "Estimate your cash needs, find financing help, and confirm the business can support the debt."],
+  ["Offer", "Put the proposed price, structure, protections, and timing in writing with professional review."],
+  ["Due diligence", "Verify the important financial, legal, customer, employee, and operating claims."],
+  ["Closing", "Confirm financing, approvals, agreements, funds, access, and transition details."],
+  ["First 90 days", "Take control and organize the most important work after closing."],
 ] as const;
 
 const stagesEs = [
-  ["Evaluación inicial", "Confirma el ajuste, expectativas del vendedor, licencias y disponibilidad financiera básica."],
-  ["Confidencialidad y solicitud de información", "Firma el NDA y solicita registros financieros, operativos, de clientes, empleados y legales."],
-  ["Valoración", "Normaliza ganancias, prueba rangos de valor e identifica ajustes sin respaldo."],
-  ["Preparación financiera", "Revisa capital, prestamista, cobertura de deuda, capital de trabajo y financiamiento del vendedor."],
-  ["Indicación de interés o LOI", "Documenta precio, estructura, exclusividad, acceso a diligencia, contingencias y tiempos con asesoría legal."],
-  ["Debida diligencia", "Valida afirmaciones financieras, fiscales, legales, operativas, de clientes, empleados, tecnología, seguros y cumplimiento."],
-  ["Acuerdo definitivo y cierre", "Finaliza asignación, declaraciones, consentimientos, financiamiento, depósito, transición y entregables."],
-  ["Compra completada", "Confirma fondos y documentos, transfiere control e inicia la transición y obligaciones posteriores."],
+  ["Revisión rápida", "Confirma que este negocio coincide con tus metas antes de invertir más tiempo o dinero."],
+  ["NDA y documentos", "Firma el NDA del anuncio y luego solicita los documentos necesarios."],
+  ["Ganancias y valor", "Comprueba las ganancias reportadas y calcula un rango de valor razonable."],
+  ["Financiamiento", "Calcula el efectivo necesario, encuentra ayuda financiera y confirma que el negocio pueda pagar la deuda."],
+  ["Oferta", "Escribe el precio, estructura, protecciones y fechas con revisión profesional."],
+  ["Debida diligencia", "Verifica las afirmaciones financieras, legales, operativas, de clientes y empleados."],
+  ["Cierre", "Confirma financiamiento, aprobaciones, acuerdos, fondos, accesos y transición."],
+  ["Primeros 90 días", "Toma control y organiza el trabajo más importante después del cierre."],
 ] as const;
 
 const checklistItemsEn = [
@@ -53,12 +54,11 @@ const checklistItemsEn = [
     "Have an accountant or valuation professional review material assumptions",
   ],
   [
-    "Estimate the total cash needed, including the down payment, fees, and working capital",
-    "Confirm how much cash you can invest without creating personal financial strain",
-    "Discuss the opportunity with an SBA or acquisition lender",
-    "Obtain preliminary lender feedback or a term sheet",
-    "Test whether cash flow covers debt payments and a reasonable buyer salary",
-    "Document seller-financing terms and financing contingencies",
+    "Estimate the down payment, fees, and working capital you will need",
+    "Choose how much cash you can safely invest",
+    "Contact at least two SBA or business-acquisition lenders",
+    "Get preliminary lender feedback in writing",
+    "Confirm the expected cash flow can cover debt payments and your salary",
   ],
   [
     "Choose whether to send an informal indication of interest or a formal LOI",
@@ -123,12 +123,11 @@ const checklistItemsEs = [
     "Solicita revisión de supuestos importantes por un contador o profesional de valoración",
   ],
   [
-    "Calcula el efectivo total necesario, incluyendo anticipo, gastos y capital de trabajo",
-    "Confirma cuánto puedes invertir sin crear presión financiera personal",
-    "Habla sobre la oportunidad con un prestamista SBA o de adquisiciones",
-    "Obtén comentarios preliminares o una hoja de términos del prestamista",
-    "Comprueba que el flujo de caja cubra la deuda y un salario razonable",
-    "Documenta el financiamiento del vendedor y las contingencias financieras",
+    "Calcula el anticipo, los gastos y el capital de trabajo necesarios",
+    "Elige cuánto efectivo puedes invertir de forma segura",
+    "Contacta al menos dos prestamistas SBA o de adquisiciones",
+    "Obtén comentarios preliminares del prestamista por escrito",
+    "Confirma que el flujo de caja pueda cubrir la deuda y tu salario",
   ],
   [
     "Elige entre una indicación informal de interés o una LOI formal",
@@ -402,6 +401,7 @@ export function AcquisitionPlanner({
   }
 
   const requestItems = opportunity.missing;
+  const localFinancingResources = financingResourcesFor(opportunity.location);
   const selectedRequestList = selectedRequestItems.length
     ? `\n\nFor my initial review, I would like to request:\n${selectedRequestItems.map((item) => `• ${item}`).join("\n")}`
     : "";
@@ -460,24 +460,7 @@ export function AcquisitionPlanner({
       href: "https://www.sba.gov/local-assistance",
     },
   ];
-  const financingResources = [
-    {
-      label: "SBA Lender Match",
-      description: es ? `Ingresa ${opportunity.location} y los detalles del préstamo para encontrar prestamistas interesados.` : `Enter ${opportunity.location} and the proposed loan details to find lenders that express interest.`,
-      href: "https://www.sba.gov/funding-programs/loans/lender-match-connects-you-lenders",
-    },
-    {
-      label: es ? "Préstamos SBA 7(a)" : "SBA 7(a) acquisition loans",
-      description: es ? "Revisa usos permitidos, requisitos y límites antes de comparar propuestas." : "Review permitted uses, eligibility, and program limits before comparing offers.",
-      href: "https://www.sba.gov/funding-programs/loans/7a-loans",
-    },
-    {
-      label: "FDIC BankFind",
-      description: es ? `Comprueba bancos asegurados que operan cerca de ${opportunity.location}; luego confirma directamente si financian adquisiciones.` : `Check insured banks operating near ${opportunity.location}, then confirm directly whether they finance acquisitions.`,
-      href: "https://banks.data.fdic.gov/bankfind-suite/bankfind",
-    },
-  ];
-  const stageResources = current === 3 ? [...financingResources, ...generalResources] : generalResources;
+  const stageResources = generalResources;
 
   return (
     <section className="acquisition-workspace">
@@ -532,6 +515,27 @@ export function AcquisitionPlanner({
             <p>{metrics.dscr !== null && metrics.dscr < 1.25 ? "Needs attention: the entered cash flow may provide limited room above estimated debt payments." : metrics.dscr !== null ? "Positive signal: the entered cash flow is above the estimated debt payments. Confirm with a lender." : "Enter cash flow and estimated debt service to calculate an illustrative coverage ratio."}</p>
           </div>
         </div>}
+
+        {current === 3 && <section className="financing-help" aria-labelledby="financing-help-title">
+          <header>
+            <div>
+              <span>{es ? "Ayuda local para financiar" : "Local financing help"}</span>
+              <h3 id="financing-help-title">{es ? `Recursos que sirven a ${opportunity.location}` : `Resources serving ${opportunity.location}`}</h3>
+              <p>{es ? "Empieza con la lista oficial de prestamistas y compara al menos dos opciones. La ubicación del negocio determina los recursos mostrados." : "Start with the official participating-lender list and compare at least two options. The business location determines which resources appear."}</p>
+            </div>
+            <div className="financing-path"><strong>1</strong><span>{es ? "Prepara tus números" : "Prepare your numbers"}</span><i>→</i><strong>2</strong><span>{es ? "Habla con prestamistas" : "Talk to lenders"}</span><i>→</i><strong>3</strong><span>{es ? "Compara términos" : "Compare terms"}</span></div>
+          </header>
+          <div className="financing-resource-grid">{localFinancingResources.map((resource) => <article key={resource.href}>
+            <div><span className={`resource-kind resource-kind--${resource.kind}`}>{resource.kind === "lenders" ? (es ? "Lista oficial" : "Official lender list") : resource.kind === "office" ? (es ? "Oficina SBA" : "SBA office") : resource.kind === "advisor" ? (es ? "Asesoría" : "Counseling") : (es ? "Comparar" : "Get matched")}</span><small>{resource.area}</small></div>
+            <h4>{resource.name}</h4>
+            <p>{es ? resource.descriptionEs : resource.description}</p>
+            {resource.phone && <a className="resource-phone" href={`tel:${resource.phone}`}>{es ? "Llamar" : "Call"} {resource.phone}</a>}
+            <a className="resource-link" href={resource.href} target="_blank" rel="noreferrer">{es ? "Abrir fuente oficial" : "Open official source"} →</a>
+            <small>{es ? "Comprobado" : "Checked"}: {resource.checked}</small>
+          </article>)}</div>
+          <div className="lender-compare-note"><strong>{es ? "Pregunta a cada prestamista" : "Ask every lender"}</strong><p>{es ? "¿Financian compras de negocios? ¿Cuál es el anticipo estimado? ¿Qué documentos necesitan? ¿Cuáles son la tasa, plazo, comisiones, garantía y tiempo de cierre?" : "Do you finance business acquisitions? What down payment do you expect? Which documents do you need? What are the rate, term, fees, collateral, and expected closing time?"}</p></div>
+          <p className="financing-disclaimer">{es ? "Crestview muestra fuentes oficiales y recursos regionales, pero no garantiza aprobación ni recomienda un prestamista específico. Compara términos y confirma todos los requisitos directamente." : "Crestview shows official sources and regional resources, but does not guarantee approval or recommend a specific lender. Compare terms and confirm every requirement directly."}</p>
+        </section>}
 
         {atLastStep && <div className="completion-card"><span>✓</span><h3>Purchase complete</h3><p>Use this stage only after your professional advisors confirm the transaction has closed. Record transition obligations, working-capital adjustments, escrow dates, and post-closing commitments.</p></div>}
 

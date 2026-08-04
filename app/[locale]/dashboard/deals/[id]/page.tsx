@@ -80,10 +80,10 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
   const financials = workspace.listingFinancials;
   const priceToCashFlow = financials?.asking_price && financials.cash_flow ? financials.asking_price / financials.cash_flow : null;
   const cashFlowMargin = financials?.annual_revenue && financials.cash_flow ? financials.cash_flow / financials.annual_revenue : null;
-  const documentGroups = ["Overview","Financial","Tax","Operations","Legal","Employees","Assets"].map((category) => ({
+  const documentGroups = ["Overview","Financial","Tax","Legal","Employees","Customers","Assets","Closing","Operations"].map((category) => ({
     category,
     documents: workspace.documents.filter((document) => document.category === category || (category === "Overview" && ["Offering materials","Other"].includes(document.category))),
-  })).filter((group) => group.documents.length);
+  }));
   return (
     <PlatformShell locale={locale} active="inbox">
       <div className="dashboard-content deal-room-page">
@@ -184,10 +184,10 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
         <section className={`panel secure-room ${roomUnlocked || workspace.isDemo ? "is-unlocked" : "is-locked"}`}>
           <div className="panel__header"><div><span className="source-label">Permission-controlled documents</span><h2>Secure deal room</h2></div><span className="stage">{roomUnlocked ? financialApproved ? "Financial access approved" : "NDA access only" : "NDA required"}</span></div>
           {!roomUnlocked && !workspace.isDemo && <div className="room-lock"><span>🔒</span><h3>Sign the NDA to unlock documents</h3><p>Only approved participants can access confidential materials. Every upload and status change remains attached to this deal.</p></div>}
-          {(roomUnlocked || workspace.isDemo) && <div className="document-folders">{documentGroups.map((group) => <section key={group.category}><header><strong>{group.category}</strong><span>{group.documents.length}</span></header><div className="room-documents">{group.documents.map((document) => <article key={document.id}><span>▤</span><div><strong>{document.title}</strong><small>Version {document.version} · {document.permission_note ?? (document.access_level === "approved" ? "Broker approval required" : document.access_level === "broker_only" ? "Broker only" : "Available after NDA")}</small></div>{document.external_url ? <a href={document.external_url} target="_blank" rel="noreferrer">Open</a> : <span className="stage">Protected</span>}</article>)}</div></section>)}</div>}
+          {(roomUnlocked || workspace.isDemo) && <div className="document-folders">{documentGroups.map((group) => <section className={group.documents.length ? "" : "is-missing"} key={group.category}><header><strong>{group.category}</strong><span>{group.documents.length ? `${group.documents.length} received` : "Missing"}</span></header>{group.documents.length ? <div className="room-documents">{group.documents.map((document) => <article key={document.id}><span>▤</span><div><strong>{document.title}</strong><small>Received · review pending · Version {document.version} · {document.permission_note ?? (document.access_level === "approved" ? "Broker approval required" : document.access_level === "broker_only" ? "Broker only" : "Available after NDA")}</small></div>{document.external_url ? <a href={document.external_url} target="_blank" rel="noreferrer">Open</a> : <span className="stage">Protected</span>}</article>)}</div> : <p className="folder-missing-note">No document received yet. Add it to the request list if it is material to this deal.</p>}</section>)}</div>}
           {!workspace.isBuyer && !workspace.isDemo && <details className="room-upload"><summary>Add a secure document</summary><form action={addDealRoomDocument}>
             <input type="hidden" name="locale" value={locale} /><input type="hidden" name="inquiry_id" value={id} />
-            <input name="title" placeholder="Document title" required /><select name="category"><option>Overview</option><option>Financial</option><option>Tax</option><option>Operations</option><option>Legal</option><option>Employees</option><option>Assets</option><option>Offer / LOI</option><option>Other</option></select>
+            <input name="title" placeholder="Document title" required /><select name="category"><option>Overview</option><option>Financial</option><option>Tax</option><option>Legal</option><option>Employees</option><option>Customers</option><option>Assets</option><option>Closing</option><option>Operations</option><option>Other</option></select>
             <input name="external_url" type="url" placeholder="Secure document URL (optional)" /><select name="access_level"><option value="nda_signed">Available after NDA</option><option value="approved">Broker approval required</option><option value="broker_only">Broker only</option></select>
             <button className="button button--primary" type="submit">Add document</button>
           </form></details>}

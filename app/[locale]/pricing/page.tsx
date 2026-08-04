@@ -111,7 +111,7 @@ export default async function PricingPage({
       description: "Advanced help understanding contracts, financial documents, and high-level M&A language.",
       badge: "Advanced guidance",
       featured: true,
-      features: ["Everything included in Free", "Source-linked document intelligence", "Cross-document discrepancy alerts", "Advanced risk explanations", "Advanced financial comparisons", "Controlled review-status tracking for findings"],
+      features: ["Everything included in Free", "Source-linked document intelligence", "Cross-document discrepancy alerts", "Detailed match explanations", "Lender package generation", "Advanced valuation scenarios", "Exportable decision reports"],
     },
   ];
 

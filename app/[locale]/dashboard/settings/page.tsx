@@ -4,6 +4,7 @@ import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase
 import { isLocale } from "@/lib/i18n";
 import { saveAccountProfile, saveBuyerPreferences } from "./actions";
 import { saveMarketplaceRoles } from "../marketplace/actions";
+import { BuyerAlertPreferences } from "@/components/buyer-alert-preferences";
 
 type Preferences = {
   industries: string[];
@@ -87,15 +88,17 @@ export default async function SettingsPage({
         </form>
         <form className="settings-panel" action={saveMarketplaceRoles}>
           <input type="hidden" name="locale" value={locale} />
-          <div><span>Marketplace roles</span><h2>How you use Crestview</h2><p>Use Crestview as a buyer, a broker or seller, or both. You can change this at any time.</p></div>
+          <div><span>Quick onboarding</span><h2>Choose your Crestview workspace</h2><p>Select every role that applies. Crestview keeps the navigation focused and you can change this at any time.</p></div>
           {messages.roles && <p className="auth-success">Your marketplace roles were updated.</p>}
-          <div className="role-settings role-settings--three">
+          <div className="role-settings role-settings--four">
             <label><input type="checkbox" name="buyer" defaultChecked={profile.account_roles.includes("buyer")} /><span><strong>Buyer</strong><small>Browse listings, request information, sign NDAs, and review documents.</small></span></label>
             <label><input type="checkbox" name="broker" defaultChecked={profile.account_roles.includes("broker")} /><span><strong>Broker or seller</strong><small>Publish listings, screen inquiries, send NDAs, and manage deal rooms.</small></span></label>
             <label><input type="checkbox" name="advisor" defaultChecked={profile.account_roles.includes("advisor")} /><span><strong>Advisor</strong><small>Help organize diligence, documents, decisions, and closing work.</small></span></label>
+            <label><input type="checkbox" name="workforce" defaultChecked={profile.account_roles.includes("workforce")} /><span><strong>Workforce customer</strong><small>Manage employees, records, certifications, training, and time off.</small></span></label>
           </div>
           <button className="button button--primary" type="submit">Save marketplace roles</button>
         </form>
+        <BuyerAlertPreferences locale={locale} />
         <form className="settings-panel" id="listing-alerts" action={saveBuyerPreferences}>
           <input type="hidden" name="locale" value={locale} />
           <div>

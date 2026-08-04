@@ -5,8 +5,8 @@ import { getChatGPTUser } from "@/app/chatgpt-auth";
 import type { Locale } from "@/lib/i18n";
 
 const labels = {
-  en: { home: "Home", listings: "Listings", how: "How it works", vision: "Our vision", pricing: "Pricing", signIn: "Sign in", signUp: "Sign up", dashboard: "Dashboard", menu: "Menu", footer: "A business operating platform for thoughtful owners." },
-  es: { home: "Inicio", listings: "Anuncios", how: "Cómo funciona", vision: "Nuestra visión", pricing: "Planes", signIn: "Iniciar sesión", signUp: "Crear cuenta", dashboard: "Panel", menu: "Menú", footer: "Una plataforma empresarial para propietarios reflexivos." },
+  en: { home: "Home", listings: "Listings", realEstate: "Real estate beta", how: "How it works", vision: "Our vision", pricing: "Pricing", signIn: "Sign in", signUp: "Sign up", dashboard: "Dashboard", menu: "Menu", footer: "A business operating platform for thoughtful owners." },
+  es: { home: "Inicio", listings: "Anuncios", realEstate: "Bienes raíces beta", how: "Cómo funciona", vision: "Nuestra visión", pricing: "Planes", signIn: "Iniciar sesión", signUp: "Crear cuenta", dashboard: "Panel", menu: "Menú", footer: "Una plataforma empresarial para propietarios reflexivos." },
 } as const;
 
 function MarketingLinks({ locale }: { locale: Locale }) {
@@ -14,6 +14,7 @@ function MarketingLinks({ locale }: { locale: Locale }) {
   return <>
     <Link href={`/${locale}`}>{text.home}</Link>
     <Link href={`/${locale}/listings`}>{text.listings}</Link>
+    <Link href={`/${locale}/real-estate`}>{text.realEstate}</Link>
     <Link href={`/${locale}/how-it-works`}>{text.how}</Link>
     <Link href={`/${locale}/vision`}>{text.vision}</Link>
     <Link href={`/${locale}/pricing`}>{text.pricing}</Link>

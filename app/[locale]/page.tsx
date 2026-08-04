@@ -146,6 +146,12 @@ export default async function LandingPage({
                 <h3>{copy.home.workforce}</h3>
                 <p>{copy.home.workforceBody}</p>
               </article>
+              <article className="product-card product-card--beta">
+                <span className="product-card__number">03 · BETA · {locale === "es" ? "PRÓXIMAMENTE" : "COMING SOON"}</span>
+                <h3>{locale === "es" ? "Adquisición de bienes raíces" : "Real estate acquisition"}</h3>
+                <p>{locale === "es" ? "La misma metodología guiada de Crestview para evaluar propiedades, financiamiento, diligencia y cierre." : "The same guided Crestview methodology for evaluating property opportunities, financing, diligence, and closing."}</p>
+                <Link className="product-link" href={`/${locale}/real-estate`}>{locale === "es" ? "Ver la vista previa beta" : "See the beta preview"} <span aria-hidden="true">→</span></Link>
+              </article>
             </div>
           </div>
         </section>

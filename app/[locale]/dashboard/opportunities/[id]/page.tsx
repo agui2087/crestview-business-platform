@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AcquisitionPlanner } from "@/components/acquisition-planner";
 import { GuidedAcquisitionWorkspace } from "@/components/guided-acquisition-workspace";
+import { LenderReadinessPackage } from "@/components/lender-readiness-package";
 import { PlatformShell } from "@/components/platform-shell";
 import { getOpportunity, opportunities } from "@/lib/demo-data";
 import { isLocale } from "@/lib/i18n";
@@ -21,6 +22,9 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
   if (!opportunity) notFound();
   const es = locale === "es";
   const dealScore = calculateDealScore(opportunity);
+  const priceToCashFlow = opportunity.priceValue && opportunity.cashFlowValue ? opportunity.priceValue / opportunity.cashFlowValue : null;
+  const priceToRevenue = opportunity.priceValue && opportunity.revenueValue ? opportunity.priceValue / opportunity.revenueValue : null;
+  const sellerFinancing = opportunity.highlights.some((item) => item.toLowerCase().includes("seller financ"));
   let workspace: {
     stage: string;
     current_step: number;
@@ -100,13 +104,22 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
             <a className="button button--light" href={opportunity.sourceUrl} target="_blank" rel="noreferrer">{es ? "Ver anuncio original ↗" : "View source listing ↗"}</a>
           </div>
         </div>
-        <div className="source-warning">{es ? "Información proporcionada por el vendedor o corredor. Crestview no ha verificado el anuncio. Última revisión" : "Seller or broker reported information. Crestview has not independently verified the listing. Last checked"} {opportunity.lastChecked}.</div>
+        <div className="source-warning">{es ? "Información proporcionada por el vendedor o corredor. Crestview no ha verificado el anuncio. Última revisión" : "Seller or broker reported information. Crestview has not independently verified the listing. Last checked"} {opportunity.lastChecked}. <strong>{es ? "Los cálculos de Crestview se muestran por separado." : "Crestview calculations are labeled separately."}</strong></div>
         <nav className="deal-workspace-nav" aria-label="Deal workspace sections">
           <a href="#summary">{es ? "Resumen" : "Summary"}</a><a href="#valuation">{es ? "Plan de adquisición" : "Acquisition plan"}</a><a href="#guided-plan">{es ? "Espacio guiado" : "Guided workspace"}</a><a href="#diligence">{es ? "Diligencia" : "Diligence"}</a><a href="#broker">{es ? "Actividad del corredor" : "Broker activity"}</a><a href="#notes">{es ? "Notas privadas" : "Private notes"}</a>
         </nav>
         <div className="detail-metrics" id="summary">
           {[[es ? "Precio solicitado" : "Asking price",opportunity.price],[es ? "Ingresos" : "Revenue",opportunity.revenue],[es ? "Flujo de caja / SDE" : "Cash flow / SDE",opportunity.cashFlow],["EBITDA",opportunity.ebitda]].map(([label,value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}
         </div>
+        <section className="listing-passport-overview" aria-label={es ? "Pasaporte del anuncio" : "Listing passport"}>
+          <header><div><span>{es ? "PASAPORTE DEL ANUNCIO" : "LISTING PASSPORT"}</span><h2>{es ? "Datos, acceso y próximo paso" : "Facts, access, and the next decision"}</h2></div><b>{opportunity.source} · {opportunity.lastChecked}</b></header>
+          <div className="passport-overview-grid">
+            <div><span>{es ? "Múltiplos calculados" : "Calculated multiples"}</span><strong>{priceToCashFlow ? `${priceToCashFlow.toFixed(2)}× SDE` : "Not available"}</strong><small>{priceToRevenue ? `${priceToRevenue.toFixed(2)}× revenue` : "Revenue multiple unavailable"} · Crestview calculation</small></div>
+            <div><span>{es ? "Financiamiento del vendedor" : "Seller financing"}</span><strong>{sellerFinancing ? (es ? "Mencionado" : "Mentioned") : (es ? "No confirmado" : "Not confirmed")}</strong><small>{sellerFinancing ? "Listing-reported; confirm terms." : "Ask the broker before assuming availability."}</small></div>
+            <div><span>{es ? "Acceso seguro" : "Secure access"}</span><strong>{workspace ? (es ? "Proceso iniciado" : "Workspace started") : (es ? "Aún no solicitado" : "Not requested yet")}</strong><small>{es ? "NDA y finanzas se rastrean por separado." : "NDA and financial access are tracked separately."}</small></div>
+            <div className="is-next"><span>{es ? "Próxima acción" : "Best next action"}</span><strong>{workspace ? (es ? "Completar el plan guiado" : "Complete the guided plan") : (es ? "Guardar e iniciar evaluación" : "Save and begin evaluation")}</strong><small>{opportunity.missing.length} {es ? "elementos importantes faltantes" : "important missing items"}</small></div>
+          </div>
+        </section>
         <div className="detail-grid">
           <article className="detail-card"><h2>Listing summary</h2><p>{opportunity.description}</p><h3>Public highlights</h3><ul>{opportunity.highlights.map((item) => <li key={item}>{item}</li>)}</ul></article>
           <article className="detail-card detail-card--missing"><h2>Information to request</h2><p>These items were not found in the public listing and should not be assumed.</p><ul>{opportunity.missing.map((item) => <li key={item}>{item}</li>)}</ul></article>
@@ -138,6 +151,12 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
           profile={guidanceProfile} diligence={diligence} evidence={evidence}
           professionals={professionals} transition={transition} sba={sba}
           findings={findings} hasPro={hasPro}
+        />}
+        {workspace && workspace.stage !== "saved" && <LenderReadinessPackage
+          locale={locale} title={opportunity.title} location={opportunity.location} industry={opportunity.industry}
+          askingPrice={opportunity.price} revenue={opportunity.revenue} cashFlow={opportunity.cashFlow}
+          missing={opportunity.missing} buyerContribution={sba?.buyer_injection} sellerNote={sba?.seller_note}
+          workingCapital={sba?.working_capital} hasPro={hasPro}
         />}
         <section className="notes-lists-grid" id="notes">
           <article className="operations-card">

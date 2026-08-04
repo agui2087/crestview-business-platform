@@ -18,6 +18,7 @@ const navItems = [
   ["reports", "Reports", "Informes"],
   ["documents", "Documents", "Documentos"],
   ["workforce", "Workforce", "Personal"],
+  ["real-estate", "Real estate beta", "Bienes raíces beta"],
   ["plans", "Plans", "Planes"],
   ["settings", "Settings", "Configuración"],
 ] as const;
@@ -25,7 +26,7 @@ const navItems = [
 const navGroups = [
   { label: ["Home", "Inicio"], slugs: ["overview", "marketplace", "inbox"] },
   { label: ["Deals", "Negocios"], slugs: ["listings", "opportunities", "lists", "pipeline"] },
-  { label: ["Manage", "Administrar"], slugs: ["tasks", "documents", "reports", "workforce", "plans", "settings"] },
+  { label: ["Manage", "Administrar"], slugs: ["tasks", "documents", "reports", "workforce", "real-estate", "plans", "settings"] },
 ] as const;
 
 type NavSlug = (typeof navItems)[number][0];
@@ -33,6 +34,7 @@ type NavSlug = (typeof navItems)[number][0];
 function navHref(locale: Locale, slug: (typeof navItems)[number][0]) {
   if (slug === "overview") return `/${locale}/dashboard`;
   if (slug === "plans") return `/${locale}/pricing`;
+  if (slug === "real-estate") return `/${locale}/real-estate`;
   return `/${locale}/dashboard/${slug}`;
 }
 
@@ -50,7 +52,8 @@ export async function PlatformShell({
   const isBroker = roles.includes("broker");
   const isBuyer = roles.includes("buyer") || roles.includes("advisor");
   const visible = (slug: NavSlug) => {
-    if (slug === "listings" || slug === "workforce") return isBroker;
+    if (slug === "listings") return isBroker;
+    if (slug === "workforce") return isBroker || roles.includes("workforce");
     if (["opportunities", "lists", "pipeline"].includes(slug)) return isBuyer;
     return true;
   };

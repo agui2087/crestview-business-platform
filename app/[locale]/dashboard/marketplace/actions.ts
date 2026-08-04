@@ -35,9 +35,9 @@ function optionalNumber(value: FormDataEntryValue | null) {
 
 export async function saveMarketplaceRoles(formData: FormData) {
   const { locale, supabase, user } = await context(formData);
-  const roles = ["buyer", "broker", "advisor"].filter((role) => formData.get(role) === "on");
+  const roles = ["buyer", "broker", "advisor", "workforce"].filter((role) => formData.get(role) === "on");
   const savedRoles = roles.length ? roles : ["buyer"];
-  const primaryRole = savedRoles.includes("broker") ? "broker" : savedRoles.includes("buyer") ? "buyer" : "advisor";
+  const primaryRole = savedRoles.includes("broker") ? "broker" : savedRoles.includes("buyer") ? "buyer" : savedRoles.includes("advisor") ? "advisor" : "workforce";
   await supabase.from("profiles").update({
     account_roles: savedRoles,
     primary_role: primaryRole,

@@ -12,7 +12,7 @@ type DocumentRecord = {
   createdAt: string;
 };
 
-const categories = ["Financials", "Tax returns", "Legal", "Operations", "Employees", "Customer data", "Other"];
+const categories = ["NDA", "Financials", "Tax returns", "Legal", "Employees", "Customers", "Assets", "Closing", "Operations", "Other"];
 
 function fileSize(bytes: number) {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
@@ -75,7 +75,7 @@ export function DocumentManager({ locale = "en" }: { locale?: string }) {
         <div className="panel__header"><h2>{es ? "Documentos subidos" : "Uploaded documents"}</h2><span>{documents.length} {es ? "archivos" : "files"}</span></div>
         {documents.length === 0 ? <div className="empty-state"><span>▣</span><h2>{es ? "Aún no hay documentos" : "No documents uploaded yet"}</h2><p>{es ? "Tus archivos aparecerán aquí y permanecerán privados." : "Your uploaded files will appear here and remain private to your account."}</p></div> : documents.map((document) => (
           <article className="document-row" key={document.id}>
-            <div><span>{document.category}</span><strong>{document.originalName}</strong><small>{fileSize(document.sizeBytes)} · {new Date(document.createdAt).toLocaleDateString()}</small></div>
+            <div><span>{document.category} · <b>{es ? "Recibido" : "Received"}</b></span><strong>{document.originalName}</strong><small>{fileSize(document.sizeBytes)} · {new Date(document.createdAt).toLocaleDateString()} · {es ? "Revisión pendiente" : "Review pending"}</small></div>
             <div><a href={`/api/documents/${document.id}`}>{es ? "Descargar" : "Download"}</a><button type="button" onClick={() => remove(document.id)}>{es ? "Eliminar" : "Delete"}</button></div>
           </article>
         ))}

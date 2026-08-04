@@ -1405,3 +1405,92 @@ button, a { -webkit-tap-highlight-color: transparent; }
 @media (prefers-reduced-motion: reduce) {
   *,*::before,*::after { scroll-behavior: auto !important; transition: none !important; }
 }
+
+/* Connected acquisition experience */
+.product-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.product-card--beta { background:linear-gradient(145deg,#f4faf6,#fff); border-color:#b9d6c6; }
+.listing-passport-overview { margin:16px 0; overflow:hidden; border:1px solid #bdd7c8; border-radius:17px; background:linear-gradient(145deg,#f3f9f5,#fff); }
+.listing-passport-overview > header { display:flex; align-items:end; justify-content:space-between; gap:20px; padding:20px 22px; border-bottom:1px solid #d6e6dc; }
+.listing-passport-overview header span,.lender-package > div:first-child > span { color:var(--brand); font-size:.58rem; font-weight:850; letter-spacing:.09em; }
+.listing-passport-overview h2 { margin:5px 0 0; font-family:var(--font-display); font-size:1.1rem; }
+.listing-passport-overview header b { color:var(--muted); font-size:.62rem; }
+.passport-overview-grid { display:grid; grid-template-columns:repeat(4,1fr); }
+.passport-overview-grid > div { min-height:122px; padding:18px 20px; border-left:1px solid #dce9e1; }
+.passport-overview-grid > div:first-child { border-left:0; }
+.passport-overview-grid > div.is-next { background:#eaf5ee; }
+.passport-overview-grid span,.passport-overview-grid strong,.passport-overview-grid small { display:block; }
+.passport-overview-grid span { color:var(--muted); font-size:.56rem; text-transform:uppercase; letter-spacing:.05em; }
+.passport-overview-grid strong { margin:10px 0 5px; color:var(--brand-dark); font-size:.75rem; }
+.passport-overview-grid small { color:var(--muted); font-size:.56rem; line-height:1.45; }
+.lender-package { display:grid; grid-template-columns:1.2fr .9fr auto; gap:20px; align-items:center; margin-top:16px; padding:23px; border:1px solid #d2be8a; border-radius:16px; background:#fbf7ec; }
+.lender-package h2 { margin:5px 0 7px; font-family:var(--font-display); font-size:1.05rem; }
+.lender-package p,.lender-package small { color:var(--muted); font-size:.6rem; line-height:1.5; }
+.lender-package > small { grid-column:1/-1; }
+.lender-package__contents { padding:13px 15px; border:1px solid #e4d8b8; border-radius:10px; background:#fff; }
+.lender-package__contents strong,.lender-package__contents span { display:block; }
+.lender-package__contents strong { font-size:.68rem; }
+.lender-package__contents span,.lender-package__contents li { color:var(--muted); font-size:.55rem; }
+.lender-package__contents ul { margin:9px 0 0; padding-left:16px; }
+.lender-package.is-locked { background:linear-gradient(135deg,#fbf7ec,#f3f8f5); }
+.alert-option-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+.alert-option-grid label { display:flex; gap:10px; padding:14px; border:1px solid var(--line); border-radius:11px; background:#fff; cursor:pointer; }
+.alert-option-grid input { width:16px; height:16px; margin-top:2px; accent-color:var(--brand); }
+.alert-option-grid span,.alert-option-grid strong,.alert-option-grid small { display:block; }
+.alert-option-grid strong { font-size:.67rem; }
+.alert-option-grid small { margin-top:4px; color:var(--muted); font-size:.56rem; line-height:1.45; }
+.alert-save-row { display:flex; align-items:center; gap:15px; margin-top:14px; }
+.alert-save-row > span { color:var(--brand); font-size:.62rem; font-weight:750; }
+.role-settings--four { grid-template-columns:repeat(4,1fr); }
+.document-folders > section.is-missing { opacity:.75; }
+.document-folders > section.is-missing header span { color:#906a28; background:#f9efd8; }
+.folder-missing-note { margin:0; padding:13px 15px; color:var(--muted); font-size:.56rem; line-height:1.45; }
+
+/* Real estate coming-soon beta */
+.real-estate-beta { min-height:80vh; }
+.real-estate-hero { padding:92px 0 70px; text-align:center; }
+.coming-soon-badge { display:inline-flex; align-items:center; gap:8px; margin-bottom:20px; padding:7px 12px; border:1px solid #b9d6c6; border-radius:999px; color:var(--brand); background:#f0f8f3; font-size:.67rem; font-weight:800; text-transform:uppercase; letter-spacing:.06em; }
+.coming-soon-badge span { padding:3px 7px; border-radius:999px; color:#fff; background:var(--brand); }
+.real-estate-hero .eyebrow { justify-content:center; }
+.real-estate-hero h1 { max-width:930px; margin:0 auto; font:400 clamp(2.8rem,6vw,5.4rem)/1 Georgia,"Times New Roman",serif; letter-spacing:-.06em; }
+.real-estate-hero > p:not(.eyebrow) { max-width:710px; margin:25px auto 0; color:var(--muted); font-size:.92rem; line-height:1.75; }
+.real-estate-actions { display:flex; justify-content:center; gap:10px; margin-top:30px; }
+.beta-notice { display:flex; align-items:center; gap:18px; max-width:900px; margin:44px auto 0; padding:17px 20px; border:1px solid #d8c89d; border-radius:13px; text-align:left; background:#fbf7ec; }
+.beta-notice strong { flex:0 0 auto; color:#785f28; font-size:.69rem; }
+.beta-notice span { color:var(--muted); font-size:.63rem; line-height:1.5; }
+.real-estate-method { padding:70px 0 90px; }
+.real-estate-method__heading { max-width:720px; }
+.real-estate-method__heading h2,.real-estate-preview-grid h2 { margin:8px 0 0; font:400 clamp(2rem,4vw,3.6rem)/1.06 Georgia,serif; letter-spacing:-.05em; }
+.real-estate-phase-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-top:36px; }
+.real-estate-phase-grid article { padding:24px 20px; border:1px solid var(--line); border-radius:15px; background:#fff; }
+.real-estate-phase-grid article > span { color:var(--brand); font-size:.64rem; font-weight:850; }
+.real-estate-phase-grid h3 { margin:20px 0 8px; font-size:.82rem; }
+.real-estate-phase-grid p,.real-estate-preview-grid p { color:var(--muted); font-size:.62rem; line-height:1.6; }
+.real-estate-preview-band { padding:85px 0; color:#fff; background:var(--brand-dark); }
+.real-estate-preview-grid { display:grid; grid-template-columns:1.1fr .9fr; gap:70px; align-items:center; }
+.real-estate-preview-grid > div:first-child > span { color:var(--lime); font-size:.61rem; font-weight:850; letter-spacing:.08em; }
+.real-estate-preview-grid p { color:#c9d9d1; }
+.property-passport-mock { display:grid; grid-template-columns:repeat(2,1fr); overflow:hidden; border:1px solid rgba(255,255,255,.2); border-radius:17px; background:rgba(255,255,255,.08); }
+.property-passport-mock div { padding:22px; border:1px solid rgba(255,255,255,.09); }
+.property-passport-mock span,.property-passport-mock strong { display:block; }
+.property-passport-mock span { color:#b7cbc1; font-size:.56rem; text-transform:uppercase; }
+.property-passport-mock strong { margin-top:8px; font-size:.72rem; }
+
+@media (max-width:1000px) {
+  .product-grid,.alert-option-grid { grid-template-columns:1fr 1fr; }
+  .passport-overview-grid { grid-template-columns:1fr 1fr; }
+  .passport-overview-grid > div:nth-child(3) { border-left:0; border-top:1px solid #dce9e1; }
+  .passport-overview-grid > div:nth-child(4) { border-top:1px solid #dce9e1; }
+  .lender-package { grid-template-columns:1fr 1fr; }
+  .lender-package .button { grid-column:1/-1; width:fit-content; }
+  .real-estate-phase-grid { grid-template-columns:repeat(2,1fr); }
+}
+@media (max-width:700px) {
+  .product-grid,.alert-option-grid,.passport-overview-grid,.real-estate-phase-grid,.real-estate-preview-grid { grid-template-columns:1fr; }
+  .listing-passport-overview > header,.beta-notice { align-items:flex-start; flex-direction:column; }
+  .passport-overview-grid > div { border-left:0; border-top:1px solid #dce9e1; }
+  .passport-overview-grid > div:first-child { border-top:0; }
+  .lender-package { grid-template-columns:1fr; }
+  .lender-package .button { grid-column:auto; width:100%; }
+  .real-estate-hero { padding-top:65px; }
+  .real-estate-actions { flex-direction:column; }
+}

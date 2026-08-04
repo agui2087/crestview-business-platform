@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Brand } from "@/components/brand";
-import { LocaleSwitcher } from "@/components/locale-switcher";
-import { getChatGPTUser } from "@/app/chatgpt-auth";
+import { MarketingFooter, MarketingHeader } from "@/components/marketing-shell";
 import { getDictionary, isLocale } from "@/lib/i18n";
 
 export const metadata: Metadata = {
@@ -17,27 +15,9 @@ export default async function LandingPage({
   if (!isLocale(locale)) notFound();
 
   const copy = getDictionary(locale);
-  const user = await getChatGPTUser();
-
   return (
     <>
-      <header className="site-header">
-        <div className="shell site-header__inner">
-          <Brand locale={locale} />
-          <nav className="nav" aria-label="Primary navigation">
-            <a href="#platform">{copy.nav.platform}</a>
-            <a href="#how-it-works">{copy.nav.how}</a>
-            <a href="#vision">{copy.nav.vision}</a>
-            <Link href={`/${locale}/pricing`}>{locale === "es" ? "Planes" : "Pricing"}</Link>
-          </nav>
-          <div className="header-actions">
-            <LocaleSwitcher locale={locale} />
-            <Link className="button button--light" href={user ? `/${locale}/dashboard` : `/${locale}/sign-in`}>
-              {user ? (locale === "es" ? "Abrir panel" : "Open dashboard") : copy.nav.signIn}
-            </Link>
-          </div>
-        </div>
-      </header>
+      <MarketingHeader locale={locale} />
 
       <main>
         <section className="hero">
@@ -157,9 +137,9 @@ export default async function LandingPage({
                 <span className="product-card__number">01 · {copy.home.available}</span>
                 <h3>{copy.home.dealflow}</h3>
                 <p>{copy.home.dealflowBody}</p>
-                <a className="product-link" href="#how-it-works">
+                <Link className="product-link" href={`/${locale}/how-it-works`}>
                   {copy.home.learn} <span aria-hidden="true">→</span>
-                </a>
+                </Link>
               </article>
               <article className="product-card product-card--future">
                 <span className="product-card__number">02 · {copy.home.planned}</span>
@@ -203,13 +183,7 @@ export default async function LandingPage({
         </section>
       </main>
 
-      <footer className="footer">
-        <div className="shell footer__inner">
-          <Brand locale={locale} />
-          <span>{copy.home.footer}</span>
-          <span>© 2026 Crestview</span>
-        </div>
-      </footer>
+      <MarketingFooter locale={locale} />
     </>
   );
 }

@@ -82,6 +82,7 @@ export async function POST(request: Request) {
         mode: definition.mode,
         customer: stripeCustomerId,
         line_items: [{ price: priceId, quantity }],
+        allow_promotion_codes: true,
         success_url: successUrl,
         cancel_url: cancelUrl,
         client_reference_id: user.id,

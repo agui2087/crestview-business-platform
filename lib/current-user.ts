@@ -1,9 +1,10 @@
 import { redirect } from "next/navigation";
+import { cache } from "react";
 import { requireChatGPTUser } from "@/app/chatgpt-auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Locale } from "@/lib/i18n";
 
-export async function getCrestviewUser(locale: Locale) {
+export const getCrestviewUser = cache(async (locale: Locale) => {
   const authUser = await requireChatGPTUser(`/${locale}/dashboard`);
   if (authUser.source === "local") {
     return { ...authUser, locale };
@@ -27,4 +28,4 @@ export async function getCrestviewUser(locale: Locale) {
   }
 
   redirect(`/${locale}/create-account`);
-}
+});

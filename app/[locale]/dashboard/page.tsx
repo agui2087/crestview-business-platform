@@ -28,19 +28,19 @@ export default async function DashboardPage({ params }: PageProps<"/[locale]/das
     const supabase = await createSupabaseServerClient();
     const { data: { user: authUser } } = await supabase.auth.getUser();
     if (authUser) {
-      const [{ data: dealData }, { data: taskData }, { count: diligence }, { count: flagged }, { data: profile }, { count: brokerQueue }] = await Promise.all([
+      const accountRoles = "accountRoles" in user ? user.accountRoles : ["buyer"];
+      primaryRole = accountRoles.includes("broker") ? "broker" : accountRoles.includes("advisor") ? "advisor" : "buyer";
+      const [{ data: dealData }, { data: taskData }, { count: diligence }, { count: flagged }, { count: brokerQueue }] = await Promise.all([
         supabase.from("saved_opportunities").select("id,opportunity_key,stage,next_action,updated_at").eq("user_id", authUser.id).order("updated_at", { ascending: false }).limit(8),
         supabase.from("deal_tasks").select("id,title,due_date,priority,opportunity_key").eq("user_id", authUser.id).eq("status", "open").order("due_date").limit(6),
         supabase.from("diligence_items").select("*", { count: "exact", head: true }).eq("user_id", authUser.id).neq("status", "verified"),
         supabase.from("diligence_items").select("*", { count: "exact", head: true }).eq("user_id", authUser.id).eq("status", "flagged"),
-        supabase.from("profiles").select("primary_role").eq("user_id", authUser.id).maybeSingle(),
         supabase.from("deal_inquiries").select("*", { count: "exact", head: true }).eq("broker_id", authUser.id).or("status.in.(submitted,nda_signed,offer),financial_access_status.eq.requested"),
       ]);
       deals = (dealData ?? []) as Deal[];
       tasks = (taskData ?? []) as Task[];
       diligenceCount = diligence ?? 0;
       flaggedCount = flagged ?? 0;
-      primaryRole = profile?.primary_role ?? "buyer";
       brokerQueueCount = brokerQueue ?? 0;
     }
   }

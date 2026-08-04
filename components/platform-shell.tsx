@@ -5,7 +5,6 @@ import { LocaleSwitcher } from "@/components/locale-switcher";
 import { chatGPTSignOutPath } from "@/app/chatgpt-auth";
 import { getCrestviewUser } from "@/lib/current-user";
 import type { Locale } from "@/lib/i18n";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const navItems = [
   ["overview", "Overview", "Resumen"],
@@ -24,10 +23,9 @@ const navItems = [
 ] as const;
 
 const navGroups = [
-  { label: ["Marketplace", "Mercado"], slugs: ["overview", "marketplace", "listings", "inbox"] },
-  { label: ["Acquisition workspace", "Espacio de adquisición"], slugs: ["opportunities", "lists", "pipeline"] },
-  { label: ["Operations", "Operaciones"], slugs: ["tasks", "documents", "reports", "workforce"] },
-  { label: ["Account", "Cuenta"], slugs: ["plans", "settings"] },
+  { label: ["Home", "Inicio"], slugs: ["overview", "marketplace", "inbox"] },
+  { label: ["Deals", "Negocios"], slugs: ["listings", "opportunities", "lists", "pipeline"] },
+  { label: ["Manage", "Administrar"], slugs: ["tasks", "documents", "reports", "workforce", "plans", "settings"] },
 ] as const;
 
 type NavSlug = (typeof navItems)[number][0];
@@ -56,13 +54,6 @@ export async function PlatformShell({
     if (["opportunities", "lists", "pipeline"].includes(slug)) return isBuyer;
     return true;
   };
-  let unreadNotifications = 0;
-  if (user.source === "supabase") {
-    const supabase = await createSupabaseServerClient();
-    const { count } = await supabase.from("marketplace_notifications")
-      .select("*", { count: "exact", head: true }).is("read_at", null);
-    unreadNotifications = count ?? 0;
-  }
   const initials = user.displayName
     .split(/\s+/)
     .filter(Boolean)
@@ -111,12 +102,10 @@ export async function PlatformShell({
             </div>
           ))}
         </nav>
-        {isBuyer && <div className="listing-alert">
+        {isBuyer && <Link className="listing-alert" href={`/${locale}/dashboard/settings#listing-alerts`}>
           <span className="listing-alert__icon" aria-hidden="true">◎</span>
-          <strong>{locale === "es" ? "Recibe alertas de anuncios" : "Get listing alerts"}</strong>
-          <p>{locale === "es" ? "Recibe una notificación cuando se publique un negocio que coincida con tus preferencias." : "Receive a notification when a business matching your preferences is listed."}</p>
-          <Link href={`/${locale}/dashboard/settings#listing-alerts`}>{locale === "es" ? "Configurar preferencias →" : "Set preferences →"}</Link>
-        </div>}
+          <span><strong>{locale === "es" ? "Alertas de anuncios" : "Listing alerts"}</strong><small>{locale === "es" ? "Configurar preferencias" : "Set preferences"} →</small></span>
+        </Link>}
       </aside>
       <section className="dashboard-main">
         <header className="dashboard-topbar">
@@ -125,13 +114,21 @@ export async function PlatformShell({
             {"organizationName" in user ? user.organizationName : "Crestview Holdings"}
           </div>
           <div className="user-chip">
-            <LocaleSwitcher locale={locale} compact />
-            {user.email.toLowerCase() === "agui2087@outlook.com" && <Link className="admin-switch" href={`/${locale}/dashboard/admin`}>{locale === "es" ? "Vista admin" : "Admin view"}</Link>}
-            <Link href={`/${locale}`}>{locale === "es" ? "Sitio web" : "Website"}</Link>
-            <Link className="notification-link" href={`/${locale}/dashboard/inbox#notifications`} aria-label={`${locale === "es" ? "Notificaciones" : "Notifications"}${unreadNotifications ? ` (${unreadNotifications} unread)` : ""}`}>{unreadNotifications ? <b>{Math.min(unreadNotifications, 9)}</b> : "○"}</Link>
-            <strong>{user.displayName}</strong>
-            <span title={user.displayName}>{initials}</span>
-            <a href={user.source === "local" ? `/api/local-auth/signout?return_to=/${locale}` : chatGPTSignOutPath(`/${locale}`)}>{locale === "es" ? "Salir" : "Sign out"}</a>
+            <Link className="notification-link" href={`/${locale}/dashboard/inbox#notifications`} aria-label={locale === "es" ? "Notificaciones" : "Notifications"}>○</Link>
+            <details className="account-menu">
+              <summary aria-label={locale === "es" ? "Abrir menú de cuenta" : "Open account menu"}>
+                <span title={user.displayName}>{initials}</span>
+                <strong>{user.displayName}</strong>
+                <i aria-hidden="true">⌄</i>
+              </summary>
+              <div>
+                <small>{user.email}</small>
+                <LocaleSwitcher locale={locale} compact />
+                {user.email.toLowerCase() === "agui2087@outlook.com" && <Link href={`/${locale}/dashboard/admin`}>{locale === "es" ? "Vista admin" : "Admin view"}</Link>}
+                <Link href={`/${locale}`}>{locale === "es" ? "Sitio web" : "Website"}</Link>
+                <a href={user.source === "local" ? `/api/local-auth/signout?return_to=/${locale}` : chatGPTSignOutPath(`/${locale}`)}>{locale === "es" ? "Salir" : "Sign out"}</a>
+              </div>
+            </details>
           </div>
         </header>
         {children}

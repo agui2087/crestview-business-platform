@@ -19,6 +19,10 @@ type Preferences = {
   funding_status: string;
   proof_of_funds_status: string;
   buyer_summary: string | null;
+  desired_owner_income: number | null;
+  risk_tolerance: string;
+  share_summary: string;
+  share_experience: string;
 };
 
 const defaults: Preferences = {
@@ -34,6 +38,10 @@ const defaults: Preferences = {
   funding_status: "exploring",
   proof_of_funds_status: "not_provided",
   buyer_summary: null,
+  desired_owner_income: null,
+  risk_tolerance: "balanced",
+  share_summary: "inquiry",
+  share_experience: "inquiry",
 };
 
 export default async function SettingsPage({
@@ -49,17 +57,18 @@ export default async function SettingsPage({
   const messages = await searchParams;
   let preferences = defaults;
   let profile = { display_name: "", job_title: "", phone: "", organization_name: "Crestview Holdings", account_roles: ["buyer"] as string[] };
+  let financialProfile = { available_cash: null as number | null, buyer_injection_percent: 15, illustrative_interest_rate: 11, credit_readiness: "not_provided", share_financial: "nda" };
 
   if (isSupabaseConfigured()) {
     const supabase = await createSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      const { data } = await supabase
-        .from("buyer_preferences")
-        .select("industries, locations, minimum_price, maximum_price, minimum_cash_flow, owner_involvement, seller_financing_preferred, experience_level, acquisition_timeline, funding_status, proof_of_funds_status, buyer_summary")
-        .eq("user_id", user.id)
-        .maybeSingle();
+      const [{ data }, { data: financeData }] = await Promise.all([
+        supabase.from("buyer_preferences").select("industries, locations, minimum_price, maximum_price, minimum_cash_flow, owner_involvement, seller_financing_preferred, experience_level, acquisition_timeline, funding_status, proof_of_funds_status, buyer_summary, desired_owner_income, risk_tolerance, share_summary, share_experience").eq("user_id", user.id).maybeSingle(),
+        supabase.from("buyer_financial_profiles").select("available_cash,buyer_injection_percent,illustrative_interest_rate,credit_readiness,share_financial").eq("user_id", user.id).maybeSingle(),
+      ]);
       if (data) preferences = data as Preferences;
+      if (financeData) financialProfile = financeData;
       const { data: profileData } = await supabase.from("profiles").select("display_name,job_title,phone,organization_name,account_roles").eq("user_id", user.id).maybeSingle();
       if (profileData) profile = {
         display_name: profileData.display_name ?? "",
@@ -79,6 +88,20 @@ export default async function SettingsPage({
           <input type="hidden" name="locale" value={locale}/>
           <div><span>{es ? "Cuenta y organización" : "Account and organization"}</span><h2>{es ? "Perfil público dentro de Crestview" : "Your Crestview profile"}</h2><p>{es ? "Tu nombre se usa en mensajes y borradores en toda la plataforma." : "Your name is used in messages and drafts throughout the platform."}</p></div>
           <div className="preference-grid">
+            <label>Cash available for an acquisition
+              <input name="available_cash" defaultValue={financialProfile.available_cash ?? ""} inputMode="numeric" placeholder="100000" />
+              <small>Private unless you choose to share it below.</small>
+            </label>
+            <label>Desired annual owner income
+              <input name="desired_owner_income" defaultValue={preferences.desired_owner_income ?? ""} inputMode="numeric" placeholder="90000" />
+              <small>Used in Crestview estimates, not shown as verified income.</small>
+            </label>
+            <label>Estimated buyer injection
+              <select name="buyer_injection_percent" defaultValue={financialProfile.buyer_injection_percent}><option value="10">10%</option><option value="15">15%</option><option value="20">20%</option><option value="25">25%</option></select>
+            </label>
+            <label>Illustrative interest rate
+              <select name="illustrative_interest_rate" defaultValue={financialProfile.illustrative_interest_rate}><option value="9">9%</option><option value="10">10%</option><option value="11">11%</option><option value="12">12%</option><option value="13">13%</option></select>
+            </label>
             <label>{es ? "Nombre" : "Display name"}<input name="display_name" defaultValue={profile.display_name}/></label>
             <label>{es ? "Organización" : "Organization"}<input name="organization_name" defaultValue={profile.organization_name}/></label>
             <label>{es ? "Puesto" : "Job title"}<input name="job_title" defaultValue={profile.job_title}/></label>
@@ -157,10 +180,21 @@ export default async function SettingsPage({
                 <option value="seller_financing">Interested in seller financing</option>
               </select>
             </label>
+            <label>Credit readiness <small>Optional and self-reported; Crestview does not pull credit.</small>
+              <select name="credit_readiness" defaultValue={financialProfile.credit_readiness}><option value="not_provided">Prefer not to provide</option><option value="building">Building credit readiness</option><option value="fair">Fair range</option><option value="good">Good range</option><option value="excellent">Excellent range</option></select>
+            </label>
+            <label>Risk tolerance
+              <select name="risk_tolerance" defaultValue={preferences.risk_tolerance}><option value="conservative">Conservative</option><option value="balanced">Balanced</option><option value="growth">Growth oriented</option></select>
+            </label>
             <label className="span-two">Short buyer introduction
               <textarea name="buyer_summary" defaultValue={preferences.buyer_summary ?? ""} placeholder="Briefly describe your background, acquisition goal, and relevant operating experience." />
             </label>
           </div>
+          <fieldset className="buyer-sharing-controls"><legend>What brokers may see</legend><p>Choose when each part becomes visible. Private financial inputs stay in a separate protected profile.</p><div>
+            <label>Buyer introduction<select name="share_summary" defaultValue={preferences.share_summary}><option value="inquiry">When I send an inquiry</option><option value="nda">Only after NDA is signed</option><option value="private">Keep private</option></select></label>
+            <label>Experience and timeline<select name="share_experience" defaultValue={preferences.share_experience}><option value="inquiry">When I send an inquiry</option><option value="nda">Only after NDA is signed</option><option value="private">Keep private</option></select></label>
+            <label>Financial readiness<select name="share_financial" defaultValue={financialProfile.share_financial}><option value="inquiry">When I send an inquiry</option><option value="nda">Only after NDA is signed</option><option value="private">Keep private</option></select></label>
+          </div><small>Labels shown to brokers distinguish buyer-provided details from Crestview account verification and lender verification.</small></fieldset>
           <label className="preference-check">
             <input type="checkbox" name="seller_financing_preferred" defaultChecked={preferences.seller_financing_preferred} />
             Prefer opportunities offering seller financing

@@ -23,13 +23,21 @@ export async function saveBuyerPreferences(formData: FormData) {
       .map((value) => value.trim())
       .filter(Boolean);
 
-  const { error } = await supabase.from("buyer_preferences").upsert({
+  const availableCash = moneyValue(formData.get("available_cash"));
+  const desiredOwnerIncome = moneyValue(formData.get("desired_owner_income"));
+  const injectionPercent = Math.min(50, Math.max(5, Number(formData.get("buyer_injection_percent")) || 15));
+  const illustrativeInterestRate = Math.min(30, Math.max(0, Number(formData.get("illustrative_interest_rate")) || 11));
+  const estimatedMaximum = availableCash ? Math.round(availableCash / (injectionPercent / 100 + 0.05)) : moneyValue(formData.get("maximum_price"));
+
+  const [{ error }, { error: financialError }] = await Promise.all([
+    supabase.from("buyer_preferences").upsert({
     user_id: user.id,
     industries: splitList("industries"),
     locations: splitList("locations"),
     minimum_price: moneyValue(formData.get("minimum_price")),
-    maximum_price: moneyValue(formData.get("maximum_price")),
+    maximum_price: estimatedMaximum,
     minimum_cash_flow: moneyValue(formData.get("minimum_cash_flow")),
+    desired_owner_income: desiredOwnerIncome,
     owner_involvement: String(formData.get("owner_involvement") ?? "flexible"),
     seller_financing_preferred: formData.get("seller_financing_preferred") === "on",
     experience_level: String(formData.get("experience_level") ?? "first_time"),
@@ -37,10 +45,23 @@ export async function saveBuyerPreferences(formData: FormData) {
     funding_status: String(formData.get("funding_status") ?? "exploring"),
     proof_of_funds_status: formData.get("proof_of_funds_available") === "on" ? "available" : "not_provided",
     buyer_summary: String(formData.get("buyer_summary") ?? "").trim() || null,
+    risk_tolerance: String(formData.get("risk_tolerance") ?? "balanced"),
+    share_summary: String(formData.get("share_summary") ?? "inquiry"),
+    share_experience: String(formData.get("share_experience") ?? "inquiry"),
     updated_at: new Date().toISOString(),
-  }, { onConflict: "user_id" });
+    }, { onConflict: "user_id" }),
+    supabase.from("buyer_financial_profiles").upsert({
+      user_id: user.id,
+      available_cash: availableCash,
+      buyer_injection_percent: injectionPercent,
+      illustrative_interest_rate: illustrativeInterestRate,
+      credit_readiness: String(formData.get("credit_readiness") ?? "not_provided"),
+      share_financial: String(formData.get("share_financial") ?? "nda"),
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "user_id" }),
+  ]);
 
-  if (error) redirect(`/${localeValue}/dashboard/settings?error=save`);
+  if (error || financialError) redirect(`/${localeValue}/dashboard/settings?error=save`);
   revalidatePath(`/${localeValue}/dashboard/settings`);
   revalidatePath(`/${localeValue}/dashboard/opportunities`);
   redirect(`/${localeValue}/dashboard/settings?saved=1`);

@@ -7,6 +7,8 @@ import { getCrestviewUser } from "@/lib/current-user";
 import { isLocale } from "@/lib/i18n";
 import { platformCopy } from "@/lib/platform-copy";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { BuyerCommandCenter } from "@/components/buyer-command-center";
+import type { BuyerFitPreferences } from "@/lib/deal-score";
 
 export const metadata: Metadata = { title: "Overview" };
 
@@ -24,24 +26,30 @@ export default async function DashboardPage({ params }: PageProps<"/[locale]/das
   let flaggedCount = 0;
   let primaryRole = "buyer";
   let brokerQueueCount = 0;
+  let buyerProfile: (NonNullable<BuyerFitPreferences> & { desired_owner_income: number | null; acquisition_timeline: string | null; funding_status: string | null; experience_level: string | null; buyer_summary: string | null }) | null = null;
+  let buyerFinance: { available_cash: number | null; buyer_injection_percent: number; illustrative_interest_rate: number } | null = null;
   if (isSupabaseConfigured() && user.source === "supabase") {
     const supabase = await createSupabaseServerClient();
     const { data: { user: authUser } } = await supabase.auth.getUser();
     if (authUser) {
       const accountRoles = "accountRoles" in user ? user.accountRoles : ["buyer"];
       primaryRole = accountRoles.includes("broker") ? "broker" : accountRoles.includes("advisor") ? "advisor" : "buyer";
-      const [{ data: dealData }, { data: taskData }, { count: diligence }, { count: flagged }, { count: brokerQueue }] = await Promise.all([
+      const [{ data: dealData }, { data: taskData }, { count: diligence }, { count: flagged }, { count: brokerQueue }, { data: preferenceData }, { data: financeData }] = await Promise.all([
         supabase.from("saved_opportunities").select("id,opportunity_key,stage,next_action,updated_at").eq("user_id", authUser.id).order("updated_at", { ascending: false }).limit(8),
         supabase.from("deal_tasks").select("id,title,due_date,priority,opportunity_key").eq("user_id", authUser.id).eq("status", "open").order("due_date").limit(6),
         supabase.from("diligence_items").select("*", { count: "exact", head: true }).eq("user_id", authUser.id).neq("status", "verified"),
         supabase.from("diligence_items").select("*", { count: "exact", head: true }).eq("user_id", authUser.id).eq("status", "flagged"),
         supabase.from("deal_inquiries").select("*", { count: "exact", head: true }).eq("broker_id", authUser.id).or("status.in.(submitted,nda_signed,offer),financial_access_status.eq.requested"),
+        supabase.from("buyer_preferences").select("industries,locations,maximum_price,minimum_cash_flow,seller_financing_preferred,desired_owner_income,acquisition_timeline,funding_status,experience_level,buyer_summary").eq("user_id", authUser.id).maybeSingle(),
+        supabase.from("buyer_financial_profiles").select("available_cash,buyer_injection_percent,illustrative_interest_rate").eq("user_id", authUser.id).maybeSingle(),
       ]);
       deals = (dealData ?? []) as Deal[];
       tasks = (taskData ?? []) as Task[];
       diligenceCount = diligence ?? 0;
       flaggedCount = flagged ?? 0;
       brokerQueueCount = brokerQueue ?? 0;
+      buyerProfile = preferenceData as typeof buyerProfile;
+      buyerFinance = financeData;
     }
   }
   const activeDeals = deals.filter((deal) => !["saved", "complete", "passed"].includes(deal.stage)).length;
@@ -65,6 +73,7 @@ export default async function DashboardPage({ params }: PageProps<"/[locale]/das
             {primaryRole === "advisor" && <><Link className="button button--primary" href={`/${locale}/dashboard/pipeline`}>Review client pipeline</Link><Link className="button button--light" href={`/${locale}/dashboard/inbox`}>Open deal inbox</Link></>}
           </div>
         </section>
+        {primaryRole === "buyer" && <BuyerCommandCenter locale={locale} profile={buyerProfile} finance={buyerFinance} activeDeals={activeDeals} openTasks={tasks.length} />}
         <div className="metric-grid">
           {[
             [text.overview.saved, String(deals.length), locale === "es" ? "Guardadas en tu cuenta" : "Stored in your account"],

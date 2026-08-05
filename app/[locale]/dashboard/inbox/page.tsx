@@ -18,7 +18,8 @@ export default async function InboxPage({ params, searchParams }: PageProps<"/[l
   let userId: string | undefined;
   let notifications: { id: string; title: string; body: string; inquiry_id: string | null; read_at: string | null; created_at: string }[] = [];
   let isBroker = false;
-  let buyerProfiles = new Map<string, { display_name: string | null; verification_status: string; acquisition_timeline: string | null; funding_status: string | null; proof_of_funds_status: string; buyer_summary: string | null }>();
+  type BrokerBuyerSummary = { display_name: string | null; verification_status: string; acquisition_timeline: string | null; funding_status: string | null; proof_of_funds_status: string | null; buyer_summary: string | null; experience_level: string | null; available_cash: number | null; credit_readiness: string | null; financial_visibility: string; nda_complete: boolean; labels: { profile: string; verification: string; financial: string } };
+  let buyerProfiles = new Map<string, BrokerBuyerSummary>();
   if (isSupabaseConfigured() && user.source === "supabase") {
     const supabase = await createSupabaseServerClient();
     userId = (await supabase.auth.getUser()).data.user?.id;
@@ -34,25 +35,9 @@ export default async function InboxPage({ params, searchParams }: PageProps<"/[l
   const inquiries = await getMyInquiries(userId);
   if (isBroker && userId && inquiries.length) {
     const supabase = await createSupabaseServerClient();
-    const buyerIds = [...new Set(inquiries.filter((inquiry) => inquiry.broker_id === userId).map((inquiry) => inquiry.buyer_id))];
-    if (buyerIds.length) {
-      const [{ data: profiles }, { data: preferences }] = await Promise.all([
-        supabase.from("profiles").select("user_id,display_name,verification_status").in("user_id", buyerIds),
-        supabase.from("buyer_preferences").select("user_id,acquisition_timeline,funding_status,proof_of_funds_status,buyer_summary").in("user_id", buyerIds),
-      ]);
-      buyerProfiles = new Map(buyerIds.map((buyerId) => {
-        const profile = profiles?.find((item) => item.user_id === buyerId);
-        const preferencesRow = preferences?.find((item) => item.user_id === buyerId);
-        return [buyerId, {
-          display_name: profile?.display_name ?? null,
-          verification_status: profile?.verification_status ?? "unverified",
-          acquisition_timeline: preferencesRow?.acquisition_timeline ?? null,
-          funding_status: preferencesRow?.funding_status ?? null,
-          proof_of_funds_status: preferencesRow?.proof_of_funds_status ?? "not_provided",
-          buyer_summary: preferencesRow?.buyer_summary ?? null,
-        }];
-      }));
-    }
+    const brokerInquiries = inquiries.filter((inquiry) => inquiry.broker_id === userId && !inquiry.id.startsWith("demo-"));
+    const summaries = await Promise.all(brokerInquiries.map(async (inquiry) => ({ inquiry, result: await supabase.rpc("get_broker_buyer_summary", { target_inquiry: inquiry.id }) })));
+    buyerProfiles = new Map(summaries.filter(({ result }) => result.data).map(({ inquiry, result }) => [inquiry.buyer_id, result.data as BrokerBuyerSummary]));
   }
   const featured = inquiries[0];
   const brokerQueue = isBroker && userId ? inquiries.filter((inquiry) => inquiry.broker_id === userId && (
@@ -71,9 +56,11 @@ export default async function InboxPage({ params, searchParams }: PageProps<"/[l
             const action = inquiry.financial_access_status === "requested" ? "Review financial request" : inquiry.status === "submitted" ? "Review new buyer" : inquiry.status === "nda_signed" ? "NDA signed — decide next step" : "Review offer or LOI";
             return <Link href={`/${locale}/dashboard/deals/${inquiry.id}`} key={inquiry.id}>
               <div><span>{action}</span><strong>{inquiry.marketplace_listings?.title ?? inquiry.subject}</strong></div>
-              <p>{buyer?.display_name ?? "Prospective buyer"} · {buyer?.acquisition_timeline ?? inquiry.financial_request_timeline ?? "Timeline not provided"}</p>
-              <div className="buyer-readiness-tags"><small>{buyer?.funding_status ?? inquiry.financial_request_capital ?? "Funding not provided"}</small><small className={buyer?.proof_of_funds_status === "verified" ? "is-verified" : ""}>Funds: {buyer?.proof_of_funds_status?.replaceAll("_", " ") ?? "not provided"}</small></div>
+              <p>{buyer?.display_name ?? "Prospective buyer"} · {buyer?.acquisition_timeline ?? inquiry.financial_request_timeline ?? "Timeline private or not provided"}</p>
+              <div className="buyer-readiness-tags"><small>{buyer?.funding_status ?? "Funding details private"}</small><small className={buyer?.proof_of_funds_status === "verified" ? "is-verified" : ""}>Funds: {buyer?.proof_of_funds_status?.replaceAll("_", " ") ?? "private"}</small>{buyer?.experience_level && <small>Experience: {buyer.experience_level.replaceAll("_", " ")}</small>}</div>
+              {buyer?.available_cash && <p className="buyer-financial-disclosure">Buyer-provided available cash: ${Number(buyer.available_cash).toLocaleString("en-US")} · not lender verified</p>}
               {buyer?.buyer_summary && <blockquote>{buyer.buyer_summary}</blockquote>}
+              <small className="buyer-source-label">{buyer?.labels?.profile ?? "Buyer provided"} · {buyer?.verification_status ?? "unverified"} account</small>
               <b>Open workspace →</b>
             </Link>;
           })}</div> : <p className="panel-empty broker-queue-empty">Nothing needs your attention right now. Automated NDA requests and routine updates stay out of your queue.</p>}

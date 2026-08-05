@@ -9,6 +9,7 @@ import { isLocale } from "@/lib/i18n";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { calculateBuyerFit, calculateDealScore, type BuyerFitPreferences } from "@/lib/deal-score";
 import type { DocumentFinding } from "@/lib/deal-intelligence";
+import { financialFitForDeal } from "@/lib/buyer-finance";
 import { addBrokerInteraction, addDiligenceItem, addDiligenceTemplate, addOpportunityNote, addOpportunityToList, beginAcquisition, saveOpportunity, updateDiligenceItem } from "../actions";
 
 export function generateStaticParams() {
@@ -45,6 +46,8 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
   let notes: Array<{ id: string; body: string; created_at: string }> = [];
   let lists: Array<{ id: string; name: string }> = [];
   let buyerPreferences: BuyerFitPreferences = null;
+  let buyerDesiredIncome = 0;
+  let buyerFinancialProfile: { available_cash: number | null; buyer_injection_percent: number; illustrative_interest_rate: number } | null = null;
   if (isSupabaseConfigured()) {
     const supabase = await createSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -56,7 +59,7 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
         .eq("opportunity_key", opportunity.id)
         .maybeSingle();
       workspace = data ?? null;
-      const [{ data: diligenceData }, { data: interactionData }, { data: activityData }, { data: noteData }, { data: listData }, { data: profileData }, { data: evidenceData }, { data: professionalData }, { data: transitionData }, { data: sbaData }, { data: findingData }, { data: entitlementData }, { data: buyerData }] = await Promise.all([
+      const [{ data: diligenceData }, { data: interactionData }, { data: activityData }, { data: noteData }, { data: listData }, { data: profileData }, { data: evidenceData }, { data: professionalData }, { data: transitionData }, { data: sbaData }, { data: findingData }, { data: entitlementData }, { data: buyerData }, { data: buyerFinanceData }] = await Promise.all([
         supabase.from("diligence_items").select("id,category,title,status,due_date,reason,guidance_source,source_url,risk_level,assigned_role").eq("user_id", user.id).eq("opportunity_key", opportunity.id).order("category"),
         supabase.from("broker_interactions").select("id,interaction_type,summary,contact_name,occurred_at").eq("user_id", user.id).eq("opportunity_key", opportunity.id).order("occurred_at", { ascending: false }).limit(10),
         supabase.from("deal_activities").select("id,description,created_at").eq("user_id", user.id).eq("opportunity_key", opportunity.id).order("created_at", { ascending: false }).limit(12),
@@ -69,7 +72,8 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
         supabase.from("sba_readiness_profiles").select("purchase_price,buyer_injection,seller_note,working_capital,annual_cash_flow,interest_rate,term_years,lender_status").eq("user_id", user.id).eq("opportunity_key", opportunity.id).maybeSingle(),
         supabase.from("deal_document_findings").select("id,source_document,metric_name,reported_value,normalized_value,period_label,source_url,confidence,review_status,notes").eq("user_id", user.id).eq("opportunity_key", opportunity.id).order("created_at", { ascending: false }),
         supabase.from("billing_entitlements").select("active,expires_at").eq("user_id", user.id).eq("product_code", "crestview_pro").maybeSingle(),
-        supabase.from("buyer_preferences").select("industries,locations,maximum_price,minimum_cash_flow,seller_financing_preferred").eq("user_id", user.id).maybeSingle(),
+        supabase.from("buyer_preferences").select("industries,locations,maximum_price,minimum_cash_flow,seller_financing_preferred,desired_owner_income").eq("user_id", user.id).maybeSingle(),
+        supabase.from("buyer_financial_profiles").select("available_cash,buyer_injection_percent,illustrative_interest_rate").eq("user_id", user.id).maybeSingle(),
       ]);
       diligence = diligenceData ?? [];
       guidanceProfile = profileData ?? null;
@@ -84,9 +88,18 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
       notes = noteData ?? [];
       lists = listData ?? [];
       buyerPreferences = buyerData ?? null;
+      buyerDesiredIncome = buyerData?.desired_owner_income ?? 0;
+      buyerFinancialProfile = buyerFinanceData;
     }
   }
   const buyerFit = calculateBuyerFit(opportunity, buyerPreferences);
+  const financialFit = financialFitForDeal(opportunity.priceValue, opportunity.cashFlowValue, buyerFinancialProfile?.available_cash ? { availableCash: buyerFinancialProfile.available_cash, desiredOwnerIncome: buyerDesiredIncome, injectionPercent: buyerFinancialProfile.buyer_injection_percent, interestRate: buyerFinancialProfile.illustrative_interest_rate } : null);
+  const dealReadiness = workspace ? Math.min(100, Math.round((((workspace.current_step ?? 1) - 1) / 6) * 70 + (diligence.length ? diligence.filter((item) => item.status === "verified").length / diligence.length * 30 : 0))) : 0;
+  const recommendations = [
+    ...(buyerFit?.factors.filter((factor) => factor.status !== "match").slice(0, 2).map((factor) => factor.detail) ?? []),
+    ...financialFit.reasons.slice(0, 2),
+    ...(opportunity.missing.length ? [`Request ${opportunity.missing.slice(0, 2).join(" and ").toLowerCase()} before relying on the listing figures.`] : []),
+  ].slice(0, 4);
 
   return (
     <PlatformShell locale={locale} active="opportunities">
@@ -141,11 +154,18 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
           <div><span>Data completeness</span><strong>{Math.round(([opportunity.priceValue, opportunity.revenueValue, opportunity.cashFlowValue, opportunity.ebitdaValue, opportunity.brokerEmail ?? opportunity.brokerPhone].filter(Boolean).length / 5) * 100)}%</strong><p>{opportunity.missing.length} important information requests identified.</p></div>
           <div><span>Duplicate review</span><strong>No duplicate detected</strong><p>Compared by source and listing identifier in the current Crestview catalog.</p></div>
         </section>
+        <section className="deal-score-suite" aria-label={es ? "Cuatro puntajes explicables" : "Four explainable deal scores"}>
+          <article><span>{es ? "CALIDAD DEL ANUNCIO" : "LISTING QUALITY"}</span><strong>{dealScore.score}</strong><small>{dealScore.confidence} confidence · public data</small></article>
+          <article><span>{es ? "AJUSTE DEL COMPRADOR" : "BUYER FIT"}</span><strong>{buyerFit?.score ?? "—"}</strong><small>{buyerFit ? `${buyerFit.matched} criteria match` : "Complete your buyer profile"}</small></article>
+          <article><span>{es ? "PREPARACIÓN DEL TRATO" : "DEAL READINESS"}</span><strong>{dealReadiness}</strong><small>{workspace ? "Workspace and diligence progress" : "Begin acquisition to track"}</small></article>
+          <article className={`is-${financialFit.status}`}><span>{es ? "AJUSTE FINANCIERO" : "FINANCIAL FIT"}</span><strong>{financialFit.score ?? "—"}</strong><small>{financialFit.score === null ? "Save private assumptions" : "Crestview estimate; lender review required"}</small></article>
+        </section>
         <section className="score-card">
           <div className="score-card__value"><span>{es ? "Puntaje explicable" : "Explainable score"}</span><strong>{dealScore.score}</strong><small>/ 100 · v{dealScore.version} · {es ? "confianza" : "confidence"} {dealScore.confidence}</small></div>
           <div className="score-factors">{dealScore.factors.map((factor) => <div key={factor.label}><span>{factor.label}</span><strong>{factor.earned}/{factor.weight}</strong></div>)}</div>
           <p>{es ? "El puntaje usa solo datos públicos y penaliza información faltante. No es una recomendación de inversión." : "The score uses only public listing data and penalizes missing information. It is not an investment recommendation."}</p>
         </section>
+        <section className="deal-recommendations"><header><span>{es ? "QUÉ HACER DESPUÉS" : "WHAT TO DO NEXT"}</span><h2>{es ? "Recomendaciones explicadas" : "Recommendations you can act on"}</h2></header><div>{recommendations.map((recommendation, index) => <article key={recommendation}><strong>{index + 1}</strong><p>{recommendation}</p></article>)}</div><small>{es ? "Generado con datos del anuncio y tus criterios guardados. No es asesoramiento financiero, legal ni de inversión." : "Generated from listing data and your saved criteria. Not financial, legal, or investment advice."}</small></section>
         <section className="buyer-deal-fit" aria-labelledby="buyer-deal-fit-title">
           <header><div><span>{es ? "AJUSTE PERSONAL" : "PERSONAL DEAL FIT"}</span><h2 id="buyer-deal-fit-title">{es ? "Cómo encaja este negocio contigo" : "How this business fits your buying criteria"}</h2></div>{buyerFit ? <strong>{buyerFit.score}%</strong> : <Link href={`/${locale}/dashboard/settings#listing-alerts`}>{es ? "Completar perfil" : "Complete buyer profile"}</Link>}</header>
           {buyerFit ? <>

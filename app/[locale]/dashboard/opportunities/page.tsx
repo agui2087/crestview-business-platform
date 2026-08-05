@@ -14,16 +14,17 @@ export default async function OpportunitiesPage({ params }: { params: Promise<{ 
   const text = platformCopy(locale);
   const storageReady = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY);
   let preferences = null;
+  let financialProfile: { available_cash: number | null; buyer_injection_percent: number; illustrative_interest_rate: number } | null = null;
   if (storageReady) {
     const supabase = await createSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      const { data } = await supabase
-        .from("buyer_preferences")
-        .select("industries, locations, maximum_price, minimum_cash_flow, seller_financing_preferred")
-        .eq("user_id", user.id)
-        .maybeSingle();
+      const [{ data }, { data: financeData }] = await Promise.all([
+        supabase.from("buyer_preferences").select("industries, locations, maximum_price, minimum_cash_flow, desired_owner_income, seller_financing_preferred").eq("user_id", user.id).maybeSingle(),
+        supabase.from("buyer_financial_profiles").select("available_cash,buyer_injection_percent,illustrative_interest_rate").eq("user_id", user.id).maybeSingle(),
+      ]);
       preferences = data;
+      financialProfile = financeData;
     }
   }
 
@@ -32,7 +33,7 @@ export default async function OpportunitiesPage({ params }: { params: Promise<{ 
       <div className="dashboard-content">
         <PageHeading eyebrow={text.opportunities.eyebrow} title={text.opportunities.title} body={text.opportunities.body} action={<Link className="button button--light" href="/api/export/opportunities">{locale === "es" ? "Exportar CSV" : "Export CSV"}</Link>} />
         <div className="data-notice"><strong>{text.opportunities.seller}</strong><span>{text.opportunities.notice}</span></div>
-        <BuyerFitCalculator locale={locale} savedMaximumPrice={preferences?.maximum_price} savedMinimumCashFlow={preferences?.minimum_cash_flow} />
+        <BuyerFitCalculator locale={locale} savedAvailableCash={financialProfile?.available_cash} savedDesiredIncome={preferences?.desired_owner_income} savedInjectionPercent={financialProfile?.buyer_injection_percent} savedInterestRate={financialProfile?.illustrative_interest_rate} />
         <OpportunitySearch items={opportunities} locale={locale} storageReady={storageReady} preferences={preferences} />
       </div>
     </PlatformShell>

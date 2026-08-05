@@ -2,39 +2,22 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-
-function payment(principal: number, annualRate: number, years: number) {
-  if (principal <= 0) return 0;
-  const monthlyRate = annualRate / 100 / 12;
-  const months = years * 12;
-  return monthlyRate === 0
-    ? principal / months
-    : principal * (monthlyRate * (1 + monthlyRate) ** months) / ((1 + monthlyRate) ** months - 1);
-}
+import { estimateBuyerRange } from "@/lib/buyer-finance";
 
 function numeric(value: string) {
   return Math.max(0, Number(value.replace(/[$,\s]/g, "")) || 0);
 }
 
-export function BuyerFitCalculator({ locale, savedMaximumPrice, savedMinimumCashFlow }: { locale: string; savedMaximumPrice?: number | null; savedMinimumCashFlow?: number | null }) {
+export function BuyerFitCalculator({ locale, savedAvailableCash, savedDesiredIncome, savedInjectionPercent, savedInterestRate }: { locale: string; savedAvailableCash?: number | null; savedDesiredIncome?: number | null; savedInjectionPercent?: number | null; savedInterestRate?: number | null }) {
   const es = locale === "es";
-  const [cash, setCash] = useState("100000");
-  const [income, setIncome] = useState(savedMinimumCashFlow ? String(savedMinimumCashFlow) : "90000");
-  const [downPayment, setDownPayment] = useState("15");
-  const [rate, setRate] = useState("11");
+  const [cash, setCash] = useState(String(savedAvailableCash ?? 100000));
+  const [income, setIncome] = useState(String(savedDesiredIncome ?? 90000));
+  const [downPayment, setDownPayment] = useState(String(savedInjectionPercent ?? 15));
+  const [rate, setRate] = useState(String(savedInterestRate ?? 11));
 
   const estimate = useMemo(() => {
-    const availableCash = numeric(cash);
-    const desiredIncome = numeric(income);
-    const injection = Math.min(50, Math.max(5, numeric(downPayment))) / 100;
-    const reserve = 0.05;
-    const maxPrice = availableCash / (injection + reserve);
-    const loan = maxPrice * (1 - injection);
-    const annualDebt = payment(loan, numeric(rate), 10) * 12;
-    const minimumCashFlow = desiredIncome + annualDebt * 1.25;
-    const savedFit = savedMaximumPrice ? Math.round((maxPrice / savedMaximumPrice) * 100) : null;
-    return { maxPrice, annualDebt, minimumCashFlow, savedFit };
-  }, [cash, income, downPayment, rate, savedMaximumPrice]);
+    return estimateBuyerRange({ availableCash: numeric(cash), desiredOwnerIncome: numeric(income), injectionPercent: numeric(downPayment), interestRate: numeric(rate) });
+  }, [cash, income, downPayment, rate]);
 
   const money = new Intl.NumberFormat(es ? "es-US" : "en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 
@@ -51,9 +34,9 @@ export function BuyerFitCalculator({ locale, savedMaximumPrice, savedMinimumCash
         <label>{es ? "Tasa estimada" : "Illustrative interest rate"}<select value={rate} onChange={(event) => setRate(event.target.value)}><option value="9">9%</option><option value="10">10%</option><option value="11">11%</option><option value="12">12%</option><option value="13">13%</option></select></label>
       </div>
       <div className="buyer-fit-results" aria-live="polite">
-        <div><span>{es ? "Rango máximo ilustrativo" : "Illustrative maximum purchase price"}</span><strong>{money.format(estimate.maxPrice)}</strong><small>{es ? "Incluye una reserva de 5% para capital de trabajo." : "Includes a 5% working-capital reserve."}</small></div>
-        <div><span>{es ? "Flujo de caja mínimo sugerido" : "Suggested minimum annual cash flow"}</span><strong>{money.format(estimate.minimumCashFlow)}</strong><small>{es ? "Ingreso deseado más 1.25× el servicio de deuda estimado." : "Desired income plus 1.25× estimated annual debt service."}</small></div>
-        <div><span>{es ? "Servicio anual estimado" : "Estimated annual debt service"}</span><strong>{money.format(estimate.annualDebt)}</strong><small>{es ? "Plazo ilustrativo de 10 años; no es una cotización." : "Illustrative 10-year term; this is not a loan quote."}</small></div>
+        <div><span>{es ? "Rango máximo ilustrativo" : "Illustrative maximum purchase price"}</span><strong>{money.format(estimate.maxPurchasePrice)}</strong><small>{es ? "Incluye una reserva de 5% para capital de trabajo." : "Includes a 5% working-capital reserve."}</small></div>
+        <div><span>{es ? "Flujo de caja mínimo sugerido" : "Suggested minimum annual cash flow"}</span><strong>{money.format(estimate.suggestedMinimumCashFlow)}</strong><small>{es ? "Ingreso deseado más 1.25× el servicio de deuda estimado." : "Desired income plus 1.25× estimated annual debt service."}</small></div>
+        <div><span>{es ? "Servicio anual estimado" : "Estimated annual debt service"}</span><strong>{money.format(estimate.annualDebtService)}</strong><small>{es ? "Plazo ilustrativo de 10 años; no es una cotización." : "Illustrative 10-year term; this is not a loan quote."}</small></div>
       </div>
     </div>
     <p className="buyer-fit-disclaimer">{es ? "Estimación educativa solamente. La elegibilidad, el aporte, la tasa, el flujo de caja aceptado y los términos dependen del prestamista y de la operación. Confirma todo con un prestamista calificado." : "Educational estimate only. Eligibility, injection, rate, accepted cash flow, and terms depend on the lender and transaction. Confirm the structure with a qualified lender."}</p>

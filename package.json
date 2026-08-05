@@ -9,7 +9,7 @@
     "db:generate": "drizzle-kit generate",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --experimental-strip-types --test lib/deal-intelligence.test.ts",
+    "test": "node --experimental-strip-types --test lib/*.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

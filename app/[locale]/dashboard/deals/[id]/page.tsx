@@ -6,7 +6,7 @@ import { dealStages, demoInquiries, demoMarketplaceListings } from "@/lib/market
 import { getCrestviewUser } from "@/lib/current-user";
 import { isLocale } from "@/lib/i18n";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
-import { addDealRoomDocument, advanceInquiry, decideFinancialAccess, reportMarketplaceItem, requestFinancialAccess, sendMessage, sendNda, signNda } from "../../marketplace/actions";
+import { addDealRoomDocument, advanceInquiry, createDocumentRequest, decideFinancialAccess, reportMarketplaceItem, requestFinancialAccess, resolveDocumentRequest, sendMessage, sendNda, signNda } from "../../marketplace/actions";
 
 export const metadata: Metadata = { title: "Secure deal workspace" };
 
@@ -17,7 +17,8 @@ type WorkspaceData = {
   messages: { id: string; body: string; sender_id: string; created_at: string }[];
   nda: { status: string; document_name: string; template_body: string | null; storage_path?: string | null; template_version?: number; signed_at: string | null; signer_name: string | null } | null;
   ndaUrl: string | null;
-  documents: { id: string; title: string; category: string; external_url: string | null; access_level?: string; permission_note?: string | null; version: number; created_at: string }[];
+  documents: { id: string; title: string; category: string; external_url: string | null; secure_url?: string | null; storage_path?: string | null; original_filename?: string | null; mime_type?: string | null; file_size_bytes?: number | null; access_level?: string; permission_note?: string | null; version: number; created_at: string }[];
+  requests: { id: string; item_name: string; note: string | null; status: string; document_id: string | null; created_at: string; resolved_at: string | null }[];
   events: { id: string; to_status: string; note: string | null; created_at: string }[];
   listingFinancials?: { asking_price: number | null; annual_revenue: number | null; cash_flow: number | null };
   isDemo: boolean;
@@ -37,6 +38,10 @@ async function getWorkspace(id: string, userId?: string): Promise<WorkspaceData>
         { id: "d1", title: "Confidential information memorandum", category: "Offering materials", external_url: null, version: 1, created_at: "2026-07-29T10:40:00.000Z" },
         { id: "d2", title: "Trailing twelve-month P&L", category: "Financial", external_url: null, version: 1, created_at: "2026-07-29T10:42:00.000Z" },
       ],
+      requests: [
+        { id: "r1", item_name: "Financial statements", note: "Most recent three years and year-to-date.", status: "requested", document_id: null, created_at: "2026-07-29T11:00:00.000Z", resolved_at: null },
+        { id: "r2", item_name: "Confidential information memorandum", note: null, status: "fulfilled", document_id: "d1", created_at: "2026-07-29T09:05:00.000Z", resolved_at: "2026-07-29T10:40:00.000Z" },
+      ],
       events: [
         { id: "e1", to_status: "submitted", note: "Buyer submitted an information request.", created_at: "2026-07-29T09:00:00.000Z" },
         { id: "e2", to_status: "nda_sent", note: "Broker approved the initial request and sent an NDA.", created_at: "2026-07-29T10:30:00.000Z" },
@@ -46,10 +51,11 @@ async function getWorkspace(id: string, userId?: string): Promise<WorkspaceData>
   const supabase = await createSupabaseServerClient();
   const { data: inquiry } = await supabase.from("deal_inquiries").select("id,listing_id,buyer_id,broker_id,subject,initial_message,status,updated_at,requested_items,acquisition_experience,funding_readiness,financial_access_status,financial_request_message,financial_request_timeline,financial_request_capital,marketplace_listings(title,city,state_code,asking_price,annual_revenue,cash_flow)").eq("id", id).or(`buyer_id.eq.${userId},broker_id.eq.${userId}`).maybeSingle();
   if (!inquiry) return getWorkspace("demo-inquiry");
-  const [{ data: messages }, { data: nda }, { data: documents }, { data: events }] = await Promise.all([
+  const [{ data: messages }, { data: nda }, { data: documents }, { data: requests }, { data: events }] = await Promise.all([
     supabase.from("deal_messages").select("id,body,sender_id,created_at").eq("inquiry_id", id).order("created_at"),
     supabase.from("deal_ndas").select("status,document_name,template_body,storage_path,template_version,signed_at,signer_name").eq("inquiry_id", id).maybeSingle(),
-    supabase.from("deal_room_documents").select("id,title,category,external_url,access_level,permission_note,version,created_at").eq("inquiry_id", id).eq("is_active", true).order("created_at"),
+    supabase.from("deal_room_documents").select("id,title,category,storage_path,original_filename,mime_type,file_size_bytes,external_url,access_level,permission_note,version,created_at").eq("inquiry_id", id).eq("is_active", true).order("created_at"),
+    supabase.from("deal_document_requests").select("id,item_name,note,status,document_id,created_at,resolved_at").eq("inquiry_id", id).order("created_at"),
     supabase.from("deal_status_events").select("id,to_status,note,created_at").eq("inquiry_id", id).order("created_at"),
   ]);
   const listing = inquiry.marketplace_listings as unknown as { title: string; asking_price?: number | null; annual_revenue?: number | null; cash_flow?: number | null } | null;
@@ -58,9 +64,14 @@ async function getWorkspace(id: string, userId?: string): Promise<WorkspaceData>
     const { data } = await supabase.storage.from("deal-files").createSignedUrl(nda.storage_path, 60 * 15);
     ndaUrl = data?.signedUrl ?? null;
   }
+  const documentsWithUrls = await Promise.all((documents ?? []).map(async (document) => {
+    if (!document.storage_path) return { ...document, secure_url: null };
+    const { data } = await supabase.storage.from("deal-files").createSignedUrl(document.storage_path, 60 * 15);
+    return { ...document, secure_url: data?.signedUrl ?? null };
+  }));
   return {
     inquiry: inquiry as unknown as typeof demoInquiries[number], title: listing?.title ?? inquiry.subject,
-    isBuyer: inquiry.buyer_id === userId, isDemo: false, messages: messages ?? [], nda, ndaUrl, documents: documents ?? [], events: events ?? [],
+    isBuyer: inquiry.buyer_id === userId, isDemo: false, messages: messages ?? [], nda, ndaUrl, documents: documentsWithUrls, requests: requests ?? [], events: events ?? [],
     listingFinancials: { asking_price: listing?.asking_price ?? null, annual_revenue: listing?.annual_revenue ?? null, cash_flow: listing?.cash_flow ?? null },
   };
 }
@@ -84,6 +95,13 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
     category,
     documents: workspace.documents.filter((document) => document.category === category || (category === "Overview" && ["Offering materials","Other"].includes(document.category))),
   }));
+  const requestedDocumentNames = new Set(workspace.requests.map((request) => request.item_name));
+  const availableRequestOptions = [
+    "Financial statements", "Business tax returns", "Bank or revenue support",
+    "Customer concentration report", "Lease and amendments", "Employee census",
+    "Equipment and asset list", "Material contracts", "Licenses and permits",
+    "Other supporting document",
+  ].filter((item) => !requestedDocumentNames.has(item));
   return (
     <PlatformShell locale={locale} active="inbox">
       <div className="dashboard-content deal-room-page">
@@ -181,15 +199,36 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
           </div>
           <p>Use these figures as a starting point. Reconcile them with tax returns, statements, and source records before relying on them.</p>
         </section>}
+        {(roomUnlocked || workspace.isDemo) && <section className="panel request-tracker">
+          <div className="panel__header"><div><span className="source-label">Shared checklist</span><h2>Document requests</h2></div><span className="stage">{workspace.requests.filter((request) => request.status === "requested").length} open</span></div>
+          <p className="request-tracker__intro">Buyers request only what they need. Brokers can fulfill each item with a secure upload or mark it unavailable.</p>
+          <div className="request-tracker__list">
+            {workspace.requests.map((request) => <article className={`is-${request.status}`} key={request.id}>
+              <span>{request.status === "fulfilled" ? "✓" : request.status === "not_available" ? "—" : "○"}</span>
+              <div><strong>{request.item_name}</strong><p>{request.note || (request.status === "fulfilled" ? "Document added to this room." : request.status === "not_available" ? "Broker marked this item unavailable." : "Waiting for the broker.")}</p></div>
+              <small>{request.status.replaceAll("_", " ")}</small>
+              {!workspace.isBuyer && !workspace.isDemo && request.status === "requested" && <form action={resolveDocumentRequest}><input type="hidden" name="locale" value={locale} /><input type="hidden" name="inquiry_id" value={id} /><input type="hidden" name="request_id" value={request.id} /><button type="submit">Mark unavailable</button></form>}
+            </article>)}
+            {!workspace.requests.length && <p className="panel-empty">No specific documents have been requested yet.</p>}
+          </div>
+          {workspace.isBuyer && !workspace.isDemo && availableRequestOptions.length > 0 && <details className="request-tracker__add"><summary>Request another document</summary><form action={createDocumentRequest}>
+            <input type="hidden" name="locale" value={locale} /><input type="hidden" name="inquiry_id" value={id} />
+            <label>Document<select name="item_name" defaultValue={availableRequestOptions[0]}>{availableRequestOptions.map((item) => <option key={item}>{item}</option>)}</select></label>
+            <label>Optional note<input name="note" maxLength={500} placeholder="Example: three years plus year-to-date" /></label>
+            <button className="button button--primary" type="submit">Add request</button>
+          </form></details>}
+        </section>}
         <section className={`panel secure-room ${roomUnlocked || workspace.isDemo ? "is-unlocked" : "is-locked"}`}>
           <div className="panel__header"><div><span className="source-label">Permission-controlled documents</span><h2>Secure deal room</h2></div><span className="stage">{roomUnlocked ? financialApproved ? "Financial access approved" : "NDA access only" : "NDA required"}</span></div>
           {!roomUnlocked && !workspace.isDemo && <div className="room-lock"><span>🔒</span><h3>Sign the NDA to unlock documents</h3><p>Only approved participants can access confidential materials. Every upload and status change remains attached to this deal.</p></div>}
-          {(roomUnlocked || workspace.isDemo) && <div className="document-folders">{documentGroups.map((group) => <section className={group.documents.length ? "" : "is-missing"} key={group.category}><header><strong>{group.category}</strong><span>{group.documents.length ? `${group.documents.length} received` : "Missing"}</span></header>{group.documents.length ? <div className="room-documents">{group.documents.map((document) => <article key={document.id}><span>▤</span><div><strong>{document.title}</strong><small>Received · review pending · Version {document.version} · {document.permission_note ?? (document.access_level === "approved" ? "Broker approval required" : document.access_level === "broker_only" ? "Broker only" : "Available after NDA")}</small></div>{document.external_url ? <a href={document.external_url} target="_blank" rel="noreferrer">Open</a> : <span className="stage">Protected</span>}</article>)}</div> : <p className="folder-missing-note">No document received yet. Add it to the request list if it is material to this deal.</p>}</section>)}</div>}
+          {(roomUnlocked || workspace.isDemo) && <div className="document-folders">{documentGroups.map((group) => <section className={group.documents.length ? "" : "is-missing"} key={group.category}><header><strong>{group.category}</strong><span>{group.documents.length ? `${group.documents.length} received` : "Missing"}</span></header>{group.documents.length ? <div className="room-documents">{group.documents.map((document) => <article key={document.id}><span>▤</span><div><strong>{document.title}</strong><small>{document.original_filename || "Secure record"} · Version {document.version} · {document.permission_note ?? (document.access_level === "approved" ? "Broker approval required" : document.access_level === "broker_only" ? "Broker only" : "Available after NDA")}</small></div>{document.secure_url || document.external_url ? <a href={document.secure_url || document.external_url || "#"} target="_blank" rel="noreferrer">Open securely</a> : <span className="stage">Protected</span>}</article>)}</div> : <p className="folder-missing-note">No document received yet. Add it to the request list if it is material to this deal.</p>}</section>)}</div>}
           {!workspace.isBuyer && !workspace.isDemo && <details className="room-upload"><summary>Add a secure document</summary><form action={addDealRoomDocument}>
             <input type="hidden" name="locale" value={locale} /><input type="hidden" name="inquiry_id" value={id} />
-            <input name="title" placeholder="Document title" required /><select name="category"><option>Overview</option><option>Financial</option><option>Tax</option><option>Legal</option><option>Employees</option><option>Customers</option><option>Assets</option><option>Closing</option><option>Operations</option><option>Other</option></select>
-            <input name="external_url" type="url" placeholder="Secure document URL (optional)" /><select name="access_level"><option value="nda_signed">Available after NDA</option><option value="approved">Broker approval required</option><option value="broker_only">Broker only</option></select>
+            <label>Title<input name="title" placeholder="Document title" required /></label><label>Folder<select name="category"><option>Overview</option><option>Financial</option><option>Tax</option><option>Legal</option><option>Employees</option><option>Customers</option><option>Assets</option><option>Closing</option><option>Operations</option><option>Other</option></select></label>
+            <label>Upload file<input name="document_file" type="file" accept=".pdf,.csv,.xls,.xlsx,.doc,.docx" /></label><label>Or secure link<input name="external_url" type="url" placeholder="https://" /></label><label>Buyer access<select name="access_level"><option value="nda_signed">Available after NDA</option><option value="approved">Broker approval required</option><option value="broker_only">Broker only</option></select></label>
+            {workspace.requests.some((request) => request.status === "requested") && <label>Fulfills request<select name="request_id"><option value="">None</option>{workspace.requests.filter((request) => request.status === "requested").map((request) => <option value={request.id} key={request.id}>{request.item_name}</option>)}</select></label>}
             <button className="button button--primary" type="submit">Add document</button>
+            <small>PDF, CSV, Excel, or Word · maximum 20 MB. Files stay private and follow the access level above.</small>
           </form></details>}
         </section>
         <div className="deal-bottom-grid">

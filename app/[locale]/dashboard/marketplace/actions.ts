@@ -349,25 +349,119 @@ export async function decideFinancialAccess(formData: FormData) {
   redirect(`/${locale}/dashboard/deals/${inquiryId}?financial=${decision}`);
 }
 
+export async function createDocumentRequest(formData: FormData) {
+  const { locale, supabase, user } = await context(formData);
+  const inquiryId = z.string().uuid().parse(formData.get("inquiry_id"));
+  const itemName = z.string().trim().min(2).max(120).parse(formData.get("item_name"));
+  const note = z.string().trim().max(500).catch("").parse(formData.get("note"));
+  const { data: inquiry } = await supabase.from("deal_inquiries")
+    .select("broker_id,status").eq("id", inquiryId).eq("buyer_id", user.id).maybeSingle();
+  if (!inquiry || !["nda_signed","document_review","meeting","offer","closed"].includes(inquiry.status)) {
+    redirect(`/${locale}/dashboard/deals/${inquiryId}?error=nda_required`);
+  }
+  const { error } = await supabase.from("deal_document_requests").insert({
+    inquiry_id: inquiryId,
+    requested_by: user.id,
+    item_name: itemName,
+    note: note || null,
+    status: "requested",
+    document_id: null,
+    resolved_at: null,
+  });
+  if (error) redirect(`/${locale}/dashboard/deals/${inquiryId}?error=request`);
+  await Promise.all([
+    supabase.from("marketplace_notifications").insert({
+      user_id: inquiry.broker_id, inquiry_id: inquiryId, kind: "document_request",
+      title: "Document requested", body: `The buyer requested ${itemName}.`, href: `/${locale}/dashboard/deals/${inquiryId}`,
+    }),
+    supabase.from("deal_status_events").insert({
+      inquiry_id: inquiryId, actor_id: user.id, to_status: inquiry.status,
+      note: `Buyer requested: ${itemName}.`,
+    }),
+  ]);
+  revalidatePath(`/${locale}/dashboard/deals/${inquiryId}`);
+}
+
+export async function resolveDocumentRequest(formData: FormData) {
+  const { locale, supabase, user } = await context(formData);
+  const inquiryId = z.string().uuid().parse(formData.get("inquiry_id"));
+  const requestId = z.string().uuid().parse(formData.get("request_id"));
+  const { data: inquiry } = await supabase.from("deal_inquiries")
+    .select("buyer_id,status").eq("id", inquiryId).eq("broker_id", user.id).maybeSingle();
+  if (!inquiry) redirect(`/${locale}/dashboard/deals/${inquiryId}?error=forbidden`);
+  const { data: request } = await supabase.from("deal_document_requests").update({
+    status: "not_available", resolved_at: new Date().toISOString(),
+  }).eq("id", requestId).eq("inquiry_id", inquiryId).select("item_name").maybeSingle();
+  if (!request) redirect(`/${locale}/dashboard/deals/${inquiryId}?error=request`);
+  await Promise.all([
+    supabase.from("marketplace_notifications").insert({
+      user_id: inquiry.buyer_id, inquiry_id: inquiryId, kind: "document_request",
+      title: "Document request updated", body: `${request.item_name} was marked unavailable.`, href: `/${locale}/dashboard/deals/${inquiryId}`,
+    }),
+    supabase.from("deal_status_events").insert({
+      inquiry_id: inquiryId, actor_id: user.id, to_status: inquiry.status,
+      note: `${request.item_name} was marked unavailable by the broker.`,
+    }),
+  ]);
+  revalidatePath(`/${locale}/dashboard/deals/${inquiryId}`);
+}
+
 export async function addDealRoomDocument(formData: FormData) {
   const { locale, supabase, user } = await context(formData);
   const inquiryId = z.string().uuid().parse(formData.get("inquiry_id"));
-  const { data: inquiry } = await supabase.from("deal_inquiries").select("buyer_id").eq("id", inquiryId).eq("broker_id", user.id).maybeSingle();
+  const { data: inquiry } = await supabase.from("deal_inquiries").select("buyer_id,status,financial_access_status").eq("id", inquiryId).eq("broker_id", user.id).maybeSingle();
   if (!inquiry) redirect(`/${locale}/dashboard/deals/${inquiryId}?error=forbidden`);
   const title = z.string().trim().min(2).max(160).parse(formData.get("title"));
-  const accessLevel = String(formData.get("access_level") ?? "nda_signed");
-  const category = String(formData.get("category") ?? "Other");
-  await Promise.all([
-    supabase.from("deal_room_documents").insert({
+  const accessLevel = z.enum(["nda_signed","approved","broker_only"]).parse(formData.get("access_level"));
+  const category = z.string().trim().min(2).max(80).parse(formData.get("category"));
+  const externalUrlRaw = String(formData.get("external_url") ?? "").trim();
+  const externalUrl = externalUrlRaw ? z.string().url().parse(externalUrlRaw) : null;
+  const requestId = z.string().uuid().nullable().catch(null).parse(formData.get("request_id"));
+  const documentFile = formData.get("document_file");
+  let storagePath: string | null = null;
+  let originalFilename: string | null = null;
+  let mimeType: string | null = null;
+  let fileSizeBytes: number | null = null;
+  if (documentFile instanceof File && documentFile.size > 0) {
+    const allowedTypes = new Set([
+      "application/pdf", "text/csv", "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ]);
+    if (!allowedTypes.has(documentFile.type) || documentFile.size > 20 * 1024 * 1024) {
+      redirect(`/${locale}/dashboard/deals/${inquiryId}?error=document_file`);
+    }
+    const safeName = documentFile.name.replace(/[^a-zA-Z0-9._-]/g, "-").slice(-100);
+    storagePath = `${user.id}/deal-rooms/${inquiryId}/${Date.now()}-${safeName}`;
+    const { error: uploadError } = await supabase.storage.from("deal-files").upload(storagePath, documentFile, {
+      contentType: documentFile.type, upsert: false,
+    });
+    if (uploadError) redirect(`/${locale}/dashboard/deals/${inquiryId}?error=document_upload`);
+    originalFilename = documentFile.name;
+    mimeType = documentFile.type;
+    fileSizeBytes = documentFile.size;
+  }
+  if (!storagePath && !externalUrl) redirect(`/${locale}/dashboard/deals/${inquiryId}?error=document_required`);
+  const { data: document, error: documentError } = await supabase.from("deal_room_documents").insert({
       inquiry_id: inquiryId, uploaded_by: user.id, title,
       category,
-      external_url: String(formData.get("external_url") ?? "").trim() || null,
+      storage_path: storagePath,
+      original_filename: originalFilename,
+      mime_type: mimeType,
+      file_size_bytes: fileSizeBytes,
+      external_url: externalUrl,
       access_level: accessLevel,
       permission_note: accessLevel === "approved" ? "Buyer access requires broker approval" : accessLevel === "broker_only" ? "Broker only" : "Available after NDA",
-    }),
+    }).select("id").single();
+  if (documentError || !document) redirect(`/${locale}/dashboard/deals/${inquiryId}?error=document_save`);
+  await Promise.all([
     supabase.from("marketplace_audit_events").insert({ actor_id: user.id, inquiry_id: inquiryId, event_type: "document_added", details: { title, category, access_level: accessLevel } }),
+    supabase.from("deal_status_events").insert({ inquiry_id: inquiryId, actor_id: user.id, to_status: inquiry.status, note: `${title} was added to the secure deal room.` }),
   ]);
-  if (accessLevel === "nda_signed") {
+  if (requestId) {
+    await supabase.from("deal_document_requests").update({ status: "fulfilled", document_id: document.id, resolved_at: new Date().toISOString() }).eq("id", requestId).eq("inquiry_id", inquiryId);
+  }
+  if (accessLevel === "nda_signed" || (accessLevel === "approved" && inquiry.financial_access_status === "approved")) {
     await supabase.from("marketplace_notifications").insert({ user_id: inquiry.buyer_id, inquiry_id: inquiryId, kind: "document", title: "New deal-room document", body: `${title} is now available for review.`, href: `/${locale}/dashboard/deals/${inquiryId}` });
   }
   if (category === "Offer / LOI") {

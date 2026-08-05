@@ -7,7 +7,7 @@ import { PlatformShell } from "@/components/platform-shell";
 import { getOpportunity, opportunities } from "@/lib/demo-data";
 import { isLocale } from "@/lib/i18n";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
-import { calculateDealScore } from "@/lib/deal-score";
+import { calculateBuyerFit, calculateDealScore, type BuyerFitPreferences } from "@/lib/deal-score";
 import type { DocumentFinding } from "@/lib/deal-intelligence";
 import { addBrokerInteraction, addDiligenceItem, addDiligenceTemplate, addOpportunityNote, addOpportunityToList, beginAcquisition, saveOpportunity, updateDiligenceItem } from "../actions";
 
@@ -44,6 +44,7 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
   let activities: Array<{ id: string; description: string; created_at: string }> = [];
   let notes: Array<{ id: string; body: string; created_at: string }> = [];
   let lists: Array<{ id: string; name: string }> = [];
+  let buyerPreferences: BuyerFitPreferences = null;
   if (isSupabaseConfigured()) {
     const supabase = await createSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -55,7 +56,7 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
         .eq("opportunity_key", opportunity.id)
         .maybeSingle();
       workspace = data ?? null;
-      const [{ data: diligenceData }, { data: interactionData }, { data: activityData }, { data: noteData }, { data: listData }, { data: profileData }, { data: evidenceData }, { data: professionalData }, { data: transitionData }, { data: sbaData }, { data: findingData }, { data: entitlementData }] = await Promise.all([
+      const [{ data: diligenceData }, { data: interactionData }, { data: activityData }, { data: noteData }, { data: listData }, { data: profileData }, { data: evidenceData }, { data: professionalData }, { data: transitionData }, { data: sbaData }, { data: findingData }, { data: entitlementData }, { data: buyerData }] = await Promise.all([
         supabase.from("diligence_items").select("id,category,title,status,due_date,reason,guidance_source,source_url,risk_level,assigned_role").eq("user_id", user.id).eq("opportunity_key", opportunity.id).order("category"),
         supabase.from("broker_interactions").select("id,interaction_type,summary,contact_name,occurred_at").eq("user_id", user.id).eq("opportunity_key", opportunity.id).order("occurred_at", { ascending: false }).limit(10),
         supabase.from("deal_activities").select("id,description,created_at").eq("user_id", user.id).eq("opportunity_key", opportunity.id).order("created_at", { ascending: false }).limit(12),
@@ -68,6 +69,7 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
         supabase.from("sba_readiness_profiles").select("purchase_price,buyer_injection,seller_note,working_capital,annual_cash_flow,interest_rate,term_years,lender_status").eq("user_id", user.id).eq("opportunity_key", opportunity.id).maybeSingle(),
         supabase.from("deal_document_findings").select("id,source_document,metric_name,reported_value,normalized_value,period_label,source_url,confidence,review_status,notes").eq("user_id", user.id).eq("opportunity_key", opportunity.id).order("created_at", { ascending: false }),
         supabase.from("billing_entitlements").select("active,expires_at").eq("user_id", user.id).eq("product_code", "crestview_pro").maybeSingle(),
+        supabase.from("buyer_preferences").select("industries,locations,maximum_price,minimum_cash_flow,seller_financing_preferred").eq("user_id", user.id).maybeSingle(),
       ]);
       diligence = diligenceData ?? [];
       guidanceProfile = profileData ?? null;
@@ -81,8 +83,10 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
       activities = activityData ?? [];
       notes = noteData ?? [];
       lists = listData ?? [];
+      buyerPreferences = buyerData ?? null;
     }
   }
+  const buyerFit = calculateBuyerFit(opportunity, buyerPreferences);
 
   return (
     <PlatformShell locale={locale} active="opportunities">
@@ -141,6 +145,13 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
           <div className="score-card__value"><span>{es ? "Puntaje explicable" : "Explainable score"}</span><strong>{dealScore.score}</strong><small>/ 100 · v{dealScore.version} · {es ? "confianza" : "confidence"} {dealScore.confidence}</small></div>
           <div className="score-factors">{dealScore.factors.map((factor) => <div key={factor.label}><span>{factor.label}</span><strong>{factor.earned}/{factor.weight}</strong></div>)}</div>
           <p>{es ? "El puntaje usa solo datos públicos y penaliza información faltante. No es una recomendación de inversión." : "The score uses only public listing data and penalizes missing information. It is not an investment recommendation."}</p>
+        </section>
+        <section className="buyer-deal-fit" aria-labelledby="buyer-deal-fit-title">
+          <header><div><span>{es ? "AJUSTE PERSONAL" : "PERSONAL DEAL FIT"}</span><h2 id="buyer-deal-fit-title">{es ? "Cómo encaja este negocio contigo" : "How this business fits your buying criteria"}</h2></div>{buyerFit ? <strong>{buyerFit.score}%</strong> : <Link href={`/${locale}/dashboard/settings#listing-alerts`}>{es ? "Completar perfil" : "Complete buyer profile"}</Link>}</header>
+          {buyerFit ? <>
+            <div className="buyer-deal-fit__factors">{buyerFit.factors.map((factor) => <article className={`is-${factor.status}`} key={factor.label}><span aria-hidden="true">{factor.status === "match" ? "✓" : factor.status === "unknown" ? "?" : "!"}</span><div><strong>{factor.label}</strong><small>{factor.detail}</small></div></article>)}</div>
+            <p>{buyerFit.matched} {es ? "criterios coinciden" : "criteria match"} · {buyerFit.needsReview} {es ? "necesitan revisión" : "need review"}. {es ? "Este porcentaje organiza tu investigación; no recomienda la compra." : "This percentage organizes your research; it is not a recommendation to buy."}</p>
+          </> : <div className="buyer-deal-fit__empty"><p>{es ? "Guarda tu presupuesto, flujo de caja, industrias y ubicaciones preferidas una sola vez. Crestview explicará cómo encaja cada anuncio." : "Save your budget, cash-flow target, industries, and locations once. Crestview will explain how every listing fits."}</p><Link className="button button--primary" href={`/${locale}/dashboard/settings#listing-alerts`}>{es ? "Crear mi perfil de comprador" : "Create my buyer profile"}</Link></div>}
         </section>
         <div id="valuation"><AcquisitionPlanner opportunity={opportunity} initialWorkspace={workspace} locale={locale} /></div>
         {workspace && workspace.stage !== "saved" && <GuidedAcquisitionWorkspace

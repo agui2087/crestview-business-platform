@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { PageHeading, PlatformShell } from "@/components/platform-shell";
 import { OpportunitySearch } from "@/components/opportunity-search";
+import { BuyerFitCalculator } from "@/components/buyer-fit-calculator";
 import { opportunities } from "@/lib/demo-data";
 import { isLocale } from "@/lib/i18n";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -31,6 +32,7 @@ export default async function OpportunitiesPage({ params }: { params: Promise<{ 
       <div className="dashboard-content">
         <PageHeading eyebrow={text.opportunities.eyebrow} title={text.opportunities.title} body={text.opportunities.body} action={<Link className="button button--light" href="/api/export/opportunities">{locale === "es" ? "Exportar CSV" : "Export CSV"}</Link>} />
         <div className="data-notice"><strong>{text.opportunities.seller}</strong><span>{text.opportunities.notice}</span></div>
+        <BuyerFitCalculator locale={locale} savedMaximumPrice={preferences?.maximum_price} savedMinimumCashFlow={preferences?.minimum_cash_flow} />
         <OpportunitySearch items={opportunities} locale={locale} storageReady={storageReady} preferences={preferences} />
       </div>
     </PlatformShell>

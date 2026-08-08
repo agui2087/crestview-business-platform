@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://crestview-business-platform.agui2087.chatgpt.site"),
+  metadataBase: new URL("https://www.crestviewplatform.com"),
   title: {
     default: "Crestview | Business ownership, made clearer",
     template: "%s | Crestview",

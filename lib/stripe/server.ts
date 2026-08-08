@@ -16,7 +16,7 @@ export function getStripe() {
     appInfo: {
       name: "Crestview",
       version: "0.1.0",
-      url: "https://crestview-business-platform.vercel.app",
+      url: "https://www.crestviewplatform.com",
     },
   });
 

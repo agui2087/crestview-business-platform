@@ -36,9 +36,41 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://www.crestviewplatform.com/#organization",
+        name: "Crestview",
+        url: "https://www.crestviewplatform.com",
+        description:
+          "A business operating platform for finding, evaluating, acquiring, and operating small businesses.",
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://www.crestviewplatform.com/#website",
+        url: "https://www.crestviewplatform.com",
+        name: "Crestview",
+        publisher: {
+          "@id": "https://www.crestviewplatform.com/#organization",
+        },
+        inLanguage: ["en", "es"],
+      },
+    ],
+  };
+
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(structuredData).replace(/</g, "\\u003c"),
+          }}
+        />
+        {children}
+      </body>
     </html>
   );
 }

@@ -4,7 +4,11 @@ import { notFound } from "next/navigation";
 import { MarketingFooter, MarketingHeader } from "@/components/marketing-shell";
 import { getDictionary, isLocale } from "@/lib/i18n";
 
-export const metadata: Metadata = { title: "How Crestview works" };
+export const metadata: Metadata = {
+  title: "How Crestview works",
+  description:
+    "A simple, guided path for finding, evaluating, purchasing, and operating a business—whether you are a first-time or experienced buyer.",
+};
 
 export default async function HowItWorksPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -14,16 +18,16 @@ export default async function HowItWorksPage({ params }: { params: Promise<{ loc
   return <><MarketingHeader locale={locale} /><main>
     <section className="marketing-page-hero"><div className="shell">
       <p className="eyebrow">{copy.home.processLabel}</p>
-      <h1>{es ? "De una búsqueda a una decisión segura." : "From a search to a confident decision."}</h1>
-      <p>{es ? "Crestview organiza cada paso para que sepas qué hacer, qué falta y quién debe responder." : "Crestview organizes every step so you know what to do, what is missing, and who needs to respond."}</p>
+      <h1>{es ? "Comprar un negocio, explicado paso a paso." : "Buying a business, explained step by step."}</h1>
+      <p>{es ? "Crestview fue creado para cualquier persona que quiera comprar un negocio, con experiencia o sin ella. Explora oportunidades, elige una, sigue una lista guiada y mantén el negocio organizado en un solo lugar después de la compra." : "Crestview was built for anyone who wants to buy a business—whether this is your first acquisition or you have done it before. Browse opportunities, choose one, follow a guided checklist, and keep the business organized in one place after the purchase."}</p>
       <div className="hero__actions"><Link className="button button--primary" href={`/${locale}/listings`}>{es ? "Ver anuncios" : "Browse listings"} →</Link><Link className="button button--light" href={`/${locale}/create-account`}>{es ? "Crear cuenta" : "Create an account"}</Link></div>
     </div></section>
     <section className="section section--dark"><div className="shell"><div className="section-heading"><div><p className="eyebrow eyebrow--lime">{copy.home.processLabel}</p><h2>{copy.home.processTitle}</h2></div><p>{copy.home.processBody}</p></div><div className="process-grid">{copy.home.steps.map(([title, body], index) => <article className="process-step" key={title}><span>0{index + 1}</span><h3>{title}</h3><p>{body}</p></article>)}</div></div></section>
     <section className="section"><div className="shell journey-grid">
-      <article><span>01</span><h2>{es ? "Explora sin perder contexto" : "Explore without losing context"}</h2><p>{es ? "Compara ubicación, precio, ingresos, flujo de caja y origen de cada anuncio en una vista clara." : "Compare location, price, revenue, cash flow, and listing source in one clear view."}</p></article>
-      <article><span>02</span><h2>{es ? "Solicita información de forma segura" : "Request information securely"}</h2><p>{es ? "Revisa y firma el NDA antes de solicitar estados financieros. El corredor controla el acceso confidencial." : "Review and sign the NDA before requesting financial records. The broker remains in control of confidential access."}</p></article>
-      <article><span>03</span><h2>{es ? "Avanza con un plan" : "Move forward with a plan"}</h2><p>{es ? "Tu lista de verificación, documentos, tareas y conversaciones permanecen conectados al negocio correcto." : "Your checklist, documents, tasks, and conversations stay connected to the right deal."}</p></article>
+      <article><span>FOR EVERY BUYER</span><h2>{es ? "No necesitas saberlo todo para comenzar" : "You do not need to know everything to begin"}</h2><p>{es ? "La experiencia ayuda, pero no es un requisito. Las explicaciones claras y los próximos pasos te ayudan a avanzar con confianza." : "Experience helps, but it is not required. Plain-language explanations and clear next steps help you move forward with confidence."}</p></article>
+      <article><span>GUIDED ACQUISITION</span><h2>{es ? "La lista te acompaña durante la compra" : "The checklist stays with you through the purchase"}</h2><p>{es ? "Organiza solicitudes, documentos, financiamiento, diligencia, asesores y decisiones sin tener que recordar todo por tu cuenta." : "Organize requests, documents, financing, diligence, advisers, and decisions without having to remember everything yourself."}</p></article>
+      <article><span>ONE PLATFORM</span><h2>{es ? "El cierre no es el final" : "Closing is not the end"}</h2><p>{es ? "Cuando seas propietario, usa el espacio de trabajo para guardar información del negocio y administrar el trabajo continuo en la misma plataforma." : "Once you become the owner, use the workspace to keep business information and ongoing work on the same platform."}</p></article>
     </div></section>
-    <section className="section section--compact"><div className="shell"><div className="cta-panel"><h2>{es ? "Encuentra un negocio y comienza con un próximo paso claro." : "Find a business and start with one clear next step."}</h2><Link className="button button--primary" href={`/${locale}/listings`}>{es ? "Explorar anuncios" : "Explore listings"} →</Link></div></div></section>
+    <section className="section section--compact"><div className="shell"><div className="cta-panel"><h2>{es ? "Encuentra un negocio adecuado para ti y deja que Crestview te muestre el siguiente paso." : "Find a business that feels right, then let Crestview show you the next step."}</h2><Link className="button button--primary" href={`/${locale}/listings`}>{es ? "Comenzar a explorar" : "Start browsing"} →</Link></div></div></section>
   </main><MarketingFooter locale={locale} /></>;
 }

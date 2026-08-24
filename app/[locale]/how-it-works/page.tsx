@@ -3,12 +3,16 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MarketingFooter, MarketingHeader } from "@/components/marketing-shell";
 import { getDictionary, isLocale } from "@/lib/i18n";
+import { localizedPublicMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "How Crestview works",
-  description:
-    "A simple, guided path for finding, evaluating, purchasing, and operating a business—whether you are a first-time or experienced buyer.",
-};
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  return localizedPublicMetadata(locale === "es" ? "es" : "en", "/how-it-works", {
+    title: "How Crestview works",
+    description:
+      "A simple, guided path for finding, evaluating, purchasing, and operating a business—whether you are a first-time or experienced buyer.",
+  });
+}
 
 export default async function HowItWorksPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;

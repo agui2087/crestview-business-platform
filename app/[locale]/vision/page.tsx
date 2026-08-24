@@ -3,8 +3,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MarketingFooter, MarketingHeader } from "@/components/marketing-shell";
 import { isLocale } from "@/lib/i18n";
+import { localizedPublicMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = { title: "Our vision" };
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  return localizedPublicMetadata(locale === "es" ? "es" : "en", "/vision", {
+    title: "Our vision",
+  });
+}
 
 export default async function VisionPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;

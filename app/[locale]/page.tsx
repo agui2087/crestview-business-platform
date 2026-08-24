@@ -3,10 +3,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MarketingFooter, MarketingHeader } from "@/components/marketing-shell";
 import { getDictionary, isLocale } from "@/lib/i18n";
+import { localizedPublicMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Business ownership, made clearer",
-};
+export async function generateMetadata({ params }: PageProps<"/[locale]">): Promise<Metadata> {
+  const { locale } = await params;
+  return localizedPublicMetadata(locale === "es" ? "es" : "en", "", {
+    title: "Business ownership, made clearer",
+  });
+}
 
 export default async function LandingPage({
   params,

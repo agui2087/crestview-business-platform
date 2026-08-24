@@ -3,11 +3,15 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MarketingFooter, MarketingHeader } from "@/components/marketing-shell";
 import { isLocale } from "@/lib/i18n";
+import { localizedPublicMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Real estate acquisition beta",
-  description: "A coming-soon guided real estate acquisition workspace from Crestview.",
-};
+export async function generateMetadata({ params }: PageProps<"/[locale]/real-estate">): Promise<Metadata> {
+  const { locale } = await params;
+  return localizedPublicMetadata(locale === "es" ? "es" : "en", "/real-estate", {
+    title: "Real estate acquisition beta",
+    description: "A coming-soon guided real estate acquisition workspace from Crestview.",
+  });
+}
 
 const phases = [
   ["01", "Discover", "Define property type, geography, budget, yield, and operating plan before comparing opportunities."],

@@ -4,8 +4,14 @@ import { notFound } from "next/navigation";
 import { MarketingFooter, MarketingHeader } from "@/components/marketing-shell";
 import { formatMoney, getMarketplaceListings } from "@/lib/marketplace";
 import { isLocale } from "@/lib/i18n";
+import { localizedPublicMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = { title: "Businesses for sale" };
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  return localizedPublicMetadata(locale === "es" ? "es" : "en", "/listings", {
+    title: "Businesses for sale",
+  });
+}
 
 export default async function PublicListingsPage({ params, searchParams }: { params: Promise<{ locale: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { locale } = await params;

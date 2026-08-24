@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-labelledby="crestview-mark-title">
+  <title id="crestview-mark-title">Crestview</title>
+  <path d="M68.5 22.5A34 34 0 1 0 69 73" fill="none" stroke="#0d3628" stroke-width="15" stroke-linecap="square"/>
+  <path d="M24 66.5C36 66.5 43.5 58.5 50.5 48.5C46 57.5 42 67.5 31.5 75.5Z" fill="#164f3c"/>
+  <path d="M34 74C48.5 73 57.5 64 64 52.5C60 65 54.5 75 43 81Z" fill="#0d3628"/>
+  <path d="M50.5 47.5H74V33C63 35.5 55 40 50.5 47.5Z" fill="#d8f365"/>
+  <path d="M49.5 51H74" fill="none" stroke="#0d3628" stroke-width="3"/>
+</svg>

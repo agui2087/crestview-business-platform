@@ -5,7 +5,7 @@ const siteUrl = "https://www.crestviewplatform.com";
 
 export function localizedPublicMetadata(
   locale: Locale,
-  path: "" | "/listings" | "/how-it-works" | "/pricing" | "/vision" | "/real-estate",
+  path: string,
   metadata: Metadata,
 ): Metadata {
   const canonical = `${siteUrl}/${locale}${path}`;

@@ -5,8 +5,8 @@ import { getChatGPTUser } from "@/app/chatgpt-auth";
 import type { Locale } from "@/lib/i18n";
 
 const labels = {
-  en: { home: "Home", listings: "Listings", realEstate: "Real estate beta", how: "How it works", vision: "Our vision", pricing: "Pricing", signIn: "Sign in", signUp: "Sign up", dashboard: "Dashboard", menu: "Menu", footer: "A business operating platform for thoughtful owners." },
-  es: { home: "Inicio", listings: "Anuncios", realEstate: "Bienes raíces beta", how: "Cómo funciona", vision: "Nuestra visión", pricing: "Planes", signIn: "Iniciar sesión", signUp: "Crear cuenta", dashboard: "Panel", menu: "Menú", footer: "Una plataforma empresarial para propietarios reflexivos." },
+  en: { home: "Home", listings: "Listings", guides: "Buyer guides", how: "How it works", vision: "Our vision", pricing: "Pricing", signIn: "Sign in", signUp: "Sign up", dashboard: "Dashboard", menu: "Menu", footer: "A business operating platform for thoughtful owners." },
+  es: { home: "Inicio", listings: "Anuncios", guides: "Guías", how: "Cómo funciona", vision: "Nuestra visión", pricing: "Planes", signIn: "Iniciar sesión", signUp: "Crear cuenta", dashboard: "Panel", menu: "Menú", footer: "Una plataforma empresarial para propietarios reflexivos." },
 } as const;
 
 function MarketingLinks({ locale }: { locale: Locale }) {
@@ -14,7 +14,7 @@ function MarketingLinks({ locale }: { locale: Locale }) {
   return <>
     <Link href={`/${locale}`}>{text.home}</Link>
     <Link href={`/${locale}/listings`}>{text.listings}</Link>
-    <Link href={`/${locale}/real-estate`}>{text.realEstate}</Link>
+    <Link href={`/${locale}/guides`}>{text.guides}</Link>
     <Link href={`/${locale}/how-it-works`}>{text.how}</Link>
     <Link href={`/${locale}/vision`}>{text.vision}</Link>
     <Link href={`/${locale}/pricing`}>{text.pricing}</Link>
@@ -53,5 +53,5 @@ export async function MarketingHeader({ locale }: { locale: Locale }) {
 }
 
 export function MarketingFooter({ locale }: { locale: Locale }) {
-  return <footer className="footer"><div className="shell footer__inner"><Brand locale={locale} /><span>{labels[locale].footer}</span><span>© 2026 Crestview</span></div></footer>;
+  return <footer className="footer"><div className="shell footer__inner"><Brand locale={locale} /><span>{labels[locale].footer}</span><nav aria-label={locale === "es" ? "Recursos" : "Resources"}><Link href={`/${locale}/guides`}>{locale === "es" ? "Guías para compradores" : "Business buyer guides"}</Link><Link href={`/${locale}/guides/tools`}>{locale === "es" ? "Calculadoras" : "Free calculators"}</Link><Link href={`/${locale}/real-estate`}>{locale === "es" ? "Bienes raíces beta" : "Real estate beta"}</Link></nav><span>© 2026 Crestview</span></div></footer>;
 }

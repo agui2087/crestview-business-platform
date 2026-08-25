@@ -9,7 +9,8 @@ import { localizedPublicMetadata } from "@/lib/seo";
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params;
   return localizedPublicMetadata(locale === "es" ? "es" : "en", "/listings", {
-    title: "Businesses for sale",
+    title: "Small businesses for sale",
+    description: "Browse small businesses for sale and use Crestview’s guided acquisition workspace to evaluate, request information, and move through due diligence.",
   });
 }
 

@@ -8,11 +8,26 @@ export const metadata: Metadata = {
     template: "%s | Crestview",
   },
   description:
-    "A business operating platform for finding, evaluating, acquiring, and operating small businesses.",
+    "Learn how to buy a small business, explore opportunities, complete due diligence, compare financing, and manage your acquisition in one guided platform.",
+  keywords: [
+    "how to buy a business",
+    "buying a business for beginners",
+    "small business for sale",
+    "business due diligence checklist",
+    "business acquisition financing",
+    "small business valuation",
+  ],
+  icons: {
+    icon: [
+      { url: "/crestview-favicon.svg", type: "image/svg+xml", sizes: "any" },
+    ],
+    shortcut: "/crestview-favicon.svg",
+    apple: "/crestview-favicon.svg",
+  },
   openGraph: {
     title: "Crestview | Find. Evaluate. Acquire.",
     description:
-      "Search sourced business opportunities and move from initial review through acquisition.",
+      "Learn how to buy a business and move from search through evaluation, financing, due diligence, and acquisition.",
     images: [
       {
         url: "/og.png",
@@ -26,7 +41,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Crestview | Find. Evaluate. Acquire.",
     description:
-      "Search sourced business opportunities and move from initial review through acquisition.",
+      "Learn how to buy a business and move from search through evaluation, financing, due diligence, and acquisition.",
     images: ["/og.png"],
   },
 };
@@ -46,6 +61,7 @@ export default function RootLayout({
         url: "https://www.crestviewplatform.com",
         description:
           "A business operating platform for finding, evaluating, acquiring, and operating small businesses.",
+        logo: "https://www.crestviewplatform.com/crestview-mark.svg",
       },
       {
         "@type": "WebSite",

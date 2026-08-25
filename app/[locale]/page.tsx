@@ -8,7 +8,8 @@ import { localizedPublicMetadata } from "@/lib/seo";
 export async function generateMetadata({ params }: PageProps<"/[locale]">): Promise<Metadata> {
   const { locale } = await params;
   return localizedPublicMetadata(locale === "es" ? "es" : "en", "", {
-    title: "Business ownership, made clearer",
+    title: "How to buy a business | Business ownership, made clearer",
+    description: "A guided platform for first-time and experienced buyers to find, evaluate, finance, and purchase a small business.",
   });
 }
 
@@ -178,6 +179,21 @@ export default async function LandingPage({
                 </article>
               ))}
             </div>
+          </div>
+        </section>
+
+        <section className="section home-learning-center">
+          <div className="shell">
+            <div className="section-heading">
+              <div><p className="eyebrow">{locale === "es" ? "APRENDE ANTES DE COMPRAR" : "LEARN BEFORE YOU BUY"}</p><h2>{locale === "es" ? "Tu guía para comprar un negocio." : "Your guide to buying a business."}</h2></div>
+              <p>{locale === "es" ? "Respuestas claras para compradores nuevos: desde encontrar un negocio y revisar sus finanzas hasta obtener financiamiento, completar la diligencia y cerrar." : "Clear answers for first-time buyers—from finding a business and reviewing its finances to securing financing, completing due diligence, and closing."}</p>
+            </div>
+            <div className="home-guide-grid">
+              <Link href={`/${locale}/guides/how-to-buy-a-business`}><span>01</span><div><strong>{locale === "es" ? "Cómo comprar un negocio" : "How to buy a small business"}</strong><small>{locale === "es" ? "La guía completa, paso a paso" : "The complete step-by-step guide"}</small></div><b>→</b></Link>
+              <Link href={`/${locale}/guides/business-due-diligence-checklist`}><span>02</span><div><strong>{locale === "es" ? "Lista de diligencia" : "Due-diligence checklist"}</strong><small>{locale === "es" ? "Qué solicitar y cómo verificarlo" : "What to request and how to verify it"}</small></div><b>→</b></Link>
+              <Link href={`/${locale}/guides/how-to-finance-a-business-purchase`}><span>03</span><div><strong>{locale === "es" ? "Financiar una compra" : "Finance a business purchase"}</strong><small>{locale === "es" ? "Préstamos, capital y financiamiento del vendedor" : "Loans, equity, and seller financing"}</small></div><b>→</b></Link>
+            </div>
+            <div className="home-learning-actions"><Link className="button button--primary" href={`/${locale}/guides`}>{locale === "es" ? "Ver todas las guías" : "Explore all buyer guides"} →</Link><Link className="button button--light" href={`/${locale}/guides/tools`}>{locale === "es" ? "Usar calculadoras gratuitas" : "Use free calculators"}</Link></div>
           </div>
         </section>
 

@@ -24,10 +24,10 @@ export async function POST(request: Request) {
   if (file.size > maxDocumentBytes) return Response.json({ error: "Files must be 10 MB or smaller." }, { status: 400 });
   const owner = ownerKey(user.email); const id = crypto.randomUUID(); const name = safeName(file.name);
   const storageKey = `${encodeURIComponent(owner)}/${id}/${name}`;
-  await getDocumentStorage().put(storageKey, file.stream(), { httpMetadata: { contentType: file.type } });
+  await (await getDocumentStorage()).put(storageKey, file.stream(), { httpMetadata: { contentType: file.type } });
   try {
-    await getDb().insert(documents).values({ id, ownerKey:owner, opportunityId:null, storageKey, originalName:name, contentType:file.type, sizeBytes:file.size, category:validCategory(String(form.get("category") ?? "Other")), dealName:safeName(String(form.get("dealName") ?? "")).slice(0, 100) || null, fiscalYear:String(form.get("fiscalYear") ?? "").replace(/[^0-9]/g, "").slice(0, 4) || null });
+    await (await getDb()).insert(documents).values({ id, ownerKey:owner, opportunityId:null, storageKey, originalName:name, contentType:file.type, sizeBytes:file.size, category:validCategory(String(form.get("category") ?? "Other")), dealName:safeName(String(form.get("dealName") ?? "")).slice(0, 100) || null, fiscalYear:String(form.get("fiscalYear") ?? "").replace(/[^0-9]/g, "").slice(0, 4) || null });
     await recordActivity(owner, id, "uploaded", name);
-  } catch (error) { await getDocumentStorage().delete(storageKey); throw error; }
+  } catch (error) { await (await getDocumentStorage()).delete(storageKey); throw error; }
   return Response.json({ ok:true, id }, { status:201 });
 }

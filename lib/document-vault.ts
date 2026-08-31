@@ -16,15 +16,15 @@ export function safeName(value: string) { return value.replace(/[^a-zA-Z0-9._ -]
 export function validCategory(value: string) { return documentCategories.includes(value as typeof documentCategories[number]) ? value : "Other"; }
 
 export async function recordActivity(owner: string, documentId: string | null, action: string, name: string) {
-  await getDb().insert(documentActivity).values({ id: crypto.randomUUID(), documentId, ownerKey: owner, action, documentName: name });
+  await (await getDb()).insert(documentActivity).values({ id: crypto.randomUUID(), documentId, ownerKey: owner, action, documentName: name });
 }
 
 export async function findOwnedDocument(owner: string, id: string) {
-  return getDb().select().from(documents).where(and(eq(documents.id, id), eq(documents.ownerKey, owner))).get();
+  return (await getDb()).select().from(documents).where(and(eq(documents.id, id), eq(documents.ownerKey, owner))).get();
 }
 
 export async function listVault(owner: string) {
-  const db = getDb();
+  const db = await getDb();
   const [files, activity] = await Promise.all([
     db.select().from(documents).where(eq(documents.ownerKey, owner)).orderBy(desc(documents.updatedAt)).all(),
     db.select().from(documentActivity).where(eq(documentActivity.ownerKey, owner)).orderBy(desc(documentActivity.createdAt)).limit(30).all(),

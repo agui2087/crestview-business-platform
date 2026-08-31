@@ -35,6 +35,39 @@ async function context(formData: FormData) {
   return { locale, supabase, user };
 }
 
+async function requireRole(
+  locale: string,
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  userId: string,
+  role: "buyer" | "broker",
+) {
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("account_roles")
+    .eq("user_id", userId)
+    .maybeSingle();
+  const roles = (profile?.account_roles as string[] | null) ?? [];
+  if (!roles.includes(role)) redirect(`/${locale}/dashboard/settings?error=${role}_role_required`);
+}
+
+async function requireActiveBrokerPlan(
+  locale: string,
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  userId: string,
+) {
+  const { data: entitlement } = await supabase
+    .from("billing_entitlements")
+    .select("active,expires_at")
+    .eq("user_id", userId)
+    .eq("product_code", "broker_plan")
+    .maybeSingle();
+  const active = Boolean(
+    entitlement?.active &&
+      (!entitlement.expires_at || new Date(entitlement.expires_at) > new Date()),
+  );
+  if (!active) redirect(`/${locale}/pricing?billing_error=broker_plan_required`);
+}
+
 function optionalNumber(value: FormDataEntryValue | null) {
   const normalized = String(value ?? "").replace(/[$,\s]/g, "");
   return normalized ? Number(normalized) : null;
@@ -56,6 +89,7 @@ export async function saveMarketplaceRoles(formData: FormData) {
 
 export async function createListing(formData: FormData) {
   const { locale, supabase, user } = await context(formData);
+  await requireRole(locale, supabase, user.id, "broker");
   const parsed = listingSchema.safeParse({
     title: formData.get("title"),
     summary: formData.get("summary"),
@@ -68,6 +102,7 @@ export async function createListing(formData: FormData) {
   });
   if (!parsed.success) redirect(`/${locale}/dashboard/listings?error=invalid`);
   const publishing = formData.get("listing_action") === "publish" || formData.get("publish") === "on";
+  if (publishing) await requireActiveBrokerPlan(locale, supabase, user.id);
   const ndaFile = formData.get("nda_file");
   const ndaAttested = formData.get("nda_attested") === "on";
   if (publishing && (!(ndaFile instanceof File) || ndaFile.size === 0 || !ndaAttested)) {
@@ -162,9 +197,11 @@ export async function createListing(formData: FormData) {
 
 export async function updateListingStatus(formData: FormData) {
   const { locale, supabase, user } = await context(formData);
+  await requireRole(locale, supabase, user.id, "broker");
   const status = z.enum(["draft","published","paused","under_offer","sold","withdrawn"]).parse(formData.get("status"));
   const listingId = z.string().uuid().parse(formData.get("listing_id"));
   if (ACTIVE_LISTING_STATUSES.includes(status)) {
+    await requireActiveBrokerPlan(locale, supabase, user.id);
     const { data: ndaTemplate } = await supabase.from("listing_nda_templates")
       .select("id")
       .eq("listing_id", listingId)
@@ -188,6 +225,8 @@ export async function updateListingStatus(formData: FormData) {
 
 export async function confirmListingAvailability(formData: FormData) {
   const { locale, supabase, user } = await context(formData);
+  await requireRole(locale, supabase, user.id, "broker");
+  await requireActiveBrokerPlan(locale, supabase, user.id);
   const listingId = z.string().uuid().parse(formData.get("listing_id"));
   const now = new Date().toISOString();
   await supabase.from("marketplace_listings")
@@ -202,6 +241,7 @@ export async function confirmListingAvailability(formData: FormData) {
 
 export async function createInquiry(formData: FormData) {
   const { locale, supabase, user } = await context(formData);
+  await requireRole(locale, supabase, user.id, "buyer");
   const listingId = String(formData.get("listing_id") ?? "");
   if (listingId.startsWith("demo-")) redirect(`/${locale}/dashboard/inbox?draft=1`);
   const { data: listing } = await supabase.from("marketplace_listings").select("id,title,broker_id").eq("id", listingId).eq("status", "published").maybeSingle();
@@ -297,6 +337,7 @@ export async function advanceInquiry(formData: FormData) {
 
 export async function sendNda(formData: FormData) {
   const { locale, supabase, user } = await context(formData);
+  await requireRole(locale, supabase, user.id, "broker");
   const inquiryId = z.string().uuid().parse(formData.get("inquiry_id"));
   const { data: inquiry } = await supabase.from("deal_inquiries").select("buyer_id,broker_id").eq("id", inquiryId).eq("broker_id", user.id).maybeSingle();
   if (!inquiry) redirect(`/${locale}/dashboard/inbox?error=forbidden`);
@@ -315,6 +356,7 @@ export async function sendNda(formData: FormData) {
 
 export async function signNda(formData: FormData) {
   const { locale, supabase, user } = await context(formData);
+  await requireRole(locale, supabase, user.id, "buyer");
   const inquiryId = z.string().uuid().parse(formData.get("inquiry_id"));
   const signerName = z.string().trim().min(2).max(100).parse(formData.get("signer_name"));
   const accepted = formData.get("accepted") === "on";
@@ -358,6 +400,7 @@ export async function signNda(formData: FormData) {
 
 export async function requestFinancialAccess(formData: FormData) {
   const { locale, supabase, user } = await context(formData);
+  await requireRole(locale, supabase, user.id, "buyer");
   const inquiryId = z.string().uuid().parse(formData.get("inquiry_id"));
   const message = z.string().trim().min(20).max(3000).parse(formData.get("financial_request_message"));
   const timeline = z.string().trim().min(2).max(120).parse(formData.get("financial_request_timeline"));

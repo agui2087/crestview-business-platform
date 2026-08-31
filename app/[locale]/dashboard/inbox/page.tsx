@@ -94,7 +94,17 @@ export default async function InboxPage({ params, searchParams }: PageProps<"/[l
               <p className="inbox-preview-message">{featured.initial_message}</p>
               <div className="inbox-next-step">
                 <span>Next step</span>
-                <strong>{featured.status === "nda_sent" ? "Review and sign the confidentiality agreement" : "Continue the conversation in the secure workspace"}</strong>
+                <strong>{isBroker
+                  ? featured.financial_access_status === "requested"
+                    ? "Review the buyer’s financial-information request"
+                    : featured.status === "nda_sent"
+                      ? "The NDA is waiting for the buyer’s signature"
+                      : featured.status === "nda_signed"
+                        ? "Review the signed buyer request"
+                        : "Continue the conversation in the secure workspace"
+                  : featured.status === "nda_sent"
+                    ? "Review and sign the confidentiality agreement"
+                    : "Continue the conversation in the secure workspace"}</strong>
                 <p>Messages, signatures, documents, and status changes stay together in one protected record.</p>
               </div>
               <Link className="button button--primary inbox-open-workspace" href={`/${locale}/dashboard/deals/${featured.id}`}>Open secure workspace →</Link>

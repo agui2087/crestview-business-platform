@@ -50,7 +50,7 @@ async function getWorkspace(id: string, userId?: string): Promise<WorkspaceData>
   }
   const supabase = await createSupabaseServerClient();
   const { data: inquiry } = await supabase.from("deal_inquiries").select("id,listing_id,buyer_id,broker_id,subject,initial_message,status,updated_at,requested_items,acquisition_experience,funding_readiness,financial_access_status,financial_request_message,financial_request_timeline,financial_request_capital,marketplace_listings(title,city,state_code,asking_price,annual_revenue,cash_flow)").eq("id", id).or(`buyer_id.eq.${userId},broker_id.eq.${userId}`).maybeSingle();
-  if (!inquiry) return getWorkspace("demo-inquiry");
+  if (!inquiry) notFound();
   const [{ data: messages }, { data: nda }, { data: documents }, { data: requests }, { data: events }] = await Promise.all([
     supabase.from("deal_messages").select("id,body,sender_id,created_at").eq("inquiry_id", id).order("created_at"),
     supabase.from("deal_ndas").select("status,document_name,template_body,storage_path,template_version,signed_at,signer_name").eq("inquiry_id", id).maybeSingle(),
@@ -113,12 +113,28 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
         <div className="deal-overview-strip">
           <div><span>Current stage</span><strong>{dealStages[currentStageIndex]?.[1] ?? "Inquiry sent"}</strong></div>
           <div><span>Your role</span><strong>{workspace.isBuyer ? "Buyer" : "Broker / seller"}</strong></div>
-          <div><span>Next action</span><strong>{workspace.inquiry.status === "nda_sent" ? "Sign the NDA" : workspace.isBuyer && roomUnlocked && financialStatus === "not_requested" ? "Request financial access" : financialStatus === "requested" ? "Broker reviews financial request" : financialApproved ? "Review approved documents" : "Continue screening"}</strong></div>
+          <div><span>Next action</span><strong>{workspace.isBuyer
+            ? workspace.inquiry.status === "nda_sent"
+              ? "Sign the NDA"
+              : roomUnlocked && financialStatus === "not_requested"
+                ? "Request financial access"
+                : financialStatus === "requested"
+                  ? "Wait for broker review"
+                  : financialApproved
+                    ? "Review approved documents"
+                    : "Continue screening"
+            : workspace.inquiry.status === "nda_sent"
+              ? "Wait for the buyer’s signature"
+              : financialStatus === "requested"
+                ? "Review the financial request"
+                : financialApproved
+                  ? "Release approved documents"
+                  : "Continue buyer screening"}</strong></div>
         </div>
         <div className="deal-simple-flow" aria-label="Deal room steps">
-          <div className={roomUnlocked ? "is-done" : "is-current"}><span>{roomUnlocked ? "✓" : "1"}</span><div><strong>Sign NDA</strong><small>Review and accept the listing agreement</small></div></div>
-          <div className={financialApproved ? "is-done" : roomUnlocked ? "is-current" : ""}><span>{financialApproved ? "✓" : "2"}</span><div><strong>Request records</strong><small>The broker decides what to release</small></div></div>
-          <div className={financialApproved ? "is-current" : ""}><span>3</span><div><strong>Review securely</strong><small>Use the deal room and conversation</small></div></div>
+          <div className={roomUnlocked ? "is-done" : "is-current"}><span>{roomUnlocked ? "✓" : "1"}</span><div><strong>{workspace.isBuyer ? "Sign NDA" : "Buyer signs NDA"}</strong><small>{workspace.isBuyer ? "Review and accept the listing agreement" : "Crestview delivers and records the agreement"}</small></div></div>
+          <div className={financialApproved ? "is-done" : roomUnlocked ? "is-current" : ""}><span>{financialApproved ? "✓" : "2"}</span><div><strong>{workspace.isBuyer ? "Request records" : "Review buyer request"}</strong><small>{workspace.isBuyer ? "The broker decides what to release" : "Approve, ask a question, or decline"}</small></div></div>
+          <div className={financialApproved ? "is-current" : ""}><span>3</span><div><strong>{workspace.isBuyer ? "Review securely" : "Release securely"}</strong><small>Use the deal room and conversation</small></div></div>
         </div>
         <div className="deal-room-grid">
           <section className="panel deal-thread">

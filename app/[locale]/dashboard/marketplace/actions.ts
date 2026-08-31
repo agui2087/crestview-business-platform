@@ -19,6 +19,13 @@ const listingSchema = z.object({
   cash_flow: z.coerce.number().positive().nullable(),
 });
 
+const MAX_ACTIVE_BROKER_LISTINGS = 100;
+const ACTIVE_LISTING_STATUSES = ["published", "under_offer"];
+
+function normalizedListingText(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
 async function context(formData: FormData) {
   const locale = String(formData.get("locale") ?? "en");
   if (!isLocale(locale)) redirect("/en/sign-in");
@@ -60,22 +67,52 @@ export async function createListing(formData: FormData) {
     cash_flow: optionalNumber(formData.get("cash_flow")),
   });
   if (!parsed.success) redirect(`/${locale}/dashboard/listings?error=invalid`);
+  const publishing = formData.get("listing_action") === "publish" || formData.get("publish") === "on";
+  const ndaFile = formData.get("nda_file");
+  const ndaAttested = formData.get("nda_attested") === "on";
+  if (publishing && (!(ndaFile instanceof File) || ndaFile.size === 0 || !ndaAttested)) {
+    redirect(`/${locale}/dashboard/listings?new=1&error=nda_required#new-listing`);
+  }
+  if (ndaFile instanceof File && ndaFile.size > 0 && (ndaFile.type !== "application/pdf" || ndaFile.size > 10 * 1024 * 1024)) {
+    redirect(`/${locale}/dashboard/listings?new=1&error=nda_file#new-listing`);
+  }
+  if (publishing) {
+    const { count } = await supabase.from("marketplace_listings")
+      .select("id", { count: "exact", head: true })
+      .eq("broker_id", user.id)
+      .in("status", ACTIVE_LISTING_STATUSES);
+    if ((count ?? 0) >= MAX_ACTIVE_BROKER_LISTINGS) redirect(`/${locale}/dashboard/listings?error=limit`);
+  }
+
+  const { data: possibleDuplicates } = await supabase.from("marketplace_listings")
+    .select("id,title,city,state_code,asking_price")
+    .eq("broker_id", user.id)
+    .in("status", ["draft", "published", "paused", "under_offer"])
+    .ilike("city", parsed.data.city)
+    .eq("state_code", parsed.data.state_code)
+    .limit(20);
+  const duplicate = possibleDuplicates?.find((candidate) => {
+    const sameTitle = normalizedListingText(candidate.title) === normalizedListingText(parsed.data.title);
+    const samePrice = parsed.data.asking_price && candidate.asking_price
+      ? Number(candidate.asking_price) === Number(parsed.data.asking_price)
+      : false;
+    return sameTitle || samePrice;
+  });
+  const now = new Date().toISOString();
   const { data: listing, error } = await supabase.from("marketplace_listings").insert({
     broker_id: user.id,
     ...parsed.data,
     financing_available: formData.get("financing_available") === "on",
     public_highlights: String(formData.get("public_highlights") ?? "").split("\n").map((item) => item.trim()).filter(Boolean).slice(0, 8),
     confidential_notes: String(formData.get("confidential_notes") ?? "").trim() || null,
-    status: formData.get("publish") === "on" ? "published" : "draft",
+    // Keep the row private until the NDA upload and template record both succeed.
+    status: "draft",
+    updated_at: now,
   }).select("id").single();
   if (error || !listing) redirect(`/${locale}/dashboard/listings?error=save`);
-  const ndaFile = formData.get("nda_file");
   const ndaBody = String(formData.get("nda_template_body") ?? "").trim();
   let ndaStoragePath: string | null = null;
   if (ndaFile instanceof File && ndaFile.size > 0) {
-    if (ndaFile.type !== "application/pdf" || ndaFile.size > 10 * 1024 * 1024) {
-      redirect(`/${locale}/dashboard/listings?error=nda_file`);
-    }
     const safeName = ndaFile.name.replace(/[^a-zA-Z0-9._-]/g, "-").slice(-100);
     ndaStoragePath = `${user.id}/listing-ndas/${listing.id}/${Date.now()}-${safeName}`;
     const { error: uploadError } = await supabase.storage.from("deal-files").upload(ndaStoragePath, ndaFile, {
@@ -92,7 +129,7 @@ export async function createListing(formData: FormData) {
       template_body: ndaBody || "The attached broker-provided confidentiality agreement governs access to non-public information shared for this opportunity.",
       storage_path: ndaStoragePath,
       auto_send: formData.get("auto_send_nda") === "on",
-      broker_attested: formData.get("nda_attested") === "on",
+      broker_attested: ndaAttested,
     });
     if (ndaError) redirect(`/${locale}/dashboard/listings?error=nda`);
   }
@@ -104,18 +141,63 @@ export async function createListing(formData: FormData) {
     + (formData.get("financing_available") === "on" ? 5 : 0)
     + (String(formData.get("confidential_notes") ?? "").trim() ? 5 : 0)
   );
-  await supabase.from("marketplace_listings").update({ quality_score: qualityScore }).eq("id", listing.id).eq("broker_id", user.id);
+  await supabase.from("marketplace_listings").update({
+    quality_score: qualityScore,
+    status: publishing ? "published" : "draft",
+    updated_at: new Date().toISOString(),
+  }).eq("id", listing.id).eq("broker_id", user.id);
+  if (duplicate) {
+    await supabase.from("marketplace_notifications").insert({
+      user_id: user.id,
+      kind: "possible_duplicate_listing",
+      title: "Possible duplicate listing",
+      body: `“${parsed.data.title}” looks similar to another listing in your account. Please review both listings and remove or pause any duplicate.`,
+      href: `/${locale}/dashboard/listings?duplicate=${listing.id}`,
+    });
+  }
   revalidatePath(`/${locale}/dashboard/listings`);
   revalidatePath(`/${locale}/dashboard/marketplace`);
-  redirect(`/${locale}/dashboard/listings?created=1`);
+  redirect(`/${locale}/dashboard/listings?created=1${duplicate ? "&duplicate=1" : ""}`);
 }
 
 export async function updateListingStatus(formData: FormData) {
   const { locale, supabase, user } = await context(formData);
   const status = z.enum(["draft","published","paused","under_offer","sold","withdrawn"]).parse(formData.get("status"));
   const listingId = z.string().uuid().parse(formData.get("listing_id"));
-  await supabase.from("marketplace_listings").update({ status, updated_at: new Date().toISOString() }).eq("id", listingId).eq("broker_id", user.id);
+  if (ACTIVE_LISTING_STATUSES.includes(status)) {
+    const { data: ndaTemplate } = await supabase.from("listing_nda_templates")
+      .select("id")
+      .eq("listing_id", listingId)
+      .eq("broker_id", user.id)
+      .eq("auto_send", true)
+      .eq("broker_attested", true)
+      .not("storage_path", "is", null)
+      .maybeSingle();
+    if (!ndaTemplate) redirect(`/${locale}/dashboard/listings?error=nda_required`);
+    const { count } = await supabase.from("marketplace_listings")
+      .select("id", { count: "exact", head: true })
+      .eq("broker_id", user.id)
+      .in("status", ACTIVE_LISTING_STATUSES)
+      .neq("id", listingId);
+    if ((count ?? 0) >= MAX_ACTIVE_BROKER_LISTINGS) redirect(`/${locale}/dashboard/listings?error=limit`);
+  }
+  const update: Record<string, string> = { status, updated_at: new Date().toISOString() };
+  await supabase.from("marketplace_listings").update(update).eq("id", listingId).eq("broker_id", user.id);
   revalidatePath(`/${locale}/dashboard/listings`);
+}
+
+export async function confirmListingAvailability(formData: FormData) {
+  const { locale, supabase, user } = await context(formData);
+  const listingId = z.string().uuid().parse(formData.get("listing_id"));
+  const now = new Date().toISOString();
+  await supabase.from("marketplace_listings")
+    .update({ updated_at: now })
+    .eq("id", listingId)
+    .eq("broker_id", user.id)
+    .in("status", ACTIVE_LISTING_STATUSES);
+  revalidatePath(`/${locale}/dashboard/listings`);
+  revalidatePath(`/${locale}/dashboard/marketplace`);
+  redirect(`/${locale}/dashboard/listings?confirmed=1`);
 }
 
 export async function createInquiry(formData: FormData) {

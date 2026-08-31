@@ -163,6 +163,15 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .pricing-card li span { color:var(--brand); font-weight:900; }
 .pricing-checkout-form { display:grid; }
 .pricing-checkout-form .button { width:100%; }
+.broker-code-panel { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(320px,.8fr); gap:32px; align-items:center; margin-top:22px; padding:24px; border:1px solid #b8d0c3; border-radius:16px; background:linear-gradient(135deg,#f5faf7,#fff); box-shadow:0 12px 32px rgba(19,79,58,.07); }
+.broker-code-panel > div > span { color:var(--brand); font-size:.61rem; font-weight:850; letter-spacing:.1em; }
+.broker-code-panel h3 { margin:7px 0 8px; font-size:1.1rem; }
+.broker-code-panel p { margin:0; color:var(--muted); font-size:.7rem; line-height:1.6; }
+.broker-code-panel form { display:grid; gap:7px; }
+.broker-code-panel label { color:var(--ink); font-size:.64rem; font-weight:800; }
+.broker-code-panel form > div { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; }
+.broker-code-panel input { min-width:0; padding:12px 13px; border:1px solid var(--line); border-radius:10px; background:#fff; color:var(--ink); font:inherit; text-transform:uppercase; }
+.broker-code-panel small { color:var(--muted); font-size:.58rem; line-height:1.45; }
 .pricing-disclaimer { max-width:850px; margin:20px auto 0; color:var(--muted); font-size:.68rem; line-height:1.6; text-align:center; }
 .workforce-pricing { display:grid; grid-template-columns:.72fr 1.28fr; overflow:hidden; border:1px solid var(--line); border-radius:22px; background:white; box-shadow:0 15px 45px rgba(22,79,60,.06); }
 .workforce-pricing__intro { padding:36px; background:var(--brand-dark); color:white; }
@@ -1201,6 +1210,15 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .listing-submit-row { display:flex; align-items:center; justify-content:space-between; gap:18px; margin-top:16px; padding-top:16px; border-top:1px solid var(--line); }
 .listing-submit-row label { display:flex; align-items:center; gap:7px; color:var(--muted); font-size:.65rem; font-weight:700; }
 .listing-submit-row input { accent-color:var(--brand); }
+.listing-submit-row > div { display:grid; gap:4px; max-width:520px; margin-right:auto; }
+.listing-submit-row > div strong { font-size:.72rem; }
+.listing-submit-row > div small { color:var(--muted); font-size:.6rem; line-height:1.45; }
+.listing-status-form { display:grid; grid-template-columns:minmax(145px,1fr) auto; gap:8px; align-items:end; }
+.listing-status-form label { display:grid; gap:4px; color:var(--muted); font-size:.56rem; font-weight:800; text-transform:uppercase; letter-spacing:.06em; }
+.broker-first-listing { display:grid; grid-template-columns:1fr auto; gap:22px; align-items:center; margin:0 0 14px; padding:20px 22px; border:1px solid #bcd6c9; border-radius:14px; background:linear-gradient(135deg,#eff8f3,#fff); }
+.broker-first-listing h2,.broker-first-listing p { margin:0; }
+.broker-first-listing h2 { margin-top:4px; font-size:1rem; }
+.broker-first-listing p { max-width:760px; margin-top:7px; color:var(--muted); font-size:.66rem; line-height:1.5; }
 .listing-management { display:grid; gap:9px; margin-top:14px; }
 .listing-management article { display:flex; align-items:center; justify-content:space-between; gap:18px; padding:18px 20px; border:1px solid var(--line); border-radius:13px; background:white; }
 .listing-management article > div > span { color:var(--brand); font-size:.57rem; font-weight:800; text-transform:uppercase; }
@@ -1220,6 +1238,19 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .role-home-card > div:first-child > span { color:var(--brand); font-size:.58rem; font-weight:850; text-transform:uppercase; letter-spacing:.09em; }
 .role-home-card h2 { max-width:720px; margin:0; font-size:.94rem; line-height:1.3; }
 .role-home-card p { max-width:760px; margin:0; color:var(--muted); font-size:.66rem; line-height:1.5; }
+.broker-onboarding-strip { display:grid; grid-template-columns:repeat(3,1fr); gap:1px; overflow:hidden; margin:18px 0; border:1px solid var(--line); border-radius:14px; background:var(--line); }
+.broker-onboarding-strip > div { display:grid; grid-template-columns:30px 1fr; column-gap:10px; align-items:center; min-height:76px; padding:14px 16px; background:#fff; }
+.broker-onboarding-strip span { grid-row:1 / 3; width:28px; height:28px; display:grid; place-items:center; border-radius:50%; background:#eef2ef; color:#728078; font-size:.6rem; font-weight:900; }
+.broker-onboarding-strip strong { font-size:.66rem; }
+.broker-onboarding-strip small { color:var(--muted); font-size:.56rem; }
+.broker-onboarding-strip .is-current { background:#f5faf7; }
+.broker-onboarding-strip .is-current span { background:var(--brand); color:#fff; }
+.broker-onboarding-strip .is-complete span { background:#dcefe5; color:var(--brand); }
+.broker-home-steps { display:grid; gap:12px; }
+.broker-home-steps p { display:grid; gap:3px; margin:0; padding-bottom:11px; border-bottom:1px solid var(--line); }
+.broker-home-steps p:last-child { padding-bottom:0; border-bottom:0; }
+.broker-home-steps strong { font-size:.68rem; }
+.broker-home-steps span { color:var(--muted); font-size:.6rem; line-height:1.45; }
 .role-home-actions { min-width:220px; display:flex!important; flex-direction:column; align-items:stretch; gap:10px!important; }
 .role-home-actions .button { width:100%; min-width:210px; box-shadow:none; }
 .role-home-actions .button--primary { box-shadow:0 10px 24px rgba(22,79,60,.12); }
@@ -1524,7 +1555,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .notes-lists-grid,.saved-list-grid { grid-template-columns: 1fr; }
   .employee-grid { grid-template-columns: 1fr; }
   .workforce-summary { grid-template-columns: repeat(2,1fr); }
-  .marketplace-listings,.inbox-layout,.deal-room-grid,.deal-bottom-grid,.role-home-card { grid-template-columns:1fr; }
+  .marketplace-listings,.inbox-layout,.deal-room-grid,.deal-bottom-grid,.role-home-card,.broker-first-listing { grid-template-columns:1fr; }
   .role-home-actions { width:100%; max-width:430px; min-width:0; }
   .role-home-actions .button { min-width:0; }
   .buyer-fit-grid { grid-template-columns:1fr; }
@@ -1544,6 +1575,8 @@ button, a { -webkit-tap-highlight-color: transparent; }
 }
 
 @media (max-width: 620px) {
+  .broker-code-panel { grid-template-columns:1fr; gap:18px; padding:20px; }
+  .broker-code-panel form > div { grid-template-columns:1fr; }
   .shell { width: min(100% - 28px,1180px); }
   .site-header__inner { min-height: 66px; }
   .header-actions .button { display: none; }
@@ -1654,6 +1687,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .role-settings,.marketplace-trust,.marketplace-card__metrics,.broker-summary,.request-form-grid,.listing-form-grid,.room-documents,.marketplace-filter,.deal-overview-strip { grid-template-columns:1fr; }
   .marketplace-flow,.broker-flow { display:flex; overflow-x:auto; background:transparent; border:0; border-radius:0; }
   .marketplace-flow > span,.broker-flow > span { min-width:185px; border:1px solid var(--line); border-radius:10px; }
+  .broker-onboarding-strip { grid-template-columns:1fr; }
   .results-heading { align-items:flex-start; flex-direction:column; }
   .listing-form-grid .span-two { grid-column:auto; }
   .listing-editor > summary,.listing-management article { align-items:flex-start; flex-direction:column; }

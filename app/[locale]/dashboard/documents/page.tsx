@@ -7,7 +7,7 @@ export default async function DocumentsPage({ params }: { params: Promise<{ loca
   const { locale } = await params; if (!isLocale(locale)) notFound();
   const es = locale === "es";
   return <PlatformShell locale={locale} active="documents"><div className="dashboard-content">
-    <PageHeading eyebrow={es ? "Espacio seguro" : "Secure workspace"} title={es ? "Documentos" : "Documents"} body={es ? "Sube y organiza archivos manteniendo los documentos fuente separados del análisis de IA." : "Upload and organize deal files while keeping source documents separate from AI analysis."} />
+    <PageHeading eyebrow={es ? "Bóveda de documentos" : "Document vault"} title={es ? "Documentos de diligencia" : "Due-diligence documents"} body={es ? "Carga, organiza y controla los documentos privados de cada adquisición en un solo lugar." : "Upload, organize, and control private documents for each acquisition in one place."} />
     <DocumentManager locale={locale} />
   </div></PlatformShell>;
 }

@@ -79,29 +79,16 @@ export default async function SettingsPage({
       };
     }
   }
+  const hasBuyerWorkspace = profile.account_roles.includes("buyer") || profile.account_roles.includes("advisor");
 
   return (
     <PlatformShell locale={locale} active="settings">
       <div className="dashboard-content">
-        <PageHeading eyebrow={es ? "Preferencias" : "Preferences"} title={es ? "Configuración" : "Settings"} body={es ? "Enséñale a Crestview cómo es una adquisición sólida para ti." : "Teach Crestview what a strong acquisition looks like for you."} />
+        <PageHeading eyebrow={es ? "Preferencias" : "Preferences"} title={es ? "Configuración" : "Settings"} body={hasBuyerWorkspace ? (es ? "Enséñale a Crestview cómo es una adquisición sólida para ti." : "Teach Crestview what a strong acquisition looks like for you.") : (es ? "Administra tu perfil, organización y espacio de trabajo." : "Manage your profile, organization, and workspace.")} />
         <form className="settings-panel" action={saveAccountProfile}>
           <input type="hidden" name="locale" value={locale}/>
           <div><span>{es ? "Cuenta y organización" : "Account and organization"}</span><h2>{es ? "Perfil público dentro de Crestview" : "Your Crestview profile"}</h2><p>{es ? "Tu nombre se usa en mensajes y borradores en toda la plataforma." : "Your name is used in messages and drafts throughout the platform."}</p></div>
           <div className="preference-grid">
-            <label>Cash available for an acquisition
-              <input name="available_cash" defaultValue={financialProfile.available_cash ?? ""} inputMode="numeric" placeholder="100000" />
-              <small>Private unless you choose to share it below.</small>
-            </label>
-            <label>Desired annual owner income
-              <input name="desired_owner_income" defaultValue={preferences.desired_owner_income ?? ""} inputMode="numeric" placeholder="90000" />
-              <small>Used in Crestview estimates, not shown as verified income.</small>
-            </label>
-            <label>Estimated buyer injection
-              <select name="buyer_injection_percent" defaultValue={financialProfile.buyer_injection_percent}><option value="10">10%</option><option value="15">15%</option><option value="20">20%</option><option value="25">25%</option></select>
-            </label>
-            <label>Illustrative interest rate
-              <select name="illustrative_interest_rate" defaultValue={financialProfile.illustrative_interest_rate}><option value="9">9%</option><option value="10">10%</option><option value="11">11%</option><option value="12">12%</option><option value="13">13%</option></select>
-            </label>
             <label>{es ? "Nombre" : "Display name"}<input name="display_name" defaultValue={profile.display_name}/></label>
             <label>{es ? "Organización" : "Organization"}<input name="organization_name" defaultValue={profile.organization_name}/></label>
             <label>{es ? "Puesto" : "Job title"}<input name="job_title" defaultValue={profile.job_title}/></label>
@@ -121,6 +108,7 @@ export default async function SettingsPage({
           </div>
           <button className="button button--primary" type="submit">Save marketplace roles</button>
         </form>
+        {hasBuyerWorkspace && <>
         <BuyerAlertPreferences locale={locale} />
         <form className="settings-panel" id="listing-alerts" action={saveBuyerPreferences}>
           <input type="hidden" name="locale" value={locale} />
@@ -132,6 +120,20 @@ export default async function SettingsPage({
           {messages.saved && <p className="auth-success">{es ? "Tus preferencias fueron guardadas." : "Your buyer preferences were saved."}</p>}
           {messages.error && <p className="auth-error">Crestview could not save these preferences. Please try again.</p>}
           <div className="preference-grid">
+            <label>Cash available for an acquisition
+              <input name="available_cash" defaultValue={financialProfile.available_cash ?? ""} inputMode="numeric" placeholder="100000" />
+              <small>Private unless you choose to share it below.</small>
+            </label>
+            <label>Desired annual owner income
+              <input name="desired_owner_income" defaultValue={preferences.desired_owner_income ?? ""} inputMode="numeric" placeholder="90000" />
+              <small>Used in Crestview estimates, not shown as verified income.</small>
+            </label>
+            <label>Estimated buyer injection
+              <select name="buyer_injection_percent" defaultValue={financialProfile.buyer_injection_percent}><option value="10">10%</option><option value="15">15%</option><option value="20">20%</option><option value="25">25%</option></select>
+            </label>
+            <label>Illustrative interest rate
+              <select name="illustrative_interest_rate" defaultValue={financialProfile.illustrative_interest_rate}><option value="9">9%</option><option value="10">10%</option><option value="11">11%</option><option value="12">12%</option><option value="13">13%</option></select>
+            </label>
             <label>Industries
               <input name="industries" defaultValue={preferences.industries.join(", ")} placeholder="HVAC, plumbing, business services" />
               <small>Separate multiple industries with commas.</small>
@@ -205,6 +207,7 @@ export default async function SettingsPage({
           </label>
           <button className="button button--primary" type="submit">{es ? "Guardar perfil" : "Save buyer profile"}</button>
         </form>
+        </>}
       </div>
     </PlatformShell>
   );

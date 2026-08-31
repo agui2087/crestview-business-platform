@@ -1,85 +1,34 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-type DocumentRecord = {
-  id: string;
-  originalName: string;
-  contentType: string;
-  sizeBytes: number;
-  category: string;
-  opportunityId: string | null;
-  createdAt: string;
-};
+type DocumentRecord = { id:string; originalName:string; contentType:string; sizeBytes:number; category:string; dealName:string|null; fiscalYear:string|null; createdAt:string; updatedAt:string };
+type ActivityRecord = { id:string; action:string; documentName:string; createdAt:string };
+const categories=["Financials","Tax returns","Bank statements","Debt","Legal","Employees","Customers","Assets","Closing","Operations","NDA","Other"];
+function fileSize(bytes:number){ return bytes<1048576?`${Math.max(1,Math.round(bytes/1024))} KB`:`${(bytes/1048576).toFixed(1)} MB`; }
 
-const categories = ["NDA", "Financials", "Tax returns", "Legal", "Employees", "Customers", "Assets", "Closing", "Operations", "Other"];
-
-function fileSize(bytes: number) {
-  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-}
-
-export function DocumentManager({ locale = "en" }: { locale?: string }) {
-  const es = locale === "es";
-  const [documents, setDocuments] = useState<DocumentRecord[]>([]);
-  const [category, setCategory] = useState(categories[0]);
-  const [file, setFile] = useState<File | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState("");
-
-  const loadDocuments = useCallback(async () => {
-    const response = await fetch("/api/documents", { cache: "no-store" });
-    const payload = await response.json() as { documents?: DocumentRecord[] };
-    setDocuments(payload.documents ?? []);
-  }, []);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => void loadDocuments(), 0);
-    return () => window.clearTimeout(timer);
-  }, [loadDocuments]);
-
-  async function upload() {
-    if (!file) return setMessage(es ? "Primero elige un archivo." : "Choose a file first.");
-    setBusy(true);
-    setMessage("");
-    const body = new FormData();
-    body.append("file", file);
-    body.append("category", category);
-    const response = await fetch("/api/documents", { method: "POST", body });
-    const payload = await response.json() as { error?: string };
-    setBusy(false);
-    if (!response.ok) return setMessage(payload.error ?? (es ? "La carga falló." : "Upload failed."));
-    setFile(null);
-    setMessage(es ? "Carga completa." : "Upload complete.");
-    await loadDocuments();
-  }
-
-  async function remove(id: string) {
-    if (!window.confirm(es ? "¿Eliminar este documento? Esta acción no se puede deshacer." : "Delete this document? This cannot be undone.")) return;
-    await fetch(`/api/documents?id=${encodeURIComponent(id)}`, { method: "DELETE" });
-    await loadDocuments();
-  }
-
-  return (
-    <div className="documents-workspace">
-      <section className="upload-card">
-        <div><span>{es ? "Sala privada" : "Private deal room"}</span><h2>{es ? "Subir archivos de diligencia" : "Upload due-diligence files"}</h2><p>{es ? "PDF, Word, Excel, CSV, texto, PNG o JPEG. Máximo 10 MB por archivo." : "PDF, Word, Excel, CSV, text, PNG, or JPEG. Maximum 10 MB per file."}</p></div>
-        <div className="upload-controls">
-          <label>{es ? "Categoría" : "Document category"}<select value={category} onChange={(event) => setCategory(event.target.value)}>{categories.map((item) => <option key={item}>{item}</option>)}</select></label>
-          <label className="file-picker"><input type="file" accept=".pdf,.docx,.xlsx,.csv,.txt,.png,.jpg,.jpeg" onChange={(event) => setFile(event.target.files?.[0] ?? null)} /><span>{file ? file.name : (es ? "Elegir archivo" : "Choose a file")}</span></label>
-          <button className="button button--primary" type="button" disabled={!file || busy} onClick={upload}>{busy ? (es ? "Subiendo…" : "Uploading…") : (es ? "Subir documento" : "Upload document")}</button>
-        </div>
-        {message && <p className="upload-message" role="status">{message}</p>}
-      </section>
-      <section className="document-list panel">
-        <div className="panel__header"><h2>{es ? "Documentos subidos" : "Uploaded documents"}</h2><span>{documents.length} {es ? "archivos" : "files"}</span></div>
-        {documents.length === 0 ? <div className="empty-state"><span>▣</span><h2>{es ? "Aún no hay documentos" : "No documents uploaded yet"}</h2><p>{es ? "Tus archivos aparecerán aquí y permanecerán privados." : "Your uploaded files will appear here and remain private to your account."}</p></div> : documents.map((document) => (
-          <article className="document-row" key={document.id}>
-            <div><span>{document.category} · <b>{es ? "Recibido" : "Received"}</b></span><strong>{document.originalName}</strong><small>{fileSize(document.sizeBytes)} · {new Date(document.createdAt).toLocaleDateString()} · {es ? "Revisión pendiente" : "Review pending"}</small></div>
-            <div><a href={`/api/documents/${document.id}`}>{es ? "Descargar" : "Download"}</a><button type="button" onClick={() => remove(document.id)}>{es ? "Eliminar" : "Delete"}</button></div>
-          </article>
-        ))}
-      </section>
-    </div>
-  );
+export function DocumentManager({locale="en"}:{locale?:string}){
+ const es=locale==="es"; const [documents,setDocuments]=useState<DocumentRecord[]>([]); const [activity,setActivity]=useState<ActivityRecord[]>([]);
+ const [category,setCategory]=useState(categories[0]); const [dealName,setDealName]=useState(""); const [fiscalYear,setFiscalYear]=useState(""); const [file,setFile]=useState<File|null>(null); const [busy,setBusy]=useState(false); const [message,setMessage]=useState(""); const [filter,setFilter]=useState("All");
+ const load=useCallback(async()=>{ const r=await fetch("/api/documents",{cache:"no-store"}); const p=await r.json() as {documents?:DocumentRecord[];activity?:ActivityRecord[];error?:string}; if(!r.ok){setMessage(p.error??"Unable to load documents.");return;} setDocuments(p.documents??[]);setActivity(p.activity??[]);},[]);
+ useEffect(()=>{void load();},[load]);
+ const visible=useMemo(()=>filter==="All"?documents:documents.filter(d=>d.category===filter),[documents,filter]);
+ async function upload(){if(!file)return;setBusy(true);setMessage("");const b=new FormData();b.append("file",file);b.append("category",category);b.append("dealName",dealName);b.append("fiscalYear",fiscalYear);const r=await fetch("/api/documents",{method:"POST",body:b});const p=await r.json() as {error?:string};setBusy(false);if(!r.ok){setMessage(p.error??"Upload failed.");return;}setFile(null);setMessage(es?"Documento guardado de forma privada.":"Document saved privately.");await load();}
+ async function remove(id:string){if(!confirm(es?"¿Eliminar este documento? Esta acción no se puede deshacer.":"Delete this document? This cannot be undone."))return;await fetch(`/api/documents/${id}`,{method:"DELETE"});await load();}
+ async function edit(d:DocumentRecord){const name=prompt(es?"Nombre del documento":"Document name",d.originalName);if(!name)return;const deal=prompt(es?"Nombre del negocio o adquisición":"Business or acquisition name",d.dealName??"")??d.dealName;await fetch(`/api/documents/${d.id}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({originalName:name,dealName:deal})});await load();}
+ async function replace(d:DocumentRecord,next:File|null){if(!next)return;const b=new FormData();b.append("file",next);setMessage(es?"Reemplazando…":"Replacing…");const r=await fetch(`/api/documents/${d.id}`,{method:"PUT",body:b});const p=await r.json() as {error?:string};setMessage(r.ok?(es?"Documento reemplazado.":"Document replaced."):(p.error??"Replace failed."));await load();}
+ return <div className="documents-workspace">
+  <section className="document-security-note"><div><span>🔒</span><div><strong>{es?"Bóveda privada por cuenta":"Private account vault"}</strong><p>{es?"Los archivos no son públicos. Las descargas, cambios y eliminaciones requieren tu sesión y quedan registrados.":"Files are not public. Downloads, changes, and deletions require your signed-in session and are recorded."}</p></div></div><b>{es?"Sin análisis automático":"No automatic analysis"}</b></section>
+  <section className="upload-card"><div><span>{es?"Carga segura":"Secure upload"}</span><h2>{es?"Organiza documentos de diligencia":"Organize due-diligence documents"}</h2><p>{es?"PDF, Word, Excel, CSV, texto, PNG o JPEG. Máximo 10 MB por archivo.":"PDF, Word, Excel, CSV, text, PNG, or JPEG. Maximum 10 MB per file."}</p></div><div className="upload-controls document-upload-grid">
+   <label>{es?"Adquisición":"Acquisition"}<input value={dealName} maxLength={100} placeholder={es?"Ej. HVAC Portland":"e.g. Portland HVAC"} onChange={e=>setDealName(e.target.value)}/></label>
+   <label>{es?"Categoría":"Category"}<select value={category} onChange={e=>setCategory(e.target.value)}>{categories.map(x=><option key={x}>{x}</option>)}</select></label>
+   <label>{es?"Año (opcional)":"Year (optional)"}<input inputMode="numeric" value={fiscalYear} maxLength={4} placeholder="2025" onChange={e=>setFiscalYear(e.target.value)}/></label>
+   <label className="file-picker"><input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.png,.jpg,.jpeg" onChange={e=>setFile(e.target.files?.[0]??null)}/><span>{file?file.name:(es?"Elegir archivo":"Choose a file")}</span></label>
+   <button className="button button--primary" type="button" disabled={!file||busy} onClick={upload}>{busy?(es?"Subiendo…":"Uploading…"):(es?"Guardar de forma privada":"Save privately")}</button>
+  </div>{message&&<p className="upload-message" role="status">{message}</p>}</section>
+  <section className="document-list panel"><div className="panel__header document-list-heading"><div><h2>{es?"Documentos organizados":"Organized documents"}</h2><span>{documents.length} {es?"archivos privados":"private files"}</span></div><select aria-label="Filter category" value={filter} onChange={e=>setFilter(e.target.value)}><option>All</option>{categories.map(x=><option key={x}>{x}</option>)}</select></div>
+  {visible.length===0?<div className="empty-state"><span>▣</span><h2>{es?"Aún no hay documentos":"No documents uploaded yet"}</h2><p>{es?"Carga el primer archivo y organízalo por adquisición, categoría y año.":"Upload the first file and organize it by acquisition, category, and year."}</p></div>:visible.map(d=><article className="document-row" key={d.id}><div><span>{d.category}{d.fiscalYear?` · ${d.fiscalYear}`:""}</span><strong>{d.originalName}</strong><small>{d.dealName|| (es?"Sin adquisición asignada":"Unassigned acquisition")} · {fileSize(d.sizeBytes)} · {new Date(d.updatedAt).toLocaleDateString()}</small></div><div><a href={`/api/documents/${d.id}`}>{es?"Descargar":"Download"}</a><button onClick={()=>edit(d)}>{es?"Editar":"Edit"}</button><label className="document-replace">{es?"Reemplazar":"Replace"}<input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.png,.jpg,.jpeg" onChange={e=>void replace(d,e.target.files?.[0]??null)}/></label><button onClick={()=>remove(d.id)}>{es?"Eliminar":"Delete"}</button></div></article>)}</section>
+  <details className="document-activity panel"><summary>{es?"Actividad reciente y registro de acceso":"Recent activity and access record"}</summary><div>{activity.length===0?<p>{es?"La actividad aparecerá aquí.":"Activity will appear here."}</p>:activity.map(a=><p key={a.id}><strong>{a.action}</strong><span>{a.documentName}</span><time>{new Date(a.createdAt).toLocaleString()}</time></p>)}</div></details>
+  <section className="document-retention"><strong>{es?"Tú controlas los archivos":"You control the files"}</strong><p>{es?"Elimina documentos cuando ya no sean necesarios. Crestview no los analiza automáticamente y los usuarios deben verificar cualquier dato financiero antes de tomar decisiones.":"Delete documents when they are no longer needed. Crestview does not automatically analyze them, and users must verify financial information before making decisions."}</p></section>
+ </div>;
 }

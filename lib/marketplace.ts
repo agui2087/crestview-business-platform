@@ -119,12 +119,16 @@ export async function getMarketplaceListings() {
   if (!isSupabaseConfigured()) return demoMarketplaceListings;
   try {
     const supabase = await createSupabaseServerClient();
+    const freshnessCutoff = new Date();
+    freshnessCutoff.setDate(freshnessCutoff.getDate() - 30);
     const { data, error } = await supabase
       .from("marketplace_listings")
       .select("id,broker_id,title,summary,industry,city,state_code,asking_price,annual_revenue,cash_flow,financing_available,public_highlights,status,updated_at,quality_score,listing_nda_templates(auto_send)")
       .eq("status", "published")
+      .gte("updated_at", freshnessCutoff.toISOString())
       .order("updated_at", { ascending: false });
-    if (error || !data?.length) return demoMarketplaceListings;
+    if (error) return [];
+    if (!data?.length) return [];
     return data.map((listing) => ({
       ...listing,
       nda_automatic: Array.isArray(listing.listing_nda_templates)
@@ -132,7 +136,7 @@ export async function getMarketplaceListings() {
         : Boolean((listing.listing_nda_templates as { auto_send?: boolean } | null)?.auto_send),
     })) as MarketplaceListing[];
   } catch {
-    return demoMarketplaceListings;
+    return [];
   }
 }
 
@@ -145,7 +149,8 @@ export async function getMyListings(userId?: string) {
       .select("id,broker_id,title,summary,industry,city,state_code,asking_price,annual_revenue,cash_flow,financing_available,public_highlights,status,updated_at,quality_score,listing_nda_templates(auto_send)")
       .eq("broker_id", userId)
       .order("updated_at", { ascending: false });
-    if (error || !data?.length) return demoMarketplaceListings.slice(0, 1);
+    if (error) return [];
+    if (!data?.length) return [];
     return data.map((listing) => ({
       ...listing,
       nda_automatic: Array.isArray(listing.listing_nda_templates)
@@ -153,7 +158,7 @@ export async function getMyListings(userId?: string) {
         : Boolean((listing.listing_nda_templates as { auto_send?: boolean } | null)?.auto_send),
     })) as MarketplaceListing[];
   } catch {
-    return demoMarketplaceListings.slice(0, 1);
+    return [];
   }
 }
 
@@ -166,10 +171,11 @@ export async function getMyInquiries(userId?: string) {
       .select("id,listing_id,buyer_id,broker_id,subject,initial_message,status,updated_at,requested_items,acquisition_experience,funding_readiness,financial_access_status,financial_request_message,financial_request_timeline,financial_request_capital,financial_requested_at,marketplace_listings(title,city,state_code)")
       .or(`buyer_id.eq.${userId},broker_id.eq.${userId}`)
       .order("updated_at", { ascending: false });
-    if (error || !data?.length) return demoInquiries;
+    if (error) return [];
+    if (!data?.length) return [];
     return data as unknown as DealInquiry[];
   } catch {
-    return demoInquiries;
+    return [];
   }
 }
 

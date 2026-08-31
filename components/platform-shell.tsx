@@ -8,10 +8,10 @@ import type { Locale } from "@/lib/i18n";
 
 const navItems = [
   ["overview", "Overview", "Resumen"],
-  ["marketplace", "Marketplace", "Mercado"],
+  ["marketplace", "Broker marketplace", "Mercado de corredores"],
   ["listings", "Broker listings", "Anuncios del corredor"],
   ["inbox", "Deal inbox", "Bandeja de negocios"],
-  ["opportunities", "Opportunities", "Oportunidades"],
+  ["opportunities", "Public opportunities", "Oportunidades públicas"],
   ["lists", "Saved lists", "Listas guardadas"],
   ["pipeline", "Pipeline", "Proceso"],
   ["tasks", "Tasks", "Tareas"],

@@ -15,6 +15,13 @@
       "when": 1785018328838,
       "tag": "0001_redundant_ezekiel_stane",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1786503741147,
+      "tag": "0002_third_franklin_richards",
+      "breakpoints": true
     }
   ]
 }

@@ -117,6 +117,30 @@ export function GuidedAcquisitionWorkspace({
       <p>{es ? "La preparación cuenta tareas verificadas ÷ tareas aplicables. “Con evidencia” incluye documentos recibidos o verificados. Los riesgos altos permanecen abiertos hasta verificarse." : "Readiness is verified tasks ÷ applicable tasks. “With evidence” includes received or verified records. High risks remain open until verified."}</p>
     </section>
 
+    <section className={`financial-workbook-card ${hasPro ? "is-pro" : "is-locked"}`}>
+      <div className="financial-workbook-card__copy">
+        <span>{es ? "CALCULADORA FINANCIERA" : "FINANCIAL DUE DILIGENCE"}</span>
+        <h3>{es ? "Convierte los números del vendedor en una decisión auditable" : "Turn seller numbers into an auditable decision"}</h3>
+        <p>{es ? "Ingresa tres años y los últimos doce meses. El archivo calcula SDE y EBITDA normalizados, capital de trabajo, servicio de deuda, DSCR, valoración, concentración de clientes y escenarios adversos." : "Enter three years and trailing-twelve-month figures. The workbook calculates normalized SDE and EBITDA, working capital, debt service, DSCR, valuation, customer concentration, and downside scenarios."}</p>
+        <ul>
+          <li>{es ? "Celdas de entrada claramente marcadas" : "Clearly marked input cells"}</li>
+          <li>{es ? "Panel, alertas y verificaciones automáticas" : "Automatic dashboard, warnings, and model checks"}</li>
+          <li>{es ? "Checklist de documentos y fuentes oficiales" : "Document checklist and official reference sources"}</li>
+        </ul>
+      </div>
+      <div className="financial-workbook-card__action">
+        <b>PRO</b>
+        {hasPro ? <>
+          <a className="button button--primary" href="/api/export/financial-due-diligence">{es ? "Descargar calculadora Excel" : "Download Excel calculator"}</a>
+          <small>{es ? "Incluido con tu membresía Pro activa." : "Included with your active Pro membership."}</small>
+        </> : <>
+          <a className="button button--primary" href={`/${locale}/pricing#buyer-pricing`}>{es ? "Desbloquear con Pro" : "Unlock with Pro"}</a>
+          <small>{es ? "Vista previa disponible; descarga protegida por membresía." : "Preview what it covers; the download is membership protected."}</small>
+        </>}
+      </div>
+      <footer>{es ? "Herramienta educativa de organización. Confirma los resultados con documentos fuente y asesores calificados." : "Educational organization tool. Confirm results with source documents and qualified advisors."}</footer>
+    </section>
+
     <details className="guided-panel" open>
       <summary><span>3</span><div><strong>{t.diligence}</strong><small>{es ? "Cada requisito explica su motivo, fuente, riesgo y responsable." : "Every requirement shows its reason, source, risk, and owner."}</small></div></summary>
       <div className="guided-task-list">

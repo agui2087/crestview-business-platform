@@ -180,7 +180,7 @@ export default async function PricingPage({
       description: "For brokers who need to manage multiple listings and buyer inquiries.",
       badge: "For professionals",
       featured: true,
-      features: ["Multiple active listings", "Professional broker profile", "Buyer lead inbox", "Listing performance analytics", "Document and NDA requests"],
+      features: ["Up to 100 active listings", "Professional broker profile", "Buyer lead inbox", "30-day availability confirmations", "Duplicate-listing alerts", "Document and NDA requests"],
     },
     {
       name: "Enhanced Visibility",
@@ -248,6 +248,30 @@ export default async function PricingPage({
             <span>{es ? "Vuelve a intentarlo o inicia sesión antes de seleccionar un plan." : "Please try again or sign in before selecting a plan."}</span>
           </div>
         )}
+        {query.broker_code === "success" && (
+          <div className="billing-status billing-status--success" role="status">
+            <strong>{es ? "Acceso para corredor activado" : "Broker access activated"}</strong>
+            <span>{es ? "Tu Plan para Corredores gratuito está activo durante seis meses. No se requiere tarjeta." : "Your complimentary Broker Plan is active for six months. No card is required."}</span>
+          </div>
+        )}
+        {query.broker_code === "invalid" && (
+          <div className="billing-status billing-status--error" role="alert">
+            <strong>{es ? "Código no válido" : "That code was not recognized"}</strong>
+            <span>{es ? "Revisa el código e inténtalo de nuevo." : "Check the broker access code and try again."}</span>
+          </div>
+        )}
+        {query.broker_code === "role" && (
+          <div className="billing-status billing-status--error" role="alert">
+            <strong>{es ? "Elige el perfil de corredor" : "Choose the broker account type first"}</strong>
+            <span>{es ? "Agrega Corredor o vendedor en la configuración de tu cuenta y vuelve a canjear el código." : "Add Broker or seller in your account settings, then redeem the code again."}</span>
+          </div>
+        )}
+        {query.broker_code === "used" && (
+          <div className="billing-status" role="status">
+            <strong>{es ? "Este beneficio ya fue utilizado" : "This account already used its broker offer"}</strong>
+            <span>{es ? "Cada cuenta puede activar una sola prueba gratuita de seis meses." : "Each account can activate one complimentary six-month broker period."}</span>
+          </div>
+        )}
         <p className="eyebrow">{es ? "Precios fundadores" : "Founding prices"}</p>
         <h1>{es ? "Empieza gratis. Paga solo por la ayuda que necesitas." : "Start free. Pay only for the help you need."}</h1>
         <p>{es ? "Crestview mantiene el proceso completo de adquisición accesible. Pro agrega explicaciones avanzadas, mientras los corredores y equipos eligen herramientas según su uso." : "Crestview keeps the complete acquisition process accessible. Pro adds advanced explanations, while brokers and workforce teams choose tools based on how they use the platform."}</p>
@@ -263,6 +287,19 @@ export default async function PricingPage({
       <section className="pricing-band" aria-labelledby="broker-pricing"><div className="shell pricing-section">
         <div className="pricing-section__heading"><div><p className="eyebrow">{es ? "Vendedores y corredores" : "For sellers and brokers"}</p><h2 id="broker-pricing">{es ? "Publica una vez o administra una cartera." : "List once or manage a portfolio."}</h2></div><p>{es ? "Las promociones aumentan la visibilidad, pero nunca cambian la puntuación independiente de una oportunidad." : "Promotions increase visibility, but they never change an opportunity’s independent Crestview score."}</p></div>
         <div className="pricing-grid pricing-grid--four">{brokerPlans.map((plan) => <PlanCard key={plan.name} plan={plan} cta={createAccount} href={createAccountHref} locale={locale} />)}</div>
+        <aside className="broker-code-panel" aria-labelledby="broker-code-title">
+          <div>
+            <span>{es ? "PROGRAMA DE ACCESO PARA CORREDORES" : "BROKER ACCESS PROGRAM"}</span>
+            <h3 id="broker-code-title">{es ? "¿Tienes un código de acceso?" : "Have a broker access code?"}</h3>
+            <p>{es ? "Los corredores invitados pueden probar el Plan para Corredores gratis durante seis meses. Cada cuenta puede canjear un código una vez; el acceso termina automáticamente al finalizar el período." : "Invited brokers can try the Broker Plan free for six months. Each account may redeem a code once, and access ends automatically when the six-month period is complete."}</p>
+          </div>
+          <form action="/api/broker-trial/redeem" method="post">
+            <input type="hidden" name="locale" value={locale} />
+            <label htmlFor="broker-code">{es ? "Código de acceso" : "Access code"}</label>
+            <div><input id="broker-code" name="broker_code" type="text" inputMode="text" autoComplete="off" placeholder={es ? "Ingresa tu código" : "Enter your code"} minLength={6} maxLength={40} required /><button className="button button--primary" type="submit">{es ? "Activar 6 meses" : "Activate 6 months"}</button></div>
+            <small>{es ? "Debes iniciar sesión con un perfil de corredor o vendedor. No se requiere tarjeta." : "Sign in with a broker or seller profile. No payment card is required."}</small>
+          </form>
+        </aside>
         <p className="pricing-disclaimer">{es ? "Las publicaciones promocionadas siempre estarán identificadas claramente. Las promociones duran 30 días; la publicación base continúa según su plan." : "Promoted listings will always be clearly labeled. Promotions last 30 days; the underlying listing continues according to its plan."}</p>
       </div></section>
 
@@ -293,7 +330,7 @@ export default async function PricingPage({
       <section className="shell pricing-faq"><h2>{es ? "Preguntas sobre los planes" : "Plan questions"}</h2><div>
         <article><h3>{es ? "¿Puedo usar todo el proceso gratis?" : "Can I complete the process for free?"}</h3><p>{es ? "Sí. Buscar, guardar, valorar, organizar la diligencia y avanzar por la lista de adquisición permanecerá disponible sin Pro." : "Yes. Searching, saving, valuing, organizing diligence, and moving through the acquisition checklist will remain available without Pro."}</p></article>
         <article><h3>{es ? "¿Puedo comenzar sin elegir un plan pagado?" : "Can I start without choosing a paid plan?"}</h3><p>{es ? "Sí. Crea una cuenta gratuita y comienza con las herramientas esenciales. Podrás elegir una mejora desde tu cuenta cuando la necesites." : "Yes. Create a free account and begin with the essential tools. You can choose an upgrade from your account when you need it."}</p></article>
-        <article><h3>{es ? "¿Cuánto dura una publicación?" : "How long does a listing remain active?"}</h3><p>{es ? "Una publicación individual continúa hasta su venta, retiro o inactividad. Se pedirá confirmar su disponibilidad cada 60 días." : "A single listing continues until it is sold, withdrawn, or inactive. Availability must be confirmed every 60 days."}</p></article>
+        <article><h3>{es ? "¿Cuánto dura una publicación?" : "How long does a listing remain active?"}</h3><p>{es ? "Una publicación continúa hasta su venta, retiro o inactividad. La disponibilidad debe confirmarse cada 30 días; los anuncios sin confirmar se ocultan de la búsqueda hasta que el corredor los vuelva a confirmar." : "A listing continues until it is sold, withdrawn, or inactive. Availability must be confirmed every 30 days; unconfirmed listings are hidden from search until the broker reconfirms them."}</p></article>
       </div></section>
     </main>
 

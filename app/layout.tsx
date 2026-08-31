@@ -19,9 +19,10 @@ export const metadata: Metadata = {
   ],
   icons: {
     icon: [
+      { url: "/crestview-favicon-48.png", type: "image/png", sizes: "48x48" },
       { url: "/crestview-favicon.svg", type: "image/svg+xml", sizes: "any" },
     ],
-    shortcut: "/crestview-favicon.svg",
+    shortcut: "/crestview-favicon-48.png",
     apple: "/crestview-favicon.svg",
   },
   openGraph: {

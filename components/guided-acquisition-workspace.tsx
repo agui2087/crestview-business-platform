@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { calculateSbaReadiness, readinessSummary, type GuidanceProfile } from "@/lib/guided-acquisition";
 import {
   buildCommandCenter, findDocumentConflicts, formatReviewStatus, formatSupportLevel,
@@ -131,10 +132,10 @@ export function GuidedAcquisitionWorkspace({
       <div className="financial-workbook-card__action">
         <b>PRO</b>
         {hasPro ? <>
-          <a className="button button--primary" href="/api/export/financial-due-diligence">{es ? "Descargar calculadora Excel" : "Download Excel calculator"}</a>
+          <Link className="button button--primary" href="/api/export/financial-due-diligence">{es ? "Descargar calculadora Excel" : "Download Excel calculator"}</Link>
           <small>{es ? "Incluido con tu membresía Pro activa." : "Included with your active Pro membership."}</small>
         </> : <>
-          <a className="button button--primary" href={`/${locale}/pricing#buyer-pricing`}>{es ? "Desbloquear con Pro" : "Unlock with Pro"}</a>
+          <Link className="button button--primary" href={`/${locale}/pricing#buyer-pricing`}>{es ? "Desbloquear con Pro" : "Unlock with Pro"}</Link>
           <small>{es ? "Vista previa disponible; descarga protegida por membresía." : "Preview what it covers; the download is membership protected."}</small>
         </>}
       </div>

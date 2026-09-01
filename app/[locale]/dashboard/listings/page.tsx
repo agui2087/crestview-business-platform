@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeading, PlatformShell } from "@/components/platform-shell";
+import { FormattedMoneyInput } from "@/components/formatted-money-input";
 import { getCrestviewUser } from "@/lib/current-user";
 import { formatMoney, getMyListings } from "@/lib/marketplace";
 import { isLocale } from "@/lib/i18n";
@@ -75,9 +76,9 @@ export default async function ListingsPage({ params, searchParams }: PageProps<"
               <label>Industry <small>Required</small><input name="industry" placeholder="Commercial Services" required /></label>
               <label>City <small>Required</small><input name="city" placeholder="Portland" required /></label>
               <label>State <small>Required</small><input name="state_code" placeholder="OR" minLength={2} maxLength={2} required /></label>
-              <label>Asking price<input name="asking_price" inputMode="decimal" placeholder="$1,250,000" /></label>
-              <label>Annual revenue<input name="annual_revenue" inputMode="decimal" placeholder="$2,100,000" /></label>
-              <label>Cash flow / SDE<input name="cash_flow" inputMode="decimal" placeholder="$425,000" /></label>
+              <label>Asking price<FormattedMoneyInput name="asking_price" placeholder="$1,250,000" /></label>
+              <label>Annual revenue<FormattedMoneyInput name="annual_revenue" placeholder="$2,100,000" /></label>
+              <label>Cash flow / SDE<FormattedMoneyInput name="cash_flow" placeholder="$425,000" /></label>
               <label className="span-two">Public summary <small>Required</small><textarea name="summary" placeholder="Describe the business without exposing confidential details." minLength={20} required /></label>
               <label className="span-two">Public highlights<textarea name="public_highlights" placeholder={"Recurring customer contracts\nExperienced management team\nSeller transition available"} /></label>
             </div>

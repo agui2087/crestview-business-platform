@@ -84,8 +84,14 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
   let userId: string | undefined;
   if (isSupabaseConfigured() && user.source === "supabase") userId = (await (await createSupabaseServerClient()).auth.getUser()).data.user?.id;
   const workspace = await getWorkspace(id, userId);
-  const currentStageIndex = Math.max(0, dealStages.findIndex(([key]) => key === workspace.inquiry.status));
-  const roomUnlocked = ["nda_signed","document_review","meeting","offer","closed"].includes(workspace.inquiry.status);
+  // Treat the signed NDA record as the source of truth. Older workspaces can have
+  // a signed agreement while their inquiry stage still says `nda_sent`.
+  const ndaSigned = workspace.nda?.status === "signed";
+  const effectiveStatus = ndaSigned && workspace.inquiry.status === "nda_sent"
+    ? "nda_signed"
+    : workspace.inquiry.status;
+  const currentStageIndex = Math.max(0, dealStages.findIndex(([key]) => key === effectiveStatus));
+  const roomUnlocked = ndaSigned || ["nda_signed","document_review","meeting","offer","closed"].includes(effectiveStatus);
   const financialStatus = workspace.inquiry.financial_access_status ?? "not_requested";
   const financialApproved = financialStatus === "approved";
   const financials = workspace.listingFinancials;
@@ -118,7 +124,7 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
           <div><span>Current stage</span><strong>{dealStages[currentStageIndex]?.[1] ?? "Inquiry sent"}</strong></div>
           <div><span>Your role</span><strong>{workspace.isBuyer ? "Buyer" : "Broker / seller"}</strong></div>
           <div><span>Next action</span><strong>{workspace.isBuyer
-            ? workspace.inquiry.status === "nda_sent"
+            ? effectiveStatus === "nda_sent"
               ? "Sign the NDA"
               : roomUnlocked && financialStatus === "not_requested"
                 ? "Request financial access"
@@ -127,7 +133,7 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
                   : financialApproved
                     ? "Review approved documents"
                     : "Continue screening"
-            : workspace.inquiry.status === "nda_sent"
+            : effectiveStatus === "nda_sent"
               ? "Wait for the buyer’s signature"
               : financialStatus === "requested"
                 ? "Review the financial request"
@@ -145,7 +151,7 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
           <div className="deal-section-heading"><span>Communication</span><h2>Messages and confidentiality</h2><p>Keep buyer questions and NDA progress together.</p></div>
         <div className="deal-room-grid">
           <section className="panel deal-thread">
-            <div className="panel__header"><h2>Conversation</h2><span className="stage">{workspace.inquiry.status.replaceAll("_", " ")}</span></div>
+            <div className="panel__header"><h2>Conversation</h2><span className="stage">{effectiveStatus.replaceAll("_", " ")}</span></div>
             {workspace.messages.map((message) => <article className={message.sender_id === (userId ?? "demo-buyer") ? "is-mine" : ""} key={message.id}><strong>{message.sender_id === (userId ?? "demo-buyer") ? "You" : "Deal participant"}</strong><p>{message.body}</p><span>{new Date(message.created_at).toLocaleString()}</span></article>)}
             {!workspace.isDemo && <form className="quick-reply" action={sendMessage}><input type="hidden" name="locale" value={locale} /><input type="hidden" name="inquiry_id" value={id} /><textarea name="body" placeholder="Write a secure message…" required /><button className="button button--primary" type="submit">Send</button></form>}
           </section>

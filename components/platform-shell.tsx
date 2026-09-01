@@ -7,26 +7,28 @@ import { getCrestviewUser } from "@/lib/current-user";
 import type { Locale } from "@/lib/i18n";
 
 const navItems = [
-  ["overview", "Overview", "Resumen"],
-  ["marketplace", "Broker marketplace", "Mercado de corredores"],
-  ["listings", "Broker listings", "Anuncios del corredor"],
-  ["inbox", "Deal inbox", "Bandeja de negocios"],
-  ["opportunities", "Public opportunities", "Oportunidades públicas"],
-  ["lists", "Saved lists", "Listas guardadas"],
-  ["pipeline", "Pipeline", "Proceso"],
-  ["tasks", "Tasks", "Tareas"],
-  ["reports", "Reports", "Informes"],
-  ["documents", "Documents", "Documentos"],
-  ["workforce", "Workforce", "Personal"],
-  ["real-estate", "Real estate beta", "Bienes raíces beta"],
-  ["plans", "Plans", "Planes"],
-  ["settings", "Settings", "Configuración"],
+  ["overview", "Overview", "Resumen", "⌂"],
+  ["marketplace", "Browse broker listings", "Explorar anuncios", "⌕"],
+  ["listings", "My broker listings", "Mis anuncios", "▤"],
+  ["inbox", "Deal inbox", "Bandeja de negocios", "↔"],
+  ["opportunities", "Public opportunities", "Oportunidades públicas", "◎"],
+  ["lists", "Saved lists", "Listas guardadas", "♡"],
+  ["pipeline", "Deal pipeline", "Proceso de negocios", "◇"],
+  ["tasks", "Tasks", "Tareas", "✓"],
+  ["reports", "Reports", "Informes", "↗"],
+  ["documents", "Documents", "Documentos", "▣"],
+  ["workforce", "Workforce", "Personal", "♙"],
+  ["real-estate", "Real estate preview", "Vista previa de bienes raíces", "⌂"],
+  ["plans", "Plans & billing", "Planes y facturación", "$"],
+  ["settings", "Settings", "Configuración", "⚙"],
 ] as const;
 
 const navGroups = [
-  { label: ["Home", "Inicio"], slugs: ["overview", "marketplace", "inbox"] },
-  { label: ["Deals", "Negocios"], slugs: ["listings", "opportunities", "lists", "pipeline"] },
-  { label: ["Manage", "Administrar"], slugs: ["tasks", "documents", "reports", "workforce", "real-estate", "plans", "settings"] },
+  { label: ["Workspace", "Espacio de trabajo"], slugs: ["overview", "inbox", "pipeline"] },
+  { label: ["Find a business", "Buscar un negocio"], slugs: ["marketplace", "opportunities", "lists"] },
+  { label: ["Deal tools", "Herramientas del negocio"], slugs: ["tasks", "documents", "reports"] },
+  { label: ["Broker tools", "Herramientas del corredor"], slugs: ["listings", "workforce"] },
+  { label: ["Account", "Cuenta"], slugs: ["real-estate", "plans", "settings"] },
 ] as const;
 
 type NavSlug = (typeof navItems)[number][0];
@@ -76,13 +78,13 @@ export async function PlatformShell({
               <span className="mobile-nav__icon" aria-hidden="true">☰</span>
             </summary>
             <nav aria-label="Mobile dashboard navigation">
-              {navItems.filter(([slug]) => visible(slug)).map(([slug, english, spanish]) => (
+              {navItems.filter(([slug]) => visible(slug)).map(([slug, english, spanish, icon]) => (
                 <Link
                   className={slug === active ? "is-active" : ""}
                   href={navHref(locale, slug)}
                   key={slug}
                 >
-                  <span className="nav-dot" aria-hidden="true" />
+                  <span className="nav-icon" aria-hidden="true">{icon}</span>
                   {locale === "es" ? spanish : english}
                 </Link>
               ))}
@@ -97,7 +99,7 @@ export async function PlatformShell({
                 const item = navItems.find(([candidate]) => candidate === slug)!;
                 return (
                   <Link className={slug === active ? "is-active" : ""} href={navHref(locale, slug)} key={slug}>
-                    <span className="nav-dot" aria-hidden="true" />
+                    <span className="nav-icon" aria-hidden="true">{item[3]}</span>
                     {locale === "es" ? item[2] : item[1]}
                   </Link>
                 );

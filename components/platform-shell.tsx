@@ -8,26 +8,26 @@ import type { Locale } from "@/lib/i18n";
 
 const navItems = [
   ["overview", "Overview", "Resumen", "⌂"],
-  ["marketplace", "Browse broker listings", "Explorar anuncios", "⌕"],
-  ["listings", "My broker listings", "Mis anuncios", "▤"],
+  ["marketplace", "Broker marketplace", "Mercado de corredores", "⌕"],
+  ["listings", "My listings", "Mis anuncios", "▤"],
   ["inbox", "Deal inbox", "Bandeja de negocios", "↔"],
-  ["opportunities", "Public opportunities", "Oportunidades públicas", "◎"],
+  ["opportunities", "Public listings", "Anuncios públicos", "◎"],
   ["lists", "Saved lists", "Listas guardadas", "♡"],
-  ["pipeline", "Deal pipeline", "Proceso de negocios", "◇"],
+  ["pipeline", "Pipeline", "Proceso", "◇"],
   ["tasks", "Tasks", "Tareas", "✓"],
   ["reports", "Reports", "Informes", "↗"],
   ["documents", "Documents", "Documentos", "▣"],
   ["workforce", "Workforce", "Personal", "♙"],
-  ["real-estate", "Real estate preview", "Vista previa de bienes raíces", "⌂"],
+  ["real-estate", "Real estate", "Bienes raíces", "⌂"],
   ["plans", "Plans & billing", "Planes y facturación", "$"],
   ["settings", "Settings", "Configuración", "⚙"],
 ] as const;
 
 const navGroups = [
-  { label: ["Workspace", "Espacio de trabajo"], slugs: ["overview", "inbox", "pipeline"] },
-  { label: ["Find a business", "Buscar un negocio"], slugs: ["marketplace", "opportunities", "lists"] },
-  { label: ["Deal tools", "Herramientas del negocio"], slugs: ["tasks", "documents", "reports"] },
-  { label: ["Broker tools", "Herramientas del corredor"], slugs: ["listings", "workforce"] },
+  { label: ["Home", "Inicio"], slugs: ["overview", "inbox"] },
+  { label: ["Discover", "Descubrir"], slugs: ["marketplace", "opportunities", "lists"] },
+  { label: ["My deals", "Mis negocios"], slugs: ["pipeline", "tasks", "documents", "reports"] },
+  { label: ["Sell", "Vender"], slugs: ["listings", "workforce"] },
   { label: ["Account", "Cuenta"], slugs: ["real-estate", "plans", "settings"] },
 ] as const;
 
@@ -114,7 +114,7 @@ export async function PlatformShell({
       </aside>
       <section className="dashboard-main">
         <header className="dashboard-topbar">
-          <div className="organization">
+          <div className="organization" aria-label={locale === "es" ? "Organización actual" : "Current organization"}>
             <span className="organization__avatar">CH</span>
             {"organizationName" in user ? user.organizationName : "Crestview Holdings"}
           </div>

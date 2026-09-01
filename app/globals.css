@@ -936,7 +936,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .deal-workspace-nav { position: sticky; z-index: 7; top: 8px; display: flex; gap: 6px; overflow-x: auto; margin: 14px 0 18px; padding: 7px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255,255,255,.96); box-shadow:0 8px 24px rgba(18,47,35,.07); backdrop-filter:blur(10px); }
 .deal-workspace-nav a { flex: 0 0 auto; padding: 7px 10px; border-radius: 8px; color: var(--brand); font-size: .65rem; font-weight: 760; }
 .deal-workspace-nav a:hover { background: var(--brand-soft); }
-.deal-workspace-section,#deal-activity,#deal-stage { scroll-margin-top:82px; }
+.deal-workspace-section,#deal-activity,#deal-stage,#deal-upload { scroll-margin-top:82px; }
 .deal-workspace-section { display:grid; gap:14px; margin-bottom:22px; }
 .deal-section-heading { display:grid; gap:4px; padding:0 2px; }
 .deal-section-heading > span { color:var(--brand); font-size:.54rem; font-weight:850; letter-spacing:.09em; text-transform:uppercase; }
@@ -1333,11 +1333,26 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .deal-stage-rail .is-complete span { border-color:var(--brand); background:var(--brand); color:white; }
 .deal-stage-rail .is-complete strong { color:var(--brand); }
 .deal-stage-rail .is-complete::after { background:var(--brand); }
-.deal-overview-strip { display:grid; grid-template-columns:repeat(3,1fr); gap:1px; overflow:hidden; margin-bottom:14px; border:1px solid var(--line); border-radius:13px; background:var(--line); }
+.broker-next-step { display:grid; grid-template-columns:minmax(0,1fr) minmax(290px,.85fr); gap:22px; align-items:center; padding:24px; border:1px solid #9fc9b4; border-radius:16px; background:linear-gradient(135deg,#edf8f2 0%,#fff 72%); box-shadow:0 14px 34px rgba(18,79,57,.08); }
+.broker-next-step__copy { display:grid; gap:7px; }
+.broker-next-step__eyebrow { color:var(--brand); font-size:.55rem; font-weight:900; letter-spacing:.1em; text-transform:uppercase; }
+.broker-next-step h2 { margin:0; max-width:620px; color:var(--brand-dark); font-size:1.15rem; line-height:1.2; }
+.broker-next-step p { max-width:660px; margin:0; color:var(--muted); font-size:.66rem; line-height:1.55; }
+.broker-next-step__action { display:grid; justify-items:stretch; gap:8px; padding:16px; border:1px solid #c9dfd3; border-radius:12px; background:#fff; text-align:center; }
+.broker-next-step__action .button { justify-content:center; }
+.broker-next-step__action small { color:var(--muted); font-size:.56rem; }
+.broker-next-step__decision { display:grid; gap:10px; }
+.broker-request-summary { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.broker-request-summary > div { display:grid; gap:3px; padding:11px; border:1px solid #c9dfd3; border-radius:10px; background:#fff; }
+.broker-request-summary span,.broker-request-summary small { color:var(--muted); font-size:.54rem; }
+.broker-request-summary strong { font-size:.63rem; line-height:1.35; }
+.broker-next-step__decision blockquote { margin:0; padding:10px 12px; border-left:3px solid var(--brand); border-radius:0 8px 8px 0; background:#fff; color:#405249; font-size:.6rem; line-height:1.45; }
+.broker-next-step__decision form { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:7px; }
+.deal-overview-strip { display:grid; grid-template-columns:repeat(3,1fr); gap:1px; overflow:hidden; margin-bottom:2px; border:1px solid var(--line); border-radius:13px; background:var(--line); }
 .deal-overview-strip > div { display:grid; gap:5px; padding:14px 16px; background:#fff; }
 .deal-overview-strip span { color:var(--muted); font-size:.56rem; }
 .deal-overview-strip strong { color:var(--brand); font-size:.7rem; }
-.deal-simple-flow { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:0 0 14px; }
+.deal-simple-flow { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin:0 0 14px; }
 .deal-simple-flow > div { display:flex; align-items:center; gap:10px; padding:12px; border:1px solid var(--line); border-radius:11px; background:#fff; }
 .deal-simple-flow > div > span { flex:0 0 auto; width:26px; height:26px; display:grid; place-items:center; border-radius:50%; background:var(--paper); color:var(--muted); font-size:.58rem; font-weight:850; }
 .deal-simple-flow > div > div { display:grid; gap:2px; }
@@ -1430,6 +1445,10 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .document-folders > section > header { display:flex; align-items:center; justify-content:space-between; }
 .document-folders > section > header strong { font-size:.67rem; }
 .document-folders > section > header span { min-width:22px; height:22px; display:grid; place-items:center; border-radius:50%; background:var(--paper); color:var(--muted); font-size:.54rem; }
+.empty-document-folders { border-top:1px solid var(--line); }
+.empty-document-folders summary { padding-top:11px; color:var(--muted); font-size:.58rem; font-weight:750; cursor:pointer; }
+.empty-document-folders > div { display:flex; flex-wrap:wrap; gap:6px; padding-top:9px; }
+.empty-document-folders span { padding:6px 8px; border-radius:999px; background:var(--paper); color:var(--muted); font-size:.54rem; }
 .room-lock { padding:34px; text-align:center; }
 .room-lock > span { font-size:1.8rem; }
 .room-lock h3 { margin:10px 0 6px; font-size:.82rem; }
@@ -1441,8 +1460,8 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .room-documents strong { font-size:.67rem; }
 .room-documents small { color:var(--muted); font-size:.56rem; }
 .room-documents a { color:var(--brand); font-size:.62rem; font-weight:800; }
-.room-upload { margin-top:13px; border-top:1px solid var(--line); }
-.room-upload summary { padding:13px 0 0; color:var(--brand); font-size:.66rem; font-weight:800; cursor:pointer; }
+.room-upload { margin-top:16px; padding:14px; border:1px solid #b9d7c8; border-radius:12px; background:#f5faf7; }
+.room-upload summary { padding:0; color:var(--brand); font-size:.69rem; font-weight:850; cursor:pointer; }
 .room-upload form { display:grid; grid-template-columns:repeat(3,1fr); gap:9px; align-items:end; margin-top:10px; }
 .room-upload form > button { justify-self:start; }
 .room-upload form > small { grid-column:1 / -1; color:var(--muted); font-size:.54rem; line-height:1.4; }
@@ -1701,7 +1720,10 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .table-row { grid-template-columns: 1fr auto; }
   .table-row > :nth-child(2),.table-row > :nth-child(4) { display: none; }
   .workforce-grid,.preference-grid { grid-template-columns: 1fr; }
-  .role-settings,.marketplace-trust,.marketplace-card__metrics,.broker-summary,.request-form-grid,.listing-form-grid,.room-documents,.marketplace-filter,.deal-overview-strip { grid-template-columns:1fr; }
+  .role-settings,.marketplace-trust,.marketplace-card__metrics,.broker-summary,.request-form-grid,.listing-form-grid,.room-documents,.marketplace-filter,.deal-overview-strip,.broker-next-step,.broker-request-summary { grid-template-columns:1fr; }
+  .broker-next-step { padding:18px; }
+  .broker-next-step__decision form { justify-content:stretch; }
+  .broker-next-step__decision form .button { flex:1 1 100%; justify-content:center; }
   .marketplace-flow,.broker-flow { display:flex; overflow-x:auto; background:transparent; border:0; border-radius:0; }
   .marketplace-flow > span,.broker-flow > span { min-width:185px; border:1px solid var(--line); border-radius:10px; }
   .broker-onboarding-strip { grid-template-columns:1fr; }

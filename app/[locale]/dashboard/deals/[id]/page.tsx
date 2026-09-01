@@ -110,6 +110,10 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
         {query.nda && <p className="notice">The NDA was {query.nda === "signed" ? "signed and the deal room is unlocked" : "sent successfully"}.</p>}
         {query.financial && <p className="notice">{query.financial === "requested" ? "Your financial-information request was sent to the broker." : `Financial access was updated: ${String(query.financial).replaceAll("_", " ")}.`}</p>}
         {workspace.isDemo && <p className="data-notice"><strong>Interactive preview</strong><span>This example shows the complete workflow. Live broker-created listings use the same protected workspace and database permissions.</span></p>}
+        <nav className="deal-workspace-nav" aria-label="Deal workspace sections">
+          <a href="#deal-overview">Overview</a><a href="#deal-conversation">Messages &amp; NDA</a><a href="#deal-documents">Documents</a><a href="#deal-activity">Activity</a><a href="#deal-stage">Deal stage</a>
+        </nav>
+        <section className="deal-workspace-section" id="deal-overview">
         <div className="deal-overview-strip">
           <div><span>Current stage</span><strong>{dealStages[currentStageIndex]?.[1] ?? "Inquiry sent"}</strong></div>
           <div><span>Your role</span><strong>{workspace.isBuyer ? "Buyer" : "Broker / seller"}</strong></div>
@@ -136,6 +140,9 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
           <div className={financialApproved ? "is-done" : roomUnlocked ? "is-current" : ""}><span>{financialApproved ? "✓" : "2"}</span><div><strong>{workspace.isBuyer ? "Request records" : "Review buyer request"}</strong><small>{workspace.isBuyer ? "The broker decides what to release" : "Approve, ask a question, or decline"}</small></div></div>
           <div className={financialApproved ? "is-current" : ""}><span>3</span><div><strong>{workspace.isBuyer ? "Review securely" : "Release securely"}</strong><small>Use the deal room and conversation</small></div></div>
         </div>
+        </section>
+        <section className="deal-workspace-section" id="deal-conversation">
+          <div className="deal-section-heading"><span>Communication</span><h2>Messages and confidentiality</h2><p>Keep buyer questions and NDA progress together.</p></div>
         <div className="deal-room-grid">
           <section className="panel deal-thread">
             <div className="panel__header"><h2>Conversation</h2><span className="stage">{workspace.inquiry.status.replaceAll("_", " ")}</span></div>
@@ -165,6 +172,7 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
             </form> : <p>The broker has not sent an NDA yet.</p>}
           </aside>
         </div>
+        </section>
         {roomUnlocked && <section className="panel financial-access-panel">
           <div className="panel__header"><div><span className="source-label">Step 2</span><h2>Request business records</h2></div><span className={`stage financial-${financialStatus}`}>{financialStatus.replaceAll("_", " ")}</span></div>
           {workspace.isBuyer && financialStatus === "not_requested" && !workspace.isDemo && <form action={requestFinancialAccess}>
@@ -215,6 +223,8 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
           </div>
           <p>Use these figures as a starting point. Reconcile them with tax returns, statements, and source records before relying on them.</p>
         </section>}
+        <section className="deal-workspace-section" id="deal-documents">
+          <div className="deal-section-heading"><span>Due diligence</span><h2>Requests and secure documents</h2><p>Track what has been requested, received, and approved.</p></div>
         {(roomUnlocked || workspace.isDemo) && <section className="panel request-tracker">
           <div className="panel__header"><div><span className="source-label">Shared checklist</span><h2>Document requests</h2></div><span className="stage">{workspace.requests.filter((request) => request.status === "requested").length} open</span></div>
           <p className="request-tracker__intro">Buyers request only what they need. Brokers can fulfill each item with a secure upload or mark it unavailable.</p>
@@ -247,9 +257,10 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
             <small>PDF, CSV, Excel, or Word · maximum 20 MB. Files stay private and follow the access level above.</small>
           </form></details>}
         </section>
+        </section>
         <div className="deal-bottom-grid">
-          <section className="panel"><div className="panel__header"><h2>Activity history</h2></div><div className="deal-timeline">{workspace.events.map((event) => <article key={event.id}><span>✓</span><div><strong>{event.to_status.replaceAll("_", " ")}</strong><p>{event.note ?? "Deal status updated."}</p><small>{new Date(event.created_at).toLocaleString()}</small></div></article>)}</div></section>
-          <section className="panel"><div className="panel__header"><h2>Move the deal forward</h2></div><p className="panel-empty">Keep the stage current so both participants know what happens next.</p>{!workspace.isDemo && <form className="status-control" action={advanceInquiry}>
+          <details className="panel deal-secondary-panel" id="deal-activity"><summary><span><strong>Activity history</strong><small>{workspace.events.length} recorded update{workspace.events.length === 1 ? "" : "s"}</small></span><b>View</b></summary><div className="deal-timeline">{workspace.events.map((event) => <article key={event.id}><span>✓</span><div><strong>{event.to_status.replaceAll("_", " ")}</strong><p>{event.note ?? "Deal status updated."}</p><small>{new Date(event.created_at).toLocaleString()}</small></div></article>)}</div></details>
+          <section className="panel" id="deal-stage"><div className="panel__header"><h2>Move the deal forward</h2></div><p className="panel-empty">Keep the stage current so both participants know what happens next.</p>{!workspace.isDemo && <form className="status-control" action={advanceInquiry}>
             <input type="hidden" name="locale" value={locale} /><input type="hidden" name="inquiry_id" value={id} />
             <select name="status">{dealStages.slice(1).map(([key,label]) => <option value={key} key={key}>{label}</option>)}</select>
             <button className="button button--primary" type="submit">Update stage</button>

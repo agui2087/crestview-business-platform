@@ -129,7 +129,9 @@ export async function PlatformShell({
                 <LocaleSwitcher locale={locale} compact />
                 {user.email.toLowerCase() === "agui2087@outlook.com" && <Link href={`/${locale}/dashboard/admin`}>{locale === "es" ? "Vista admin" : "Admin view"}</Link>}
                 <Link href={`/${locale}`}>{locale === "es" ? "Sitio web" : "Website"}</Link>
-                <a href={user.source === "local" ? `/api/local-auth/signout?return_to=/${locale}` : chatGPTSignOutPath(`/${locale}`)}>{locale === "es" ? "Salir" : "Sign out"}</a>
+                <a href={user.source === "chatgpt" ? chatGPTSignOutPath(`/${locale}`) : `/api/local-auth/signout?return_to=/${locale}`}>
+                  {locale === "es" ? "Salir" : "Sign out"}
+                </a>
               </div>
             </details>
           </div>

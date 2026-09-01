@@ -11,6 +11,10 @@ import { confirmListingAvailability, createListing, updateListingStatus } from "
 
 export const metadata: Metadata = { title: "Broker listings" };
 
+function currentTimestamp() {
+  return Date.now();
+}
+
 export default async function ListingsPage({ params, searchParams }: PageProps<"/[locale]/dashboard/listings">) {
   const { locale } = await params;
   const query = await searchParams;
@@ -32,7 +36,7 @@ export default async function ListingsPage({ params, searchParams }: PageProps<"
     }
   }
   const listings = await getMyListings(userId);
-  const freshnessCutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const freshnessCutoff = currentTimestamp() - 30 * 24 * 60 * 60 * 1000;
   const activeListings = listings.filter((item) => ["published", "under_offer"].includes(item.status));
   return (
     <PlatformShell locale={locale} active="listings">

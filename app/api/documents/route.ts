@@ -8,7 +8,17 @@ export async function GET() {
     const user = await getChatGPTUser();
     if (!user?.email) return Response.json({ error: "Sign in required." }, { status: 401 });
     const { files, activity } = await listVault(ownerKey(user.email));
-    return Response.json({ documents: files.map(({ ownerKey: _ownerKey, storageKey: _storageKey, ...item }) => item), activity, categories: documentCategories }, { headers: { "Cache-Control": "private, no-store" } });
+    return Response.json({ documents: files.map((file) => ({
+      id: file.id,
+      originalName: file.originalName,
+      contentType: file.contentType,
+      sizeBytes: file.sizeBytes,
+      category: file.category,
+      dealName: file.dealName,
+      fiscalYear: file.fiscalYear,
+      createdAt: file.createdAt,
+      updatedAt: file.updatedAt,
+    })), activity, categories: documentCategories }, { headers: { "Cache-Control": "private, no-store" } });
   } catch {
     return Response.json({ error: "Secure document storage is temporarily unavailable. No file was uploaded." }, { status: 503 });
   }

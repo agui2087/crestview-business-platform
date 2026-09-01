@@ -223,7 +223,9 @@ export default async function PricingPage({
             <input type="hidden" name="locale" value={locale} />
             <button className="button button--light" type="submit">{es ? "Administrar facturación" : "Manage billing"}</button>
           </form>
-          <a className="header-signout" href={chatGPTSignOutPath(`/${locale}`)}>{es ? "Salir" : "Sign out"}</a>
+          <a className="header-signout" href={user.source === "chatgpt" ? chatGPTSignOutPath(`/${locale}`) : `/api/local-auth/signout?return_to=/${locale}`}>
+            {es ? "Salir" : "Sign out"}
+          </a>
         </> : <Link className="button button--light" href={`/${locale}/sign-in`}>{es ? "Iniciar sesión" : "Sign in"}</Link>}
       </div>
     </div></header>

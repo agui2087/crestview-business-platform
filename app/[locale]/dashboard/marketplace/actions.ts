@@ -389,11 +389,14 @@ export async function signNda(formData: FormData) {
     },
   }).eq("inquiry_id", inquiryId).eq("buyer_id", user.id).select("broker_id").maybeSingle();
   if (!nda) redirect(`/${locale}/dashboard/deals/${inquiryId}?error=forbidden`);
-  await Promise.all([
-    supabase.from("deal_inquiries").update({ status: "nda_signed", updated_at: now }).eq("id", inquiryId),
+  const [inquiryUpdate] = await Promise.all([
+    supabase.from("deal_inquiries").update({ status: "nda_signed", updated_at: now }).eq("id", inquiryId).select("id").maybeSingle(),
     supabase.from("marketplace_notifications").insert({ user_id: nda.broker_id, inquiry_id: inquiryId, kind: "nda_signed", title: "NDA signed", body: `${signerName} signed the NDA. The secure deal room is now available.`, href: `/${locale}/dashboard/deals/${inquiryId}` }),
     supabase.from("marketplace_audit_events").insert({ actor_id: user.id, inquiry_id: inquiryId, event_type: "nda_signed", details: { signer_name: signerName, fingerprint } }),
   ]);
+  if (inquiryUpdate.error || !inquiryUpdate.data) {
+    redirect(`/${locale}/dashboard/deals/${inquiryId}?error=stage_update`);
+  }
   revalidatePath(`/${locale}/dashboard/deals/${inquiryId}`);
   redirect(`/${locale}/dashboard/deals/${inquiryId}?nda=signed`);
 }

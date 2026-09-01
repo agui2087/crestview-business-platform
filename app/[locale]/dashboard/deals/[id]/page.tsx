@@ -117,9 +117,48 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
         {query.financial && <p className="notice">{query.financial === "requested" ? "Your financial-information request was sent to the broker." : `Financial access was updated: ${String(query.financial).replaceAll("_", " ")}.`}</p>}
         {workspace.isDemo && <p className="data-notice"><strong>Interactive preview</strong><span>This example shows the complete workflow. Live broker-created listings use the same protected workspace and database permissions.</span></p>}
         <nav className="deal-workspace-nav" aria-label="Deal workspace sections">
-          <a href="#deal-overview">Overview</a><a href="#deal-conversation">Messages &amp; NDA</a><a href="#deal-documents">Documents</a><a href="#deal-activity">Activity</a><a href="#deal-stage">Deal stage</a>
+          <a href="#deal-next-step">Next step</a><a href="#deal-conversation">Messages &amp; NDA</a><a href="#deal-documents">Documents</a><a href="#deal-activity">History</a><a href="#deal-stage">Deal stage</a>
         </nav>
-        <section className="deal-workspace-section" id="deal-overview">
+        <section className="deal-workspace-section" id="deal-next-step">
+        {!workspace.isBuyer && <section className="broker-next-step" aria-labelledby="broker-next-step-title">
+          <div className="broker-next-step__copy">
+            <span className="broker-next-step__eyebrow">Your next step</span>
+            <h2 id="broker-next-step-title">{!workspace.nda
+              ? "Send the confidentiality agreement"
+              : !ndaSigned
+                ? "The buyer needs to sign the NDA"
+                : financialStatus === "requested"
+                  ? "Review this buyer’s financial request"
+                  : financialApproved
+                    ? "Share the records the buyer needs"
+                    : "Keep the buyer moving forward"}</h2>
+            <p>{!workspace.nda
+              ? "Send your standard agreement before releasing confidential business information."
+              : !ndaSigned
+                ? "No action is needed right now. Crestview will keep the signed agreement with this deal."
+                : financialStatus === "requested"
+                  ? "Check the buyer’s readiness and requested records, then approve access, ask for more information, or decline."
+                  : financialApproved
+                    ? "Financial access is approved. Upload the requested documents below and choose the correct buyer access level."
+                    : "Use the conversation to answer questions and add documents when the buyer requests them."}</p>
+          </div>
+          {financialStatus === "requested" ? <div className="broker-next-step__decision">
+            <div className="broker-request-summary">
+              <div><span>Buyer readiness</span><strong>{workspace.inquiry.financial_request_capital || "Not provided"}</strong><small>{workspace.inquiry.financial_request_timeline || "Timeline not provided"}</small></div>
+              <div><span>Requested</span><strong>{workspace.inquiry.requested_items?.join(", ") || "Financial records"}</strong></div>
+            </div>
+            {workspace.inquiry.financial_request_message && <blockquote>{workspace.inquiry.financial_request_message}</blockquote>}
+            {!workspace.isDemo && <form action={decideFinancialAccess}>
+              <input type="hidden" name="locale" value={locale} /><input type="hidden" name="inquiry_id" value={id} />
+              <button name="decision" value="more_information" className="button button--light" type="submit">Ask a question</button>
+              <button name="decision" value="declined" className="button button--light" type="submit">Decline</button>
+              <button name="decision" value="approved" className="button button--primary" type="submit">Approve access</button>
+            </form>}
+          </div> : <div className="broker-next-step__action">
+            <a className="button button--primary" href={!workspace.nda ? "#deal-conversation" : financialApproved ? "#deal-upload" : "#deal-conversation"}>{!workspace.nda ? "Send NDA" : financialApproved ? "Upload requested records" : "Open conversation"}</a>
+            <small>{financialApproved ? `${workspace.requests.filter((request) => request.status === "requested").length} open document request${workspace.requests.filter((request) => request.status === "requested").length === 1 ? "" : "s"}` : "You can update the deal stage below"}</small>
+          </div>}
+        </section>}
         <div className="deal-overview-strip">
           <div><span>Current stage</span><strong>{dealStages[currentStageIndex]?.[1] ?? "Inquiry sent"}</strong></div>
           <div><span>Your role</span><strong>{workspace.isBuyer ? "Buyer" : "Broker / seller"}</strong></div>
@@ -141,10 +180,11 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
                   ? "Release approved documents"
                   : "Continue buyer screening"}</strong></div>
         </div>
-        <div className="deal-simple-flow" aria-label="Deal room steps">
-          <div className={roomUnlocked ? "is-done" : "is-current"}><span>{roomUnlocked ? "✓" : "1"}</span><div><strong>{workspace.isBuyer ? "Sign NDA" : "Buyer signs NDA"}</strong><small>{workspace.isBuyer ? "Review and accept the listing agreement" : "Crestview delivers and records the agreement"}</small></div></div>
-          <div className={financialApproved ? "is-done" : roomUnlocked ? "is-current" : ""}><span>{financialApproved ? "✓" : "2"}</span><div><strong>{workspace.isBuyer ? "Request records" : "Review buyer request"}</strong><small>{workspace.isBuyer ? "The broker decides what to release" : "Approve, ask a question, or decline"}</small></div></div>
-          <div className={financialApproved ? "is-current" : ""}><span>3</span><div><strong>{workspace.isBuyer ? "Review securely" : "Release securely"}</strong><small>Use the deal room and conversation</small></div></div>
+        <div className="deal-simple-flow" aria-label="Deal progress">
+          <div className="is-done"><span>✓</span><div><strong>Inquiry</strong><small>Buyer connected</small></div></div>
+          <div className={ndaSigned ? "is-done" : "is-current"}><span>{ndaSigned ? "✓" : "2"}</span><div><strong>NDA</strong><small>{ndaSigned ? "Signed" : "Awaiting signature"}</small></div></div>
+          <div className={financialApproved ? "is-done" : ndaSigned ? "is-current" : ""}><span>{financialApproved ? "✓" : "3"}</span><div><strong>Documents</strong><small>{financialApproved ? "Access approved" : "Request and review"}</small></div></div>
+          <div className={["offer","closed"].includes(effectiveStatus) ? "is-current" : ""}><span>4</span><div><strong>Offer &amp; close</strong><small>Move forward when ready</small></div></div>
         </div>
         </section>
         <section className="deal-workspace-section" id="deal-conversation">
@@ -203,17 +243,7 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
           {workspace.isBuyer && financialStatus === "more_information" && <div className="financial-status-message"><strong>The broker needs more information</strong><p>Use the secure conversation above to answer the broker’s questions, then submit an updated request.</p></div>}
           {workspace.isBuyer && financialApproved && <div className="financial-status-message is-approved"><strong>Financial access approved</strong><p>Documents labeled “Broker approval required” are now available in the secure deal room.</p></div>}
           {workspace.isBuyer && financialStatus === "declined" && <div className="financial-status-message"><strong>Access was not approved</strong><p>You can continue the conversation, but confidential financial records remain restricted.</p></div>}
-          {!workspace.isBuyer && financialStatus === "requested" && <div className="broker-financial-review">
-            <div><span>Buyer readiness</span><strong>{workspace.inquiry.financial_request_capital}</strong><small>{workspace.inquiry.financial_request_timeline}</small></div>
-            <div><span>Requested documents</span><strong>{workspace.inquiry.requested_items?.join(", ") || "Not specified"}</strong></div>
-            <blockquote>{workspace.inquiry.financial_request_message}</blockquote>
-            <form action={decideFinancialAccess}>
-              <input type="hidden" name="locale" value={locale} /><input type="hidden" name="inquiry_id" value={id} />
-              <button name="decision" value="more_information" className="button button--light" type="submit">Request more information</button>
-              <button name="decision" value="declined" className="button button--light" type="submit">Decline</button>
-              <button name="decision" value="approved" className="button button--primary" type="submit">Approve financial access</button>
-            </form>
-          </div>}
+          {!workspace.isBuyer && financialStatus === "requested" && <div className="financial-status-message"><strong>Decision needed</strong><p>The buyer’s request and decision buttons are at the top of this workspace so you cannot miss the next action.</p></div>}
           {!workspace.isBuyer && financialStatus !== "requested" && <div className="financial-status-message"><strong>{financialApproved ? "Financial access is approved" : "No financial request needs review"}</strong><p>NDA delivery is automatic. You are only interrupted when a signed buyer requests sensitive financial information.</p></div>}
           {workspace.isDemo && <div className="financial-status-message"><strong>Financial requests remain manual</strong><p>Live buyers submit readiness information after signing. The broker then chooses whether to release approved documents.</p></div>}
         </section>}
@@ -253,8 +283,8 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
         <section className={`panel secure-room ${roomUnlocked || workspace.isDemo ? "is-unlocked" : "is-locked"}`}>
           <div className="panel__header"><div><span className="source-label">Permission-controlled documents</span><h2>Secure deal room</h2></div><span className="stage">{roomUnlocked ? financialApproved ? "Financial access approved" : "NDA access only" : "NDA required"}</span></div>
           {!roomUnlocked && !workspace.isDemo && <div className="room-lock"><span>🔒</span><h3>Sign the NDA to unlock documents</h3><p>Only approved participants can access confidential materials. Every upload and status change remains attached to this deal.</p></div>}
-          {(roomUnlocked || workspace.isDemo) && <div className="document-folders">{documentGroups.map((group) => <section className={group.documents.length ? "" : "is-missing"} key={group.category}><header><strong>{group.category}</strong><span>{group.documents.length ? `${group.documents.length} received` : "Missing"}</span></header>{group.documents.length ? <div className="room-documents">{group.documents.map((document) => <article key={document.id}><span>▤</span><div><strong>{document.title}</strong><small>{document.original_filename || "Secure record"} · Version {document.version} · {document.permission_note ?? (document.access_level === "approved" ? "Broker approval required" : document.access_level === "broker_only" ? "Broker only" : "Available after NDA")}</small></div>{document.secure_url || document.external_url ? <a href={document.secure_url || document.external_url || "#"} target="_blank" rel="noreferrer">Open securely</a> : <span className="stage">Protected</span>}</article>)}</div> : <p className="folder-missing-note">No document received yet. Add it to the request list if it is material to this deal.</p>}</section>)}</div>}
-          {!workspace.isBuyer && !workspace.isDemo && <details className="room-upload"><summary>Add a secure document</summary><form action={addDealRoomDocument}>
+          {(roomUnlocked || workspace.isDemo) && <div className="document-folders">{documentGroups.map((group) => group.documents.length ? <section key={group.category}><header><strong>{group.category}</strong><span>{group.documents.length} received</span></header><div className="room-documents">{group.documents.map((document) => <article key={document.id}><span>▤</span><div><strong>{document.title}</strong><small>{document.original_filename || "Secure record"} · Version {document.version} · {document.permission_note ?? (document.access_level === "approved" ? "Broker approval required" : document.access_level === "broker_only" ? "Broker only" : "Available after NDA")}</small></div>{document.secure_url || document.external_url ? <a href={document.secure_url || document.external_url || "#"} target="_blank" rel="noreferrer">Open securely</a> : <span className="stage">Protected</span>}</article>)}</div></section> : null)}<details className="empty-document-folders"><summary>Show empty folders ({documentGroups.filter((group) => !group.documents.length).length})</summary><div>{documentGroups.filter((group) => !group.documents.length).map((group) => <span key={group.category}>{group.category}</span>)}</div></details></div>}
+          {!workspace.isBuyer && !workspace.isDemo && <details className="room-upload" id="deal-upload" open><summary>Upload a secure document</summary><form action={addDealRoomDocument}>
             <input type="hidden" name="locale" value={locale} /><input type="hidden" name="inquiry_id" value={id} />
             <label>Title<input name="title" placeholder="Document title" required /></label><label>Folder<select name="category"><option>Overview</option><option>Financial</option><option>Tax</option><option>Legal</option><option>Employees</option><option>Customers</option><option>Assets</option><option>Closing</option><option>Operations</option><option>Other</option></select></label>
             <label>Upload file<input name="document_file" type="file" accept=".pdf,.csv,.xls,.xlsx,.doc,.docx" /></label><label>Or secure link<input name="external_url" type="url" placeholder="https://" /></label><label>Buyer access<select name="access_level"><option value="nda_signed">Available after NDA</option><option value="approved">Broker approval required</option><option value="broker_only">Broker only</option></select></label>

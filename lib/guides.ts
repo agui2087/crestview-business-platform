@@ -16,8 +16,6 @@ export type BuyerGuide = {
 const sbaPlan = { label: "U.S. Small Business Administration: Buy an existing business or franchise", href: "https://www.sba.gov/business-guide/plan-your-business/buy-existing-business-or-franchise" };
 const sbaLoans = { label: "U.S. Small Business Administration: 7(a) loan program", href: "https://www.sba.gov/funding-programs/loans/7a-loans" };
 const irsEIN = { label: "Internal Revenue Service: Employer identification numbers", href: "https://www.irs.gov/businesses/small-businesses-self-employed/employer-id-numbers" };
-const ftcFranchise = { label: "Federal Trade Commission: Franchise Rule compliance guide", href: "https://www.ftc.gov/business-guidance/resources/franchise-rule-compliance-guide" };
-
 export const buyerGuides: BuyerGuide[] = [
   {
     slug: "how-to-buy-a-business",

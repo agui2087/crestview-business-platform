@@ -112,12 +112,12 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
     <PlatformShell locale={locale} active="inbox">
       <div className="dashboard-content deal-room-page">
         <div className="workspace-back"><Link href={`/${locale}/dashboard/inbox`}>← Back to deal inbox</Link><span>Private workspace</span></div>
-        <PageHeading eyebrow="Secure deal workspace" title={workspace.title} body="Sign the NDA, request records, and keep every conversation and document together." />
+        <PageHeading eyebrow={workspace.isBuyer ? "Buyer workspace" : "Broker workspace"} title={workspace.title} body={workspace.isBuyer ? "Your guided path from first inquiry through diligence and closing." : "Review the buyer, share records securely, and move the deal forward from one place."} />
         {query.nda && <p className="notice">The NDA was {query.nda === "signed" ? "signed and the deal room is unlocked" : "sent successfully"}.</p>}
         {query.financial && <p className="notice">{query.financial === "requested" ? "Your financial-information request was sent to the broker." : `Financial access was updated: ${String(query.financial).replaceAll("_", " ")}.`}</p>}
         {workspace.isDemo && <p className="data-notice"><strong>Interactive preview</strong><span>This example shows the complete workflow. Live broker-created listings use the same protected workspace and database permissions.</span></p>}
         <nav className="deal-workspace-nav" aria-label="Deal workspace sections">
-          <a href="#deal-next-step">Next step</a><a href="#deal-conversation">Messages &amp; NDA</a><a href="#deal-documents">Documents</a><a href="#deal-activity">History</a><a href="#deal-stage">Deal stage</a>
+          <a className="is-primary" href="#deal-next-step">Start here</a><a href="#deal-conversation">Messages &amp; NDA</a><a href="#deal-documents">Documents</a><a href="#deal-activity">History</a><a href="#deal-stage">Deal stage</a>
         </nav>
         <section className="deal-workspace-section" id="deal-next-step">
         {!workspace.isBuyer && <section className="broker-next-step" aria-labelledby="broker-next-step-title">

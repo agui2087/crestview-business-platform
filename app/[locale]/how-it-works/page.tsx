@@ -20,7 +20,7 @@ export default async function HowItWorksPage({ params }: { params: Promise<{ loc
   const copy = getDictionary(locale);
   const es = locale === "es";
   return <><MarketingHeader locale={locale} /><main>
-    <section className="marketing-page-hero"><div className="shell">
+    <section className="marketing-page-hero how-it-works-hero"><div className="shell">
       <p className="eyebrow">{copy.home.processLabel}</p>
       <h1>{es ? "Comprar un negocio, explicado paso a paso." : "Buying a business, explained step by step."}</h1>
       <p>{es ? "Crestview fue creado para cualquier persona que quiera comprar un negocio, con experiencia o sin ella. Explora oportunidades, elige una, sigue una lista guiada y mantén el negocio organizado en un solo lugar después de la compra." : "Crestview was built for anyone who wants to buy a business—whether this is your first acquisition or you have done it before. Browse opportunities, choose one, follow a guided checklist, and keep the business organized in one place after the purchase."}</p>

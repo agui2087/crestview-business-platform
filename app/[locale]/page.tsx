@@ -26,6 +26,11 @@ export default async function LandingPage({
 
       <main>
         <section className="hero">
+          <div className="hero-shapes" aria-hidden="true">
+            <span className="hero-shapes__arch" />
+            <span className="hero-shapes__sun" />
+            <span className="hero-shapes__step" />
+          </div>
           <div className="shell hero__grid">
             <div>
               <p className="eyebrow">{copy.home.eyebrow}</p>
@@ -48,9 +53,16 @@ export default async function LandingPage({
             </div>
 
             <div className="deal-preview" aria-label="DealFlow opportunity example">
+              <div className="deal-preview__canvas" aria-hidden="true">
+                <span />
+                <span />
+                <span />
+              </div>
               <article className="preview-card preview-card--main">
                 <div className="preview-card__top">
-                  <span className="mini-label">DealFlow AI</span>
+                  <span className="mini-label">
+                    {locale === "en" ? "Deal review" : "Revisión del negocio"}
+                  </span>
                   <span className="status-pill">
                     {locale === "en" ? "Strong fit" : "Buen potencial"}
                   </span>
@@ -139,6 +151,7 @@ export default async function LandingPage({
             </div>
             <div className="product-grid">
               <article className="product-card">
+                <div className="product-card__art product-card__art--path" aria-hidden="true"><i /><i /><i /></div>
                 <span className="product-card__number">01 · {copy.home.available}</span>
                 <h3>{copy.home.dealflow}</h3>
                 <p>{copy.home.dealflowBody}</p>
@@ -147,11 +160,13 @@ export default async function LandingPage({
                 </Link>
               </article>
               <article className="product-card product-card--future">
+                <div className="product-card__art product-card__art--people" aria-hidden="true"><i /><i /><i /></div>
                 <span className="product-card__number">02 · {copy.home.planned}</span>
                 <h3>{copy.home.workforce}</h3>
                 <p>{copy.home.workforceBody}</p>
               </article>
               <article className="product-card product-card--beta">
+                <div className="product-card__art product-card__art--property" aria-hidden="true"><i /><i /><i /></div>
                 <span className="product-card__number">03 · BETA · {locale === "es" ? "PRÓXIMAMENTE" : "COMING SOON"}</span>
                 <h3>{locale === "es" ? "Adquisición de bienes raíces" : "Real estate acquisition"}</h3>
                 <p>{locale === "es" ? "La misma metodología guiada de Crestview para evaluar propiedades, financiamiento, diligencia y cierre." : "The same guided Crestview methodology for evaluating property opportunities, financing, diligence, and closing."}</p>
@@ -162,6 +177,7 @@ export default async function LandingPage({
         </section>
 
         <section className="section section--dark" id="how-it-works">
+          <div className="process-motif" aria-hidden="true"><span /><span /><span /></div>
           <div className="shell">
             <div className="section-heading">
               <div>
@@ -200,7 +216,11 @@ export default async function LandingPage({
         <section className="section" id="vision">
           <div className="shell">
             <div className="cta-panel">
-              <h2>{copy.home.cta}</h2>
+              <div className="cta-panel__art" aria-hidden="true"><span /><span /><span /></div>
+              <div className="cta-panel__content">
+                <p className="eyebrow">{locale === "es" ? "TU PRÓXIMO PASO" : "YOUR NEXT MOVE"}</p>
+                <h2>{copy.home.cta}</h2>
+              </div>
               <Link className="button button--primary" href={`/${locale}/dashboard`}>
                 {copy.home.ctaButton} <span aria-hidden="true">→</span>
               </Link>

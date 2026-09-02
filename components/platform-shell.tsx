@@ -8,25 +8,25 @@ import type { Locale } from "@/lib/i18n";
 
 const navItems = [
   ["overview", "Overview", "Resumen", "⌂"],
-  ["marketplace", "Broker marketplace", "Mercado de corredores", "⌕"],
+  ["marketplace", "Marketplace", "Mercado", "⌕"],
   ["listings", "My listings", "Mis anuncios", "▤"],
   ["inbox", "Deal inbox", "Bandeja de negocios", "↔"],
-  ["opportunities", "Public listings", "Anuncios públicos", "◎"],
+  ["opportunities", "Browse listings", "Explorar anuncios", "◎"],
   ["lists", "Saved lists", "Listas guardadas", "♡"],
   ["pipeline", "Pipeline", "Proceso", "◇"],
   ["tasks", "Tasks", "Tareas", "✓"],
   ["reports", "Reports", "Informes", "↗"],
   ["documents", "Documents", "Documentos", "▣"],
   ["workforce", "Workforce", "Personal", "♙"],
-  ["real-estate", "Real estate", "Bienes raíces", "⌂"],
+  ["real-estate", "Real estate beta", "Bienes raíces beta", "⌂"],
   ["plans", "Plans & billing", "Planes y facturación", "$"],
   ["settings", "Settings", "Configuración", "⚙"],
 ] as const;
 
 const navGroups = [
   { label: ["Home", "Inicio"], slugs: ["overview", "inbox"] },
-  { label: ["Discover", "Descubrir"], slugs: ["marketplace", "opportunities", "lists"] },
-  { label: ["My deals", "Mis negocios"], slugs: ["pipeline", "tasks", "documents", "reports"] },
+  { label: ["Explore", "Explorar"], slugs: ["marketplace", "opportunities", "lists"] },
+  { label: ["Workspace", "Espacio de trabajo"], slugs: ["pipeline", "tasks", "documents", "reports"] },
   { label: ["Sell", "Vender"], slugs: ["listings", "workforce"] },
   { label: ["Account", "Cuenta"], slugs: ["real-estate", "plans", "settings"] },
 ] as const;

@@ -1766,6 +1766,189 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .broker-contact { text-align: left; }
 }
 
+/* Modern product UI — restrained, compact, and intentionally non-decorative */
+:root {
+  --product-bg: #f7f8f6;
+  --product-panel: #ffffff;
+  --product-border: #e2e6e2;
+  --product-border-strong: #cfd6d1;
+  --product-muted: #6d7772;
+  --product-ink: #18211d;
+}
+
+.dashboard {
+  grid-template-columns: 236px minmax(0,1fr);
+  background: var(--product-bg);
+  color: var(--product-ink);
+  font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.sidebar {
+  padding: 22px 14px 18px;
+  border-color: var(--product-border);
+  background: #fbfcfa;
+}
+.sidebar .brand { padding-inline: 8px; font-size: 1rem; }
+.sidebar-nav { gap: 7px; margin-top: 26px; }
+.sidebar-nav__group { gap: 2px; padding: 0 0 10px; border-color: #edf0ed; }
+.sidebar-nav__group > span {
+  padding: 8px 10px 4px;
+  color: #929b96;
+  font-size: .52rem;
+  font-weight: 700;
+  letter-spacing: .14em;
+}
+.sidebar-nav a {
+  min-height: 36px;
+  gap: 9px;
+  padding: 0 10px;
+  border-radius: 7px;
+  color: #56615c;
+  font-size: .72rem;
+  font-weight: 600;
+}
+.sidebar-nav a:hover { background: #f0f2ef; color: var(--product-ink); transform: none; }
+.sidebar-nav a.is-active {
+  background: #e8eeea;
+  color: var(--brand-dark);
+  box-shadow: none;
+}
+.nav-icon {
+  width: 18px;
+  height: 18px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #78827d;
+  font-size: .7rem;
+}
+.sidebar-nav a.is-active .nav-icon { background: transparent; color: var(--brand); }
+.listing-alert {
+  margin: 8px 4px 0;
+  padding: 11px;
+  border: 1px solid var(--product-border);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: none;
+}
+.dashboard-topbar {
+  min-height: 64px;
+  border-color: var(--product-border);
+  background: rgba(255,255,255,.92);
+  box-shadow: none;
+}
+.organization { font-size: .71rem; font-weight: 650; }
+.organization__avatar,.account-menu > summary > span { border-radius: 7px; }
+.notification-link,.account-menu > summary {
+  border-color: var(--product-border);
+  border-radius: 8px;
+  box-shadow: none;
+}
+.dashboard-content { max-width: 1360px; padding-top: 34px; }
+.workspace-heading { align-items: flex-start; margin-bottom: 24px; }
+.workspace-heading > div > p { color: #75807a; font-size: .57rem; letter-spacing: .11em; }
+.workspace-heading h1 {
+  margin-top: 8px;
+  font-size: clamp(1.7rem,2.5vw,2.25rem);
+  font-weight: 650;
+  letter-spacing: -.035em;
+}
+.workspace-heading > div > span { margin-top: 8px; color: var(--product-muted); font-size: .78rem; }
+
+.panel,.metric-card,.acquisition-stage,.deal-overview-strip,.deal-simple-flow > div,
+.broker-next-step,.financial-access-panel,.financial-review-summary,.request-tracker {
+  border-color: var(--product-border);
+  border-radius: 10px;
+  background: var(--product-panel);
+  box-shadow: none;
+}
+.button {
+  min-height: 38px;
+  border-radius: 8px;
+  box-shadow: none;
+  font-size: .68rem;
+  font-weight: 650;
+}
+.button--primary:hover { transform: none; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+
+.workspace-back { color: var(--product-muted); font-size: .65rem; }
+.workspace-back span { border-color: var(--product-border); border-radius: 999px; background: transparent; }
+.data-notice {
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid #dfe6df;
+  border-radius: 8px;
+  background: #f7faf7;
+  box-shadow: none;
+}
+.data-notice strong,.data-notice span { font-size: .64rem; }
+.deal-workspace-nav {
+  top: 74px;
+  gap: 22px;
+  margin: 18px 0 26px;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid var(--product-border);
+  border-radius: 0;
+  background: rgba(247,248,246,.94);
+  box-shadow: none;
+  backdrop-filter: blur(12px);
+}
+.deal-workspace-nav a {
+  min-height: 43px;
+  padding: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  color: #68736d;
+  font-size: .66rem;
+  font-weight: 650;
+}
+.deal-workspace-nav a:hover { background: transparent; color: var(--product-ink); }
+.deal-workspace-nav a.is-primary {
+  border-bottom-color: var(--brand);
+  background: transparent;
+  color: var(--brand-dark);
+}
+.broker-next-step {
+  padding: clamp(20px,2.4vw,28px);
+  border-color: var(--product-border-strong);
+  background: #fff;
+}
+.broker-next-step::before { width: 3px; }
+.broker-next-step__copy h2 { font-size: 1.2rem; font-weight: 650; letter-spacing: -.02em; }
+.broker-next-step__copy p { color: var(--product-muted); }
+.deal-overview-strip { overflow: hidden; border-radius: 10px; }
+.deal-overview-strip > div { min-height: 70px; padding: 15px 17px; }
+.deal-overview-strip span,.deal-simple-flow small { color: #818a85; }
+.deal-simple-flow { gap: 8px; }
+.deal-simple-flow > div { min-height: 60px; padding: 12px; border-radius: 9px; }
+.deal-simple-flow > div.is-current { border-color: #9fb4a8; box-shadow: inset 0 0 0 1px #9fb4a8; }
+.deal-simple-flow > div.is-done { background: #edf3ef; }
+.deal-section-heading { padding: 0; }
+.deal-section-heading > span { color: #828b86; }
+.deal-section-heading h2 { font-size: 1rem; font-weight: 650; letter-spacing: -.015em; }
+.deal-thread article,.room-documents article,.request-tracker__list > article {
+  border-radius: 9px;
+  box-shadow: none;
+}
+.room-documents article:hover,.request-tracker__list > article:hover {
+  transform: none;
+  border-color: var(--product-border-strong);
+  box-shadow: none;
+}
+.account-menu > div { border-color: var(--product-border); border-radius: 9px; box-shadow: 0 12px 32px rgba(20,33,28,.11); }
+
+@media (max-width: 900px) {
+  .dashboard { grid-template-columns: 1fr; }
+  .deal-workspace-nav { top: 64px; }
+}
+@media (max-width: 620px) {
+  .dashboard-content { padding-top: 22px; }
+  .workspace-heading h1 { font-size: 1.65rem; }
+  .deal-workspace-nav { gap: 18px; margin-inline: 0; overflow-x: auto; }
+  .deal-workspace-nav a { min-height: 40px; }
+  .broker-next-step { padding: 18px; }
+}
+
 @media (max-width: 380px) {
   .shell { width: min(100% - 20px,1180px); }
   .locale-link { min-width: 38px; }

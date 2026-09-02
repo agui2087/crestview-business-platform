@@ -2389,3 +2389,217 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .cta-panel__art span:nth-child(1) { right:-70px; top:-70px; }
   .cta-panel__art span:nth-child(3) { display:none; }
 }
+
+/* Crestview product system — the logged-in experience belongs to the same brand */
+.dashboard {
+  --product-bg:#f3f5ef;
+  --product-panel:#fffefa;
+  --product-border:#d9e2da;
+  --product-border-strong:#b9cdbf;
+  --product-muted:#66736d;
+  --product-ink:#10251c;
+  background:
+    radial-gradient(circle at 82% 7%,rgba(216,243,101,.18),transparent 25%),
+    radial-gradient(circle at 67% 76%,rgba(232,225,245,.42),transparent 29%),
+    var(--product-bg);
+}
+.sidebar {
+  position:relative;
+  overflow:hidden;
+  border-right-color:#d5dfd7;
+  background:linear-gradient(180deg,#fffefa 0%,#f8faf5 72%,#eef4ef 100%);
+}
+.sidebar::after {
+  content:"";
+  position:absolute;
+  right:-56px;
+  bottom:34px;
+  width:116px;
+  height:86px;
+  border-radius:70px 70px 0 0;
+  background:#efc665;
+  opacity:.28;
+  pointer-events:none;
+}
+.sidebar .brand { position:relative; z-index:2; }
+.sidebar-nav a { position:relative; z-index:2; }
+.sidebar-nav a:hover { background:#edf4ee; color:var(--brand-dark); }
+.sidebar-nav a.is-active {
+  background:var(--brand-dark);
+  color:#fff;
+  box-shadow:0 10px 24px rgba(16,61,49,.12);
+}
+.sidebar-nav a.is-active .nav-icon { color:var(--lime); }
+.dashboard-topbar {
+  background:rgba(255,254,250,.88);
+  backdrop-filter:blur(18px);
+}
+.organization__avatar {
+  background:var(--brand-dark);
+  color:#fff;
+  box-shadow:inset 0 -3px 0 rgba(216,243,101,.24);
+}
+.dashboard-content { position:relative; isolation:isolate; }
+.dashboard-content::before {
+  content:"";
+  position:absolute;
+  z-index:-1;
+  top:12px;
+  right:clamp(18px,4vw,62px);
+  width:120px;
+  height:120px;
+  border:25px solid #f0c96b;
+  border-bottom:0;
+  border-radius:999px 999px 0 0;
+  opacity:.34;
+  pointer-events:none;
+}
+.workspace-heading { position:relative; z-index:2; padding-right:150px; }
+.workspace-heading > div > p { color:var(--brand); font-weight:850; }
+.workspace-heading h1 {
+  max-width:900px;
+  font-family:var(--font-display),Georgia,serif;
+  font-size:clamp(2.3rem,4.2vw,4.35rem);
+  font-weight:500;
+  line-height:.98;
+  letter-spacing:-.055em;
+  text-wrap:balance;
+}
+.workspace-heading > div > span { max-width:720px; font-size:.86rem; line-height:1.65; }
+.role-home-card {
+  position:relative;
+  overflow:hidden;
+  min-height:190px;
+  padding:32px 34px;
+  border:0;
+  border-radius:26px;
+  background:#164f3c;
+  color:#fff;
+  box-shadow:0 24px 56px rgba(18,79,59,.13);
+}
+.role-home-card::before,.role-home-card::after {
+  content:"";
+  position:absolute;
+  pointer-events:none;
+}
+.role-home-card::before {
+  right:-42px;
+  top:-70px;
+  width:220px;
+  height:220px;
+  border-radius:50%;
+  background:var(--lime);
+  opacity:.72;
+}
+.role-home-card::after {
+  right:160px;
+  bottom:-55px;
+  width:145px;
+  height:112px;
+  border:28px solid #efc665;
+  border-bottom:0;
+  border-radius:90px 90px 0 0;
+  opacity:.78;
+  transform:rotate(-10deg);
+}
+.role-home-card > div { position:relative; z-index:2; }
+.role-home-card > div:first-child > span { color:var(--lime); }
+.role-home-card h2 { max-width:760px; font-size:clamp(1.25rem,2.2vw,1.85rem); line-height:1.17; }
+.role-home-card p { max-width:720px; color:#cbd9d2; font-size:.74rem; line-height:1.65; }
+.role-home-actions { min-width:210px; }
+.role-home-card .button--primary { background:var(--lime); color:var(--brand-dark); }
+.role-home-card .button--light { border-color:rgba(255,255,255,.42); background:rgba(255,255,255,.94); color:var(--brand-dark); }
+.role-home-count strong { color:#fff; }
+.role-home-count span,.role-home-tertiary { color:#d9e7df; }
+.broker-onboarding-strip {
+  gap:10px;
+  padding:0;
+  border:0;
+  background:transparent;
+}
+.broker-onboarding-strip > div {
+  min-height:96px;
+  border:1px solid var(--product-border);
+  border-radius:16px;
+  background:#fffefa;
+  box-shadow:0 12px 30px rgba(18,47,35,.04);
+}
+.broker-onboarding-strip > div:nth-child(2) { background:#fff4d8; border-color:#ead49c; }
+.broker-onboarding-strip > div:nth-child(3) { background:#eee9f4; border-color:#d8cee4; }
+.broker-onboarding-strip .is-current { box-shadow:inset 0 0 0 2px var(--brand),0 14px 32px rgba(18,79,59,.07); }
+.metric-card {
+  position:relative;
+  overflow:hidden;
+  min-height:150px;
+  padding:24px;
+  border-radius:20px;
+  background:#fffefa;
+}
+.metric-card::after {
+  content:"";
+  position:absolute;
+  right:-24px;
+  bottom:-30px;
+  width:76px;
+  height:76px;
+  border-radius:50%;
+  background:#dcece4;
+  opacity:.7;
+}
+.metric-card:nth-child(2)::after { background:#f5d98e; }
+.metric-card:nth-child(3)::after { background:#cfc0dc; }
+.metric-card:nth-child(4)::after { background:var(--lime); }
+.metric-card strong { position:relative; z-index:2; font-family:var(--font-display),Georgia,serif; font-size:2.25rem; font-weight:500; }
+.metric-card span,.metric-card small { position:relative; z-index:2; }
+.panel {
+  border-radius:20px;
+  background:rgba(255,254,250,.96);
+  box-shadow:0 14px 38px rgba(18,47,35,.045);
+}
+.panel__header h2 { font-family:var(--font-display),Georgia,serif; font-size:1.2rem; font-weight:500; }
+.broker-home-grid .panel:first-child { border-top:5px solid #efc665; }
+.broker-home-grid .panel:last-child { border-top:5px solid #bca5cd; }
+
+/* Secondary marketing pages should feel composed, not like an empty backdrop. */
+.marketing-page-hero,.listings-hero,.guide-hero {
+  min-height:min(620px,72vh);
+  display:flex;
+  align-items:center;
+}
+.marketing-page-hero > .shell,.listings-hero > .shell { padding-right:min(33vw,430px); }
+.marketing-page-hero::before,.listings-hero::before,.guide-hero::before {
+  content:"";
+  position:absolute;
+  right:clamp(38px,8vw,150px);
+  top:50%;
+  width:clamp(150px,20vw,290px);
+  aspect-ratio:1;
+  border:clamp(30px,4vw,58px) solid #164f3c;
+  border-left-color:#76a58b;
+  border-bottom-color:var(--lime);
+  border-radius:50%;
+  opacity:.9;
+  transform:translateY(-50%) rotate(22deg);
+}
+.marketing-page-hero h1,.listings-hero h1 { text-wrap:balance; }
+
+@media (max-width:900px) {
+  .workspace-heading { padding-right:0; }
+  .dashboard-content::before { width:74px; height:74px; border-width:16px; opacity:.2; }
+  .role-home-card { grid-template-columns:1fr; min-height:0; padding:28px; }
+  .role-home-card::before { right:-90px; top:-110px; }
+  .role-home-card::after { right:-14px; bottom:-78px; }
+  .role-home-actions { min-width:0; }
+  .marketing-page-hero,.listings-hero,.guide-hero { min-height:auto; }
+  .marketing-page-hero > .shell,.listings-hero > .shell { padding-right:26vw; }
+  .marketing-page-hero::before,.listings-hero::before,.guide-hero::before { right:-72px; opacity:.28; }
+}
+
+@media (max-width:620px) {
+  .workspace-heading h1 { font-size:2.45rem; }
+  .role-home-card { border-radius:20px; }
+  .broker-onboarding-strip { grid-template-columns:1fr; }
+  .metric-card { min-height:128px; }
+  .marketing-page-hero > .shell,.listings-hero > .shell { padding-right:0; }
+  .marketing-page-hero::before,.listings-hero::before,.guide-hero::before { display:none; }
+}

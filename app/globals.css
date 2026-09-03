@@ -2694,10 +2694,13 @@ button, a { -webkit-tap-highlight-color: transparent; }
 @media (max-width:900px) {
   .how-it-works-hero::before,.how-it-works-hero::after,.vision-hero::before,.vision-hero::after,
   .listings-hero::before,.listings-hero::after,.guide-hero--tools::before,.pricing-hero::after,.article-hero::after { opacity:.16; }
+  .how-it-works-hero > .shell { padding-right:32vw; }
+  .how-it-works-hero h1 { font-size:clamp(3rem,8vw,4.6rem); }
 }
 @media (max-width:620px) {
   .how-it-works-hero,.vision-hero,.listings-hero,.guide-hero:not(.guide-hero--tools) { background:#f6f5ef; }
   .how-it-works-hero::before,.how-it-works-hero::after,.vision-hero::before,.vision-hero::after,
   .listings-hero::before,.listings-hero::after,.guide-hero--tools::before,.pricing-hero::after,.article-hero::after { display:none; }
   .pricing-hero { min-height:auto; }
+  .how-it-works-hero > .shell { padding-right:0; }
 }

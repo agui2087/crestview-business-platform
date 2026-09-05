@@ -8,8 +8,18 @@ import { localizedPublicMetadata } from "@/lib/seo";
 export async function generateMetadata({ params }: PageProps<"/[locale]">): Promise<Metadata> {
   const { locale } = await params;
   return localizedPublicMetadata(locale === "es" ? "es" : "en", "", {
-    title: "How to buy a business | Business ownership, made clearer",
-    description: "A guided platform for first-time and experienced buyers to find, evaluate, finance, and purchase a small business.",
+    title: locale === "es"
+      ? "Crestview Platform | Compra un negocio con confianza"
+      : "Crestview Platform | How to Buy a Business",
+    description: locale === "es"
+      ? "Crestview Platform ayuda a compradores a encontrar, evaluar, financiar y comprar una pequeña empresa con herramientas guiadas en un solo lugar."
+      : "Crestview Platform helps first-time and experienced buyers find, evaluate, finance, and purchase a small business with guided tools in one place.",
+    openGraph: {
+      siteName: "Crestview Platform",
+      title: locale === "es"
+        ? "Crestview Platform | Compra un negocio con confianza"
+        : "Crestview Platform | How to Buy a Business",
+    },
   });
 }
 

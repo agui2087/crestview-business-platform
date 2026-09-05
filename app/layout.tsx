@@ -4,11 +4,11 @@ import "./globals.css";
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.crestviewplatform.com"),
   title: {
-    default: "Crestview | Business ownership, made clearer",
-    template: "%s | Crestview",
+    default: "Crestview Platform | Buy a Business with Confidence",
+    template: "%s | Crestview Platform",
   },
   description:
-    "Learn how to buy a small business, explore opportunities, complete due diligence, compare financing, and manage your acquisition in one guided platform.",
+    "Crestview Platform helps first-time and experienced buyers find, evaluate, finance, and purchase a small business with guided tools in one place.",
   keywords: [
     "how to buy a business",
     "buying a business for beginners",
@@ -16,6 +16,7 @@ export const metadata: Metadata = {
     "business due diligence checklist",
     "business acquisition financing",
     "small business valuation",
+    "Crestview Platform",
   ],
   icons: {
     icon: [
@@ -26,7 +27,7 @@ export const metadata: Metadata = {
     apple: "/crestview-favicon.svg",
   },
   openGraph: {
-    title: "Crestview | Find. Evaluate. Acquire.",
+    title: "Crestview Platform | Find. Evaluate. Acquire.",
     description:
       "Learn how to buy a business and move from search through evaluation, financing, due diligence, and acquisition.",
     images: [
@@ -34,13 +35,13 @@ export const metadata: Metadata = {
         url: "/og.png",
         width: 1731,
         height: 909,
-        alt: "Crestview business acquisition platform",
+        alt: "Crestview Platform for buying and operating a business",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Crestview | Find. Evaluate. Acquire.",
+    title: "Crestview Platform | Find. Evaluate. Acquire.",
     description:
       "Learn how to buy a business and move from search through evaluation, financing, due diligence, and acquisition.",
     images: ["/og.png"],
@@ -58,7 +59,8 @@ export default function RootLayout({
       {
         "@type": "Organization",
         "@id": "https://www.crestviewplatform.com/#organization",
-        name: "Crestview",
+        name: "Crestview Platform",
+        alternateName: "Crestview",
         url: "https://www.crestviewplatform.com",
         description:
           "A business operating platform for finding, evaluating, acquiring, and operating small businesses.",
@@ -68,7 +70,8 @@ export default function RootLayout({
         "@type": "WebSite",
         "@id": "https://www.crestviewplatform.com/#website",
         url: "https://www.crestviewplatform.com",
-        name: "Crestview",
+        name: "Crestview Platform",
+        alternateName: "Crestview",
         publisher: {
           "@id": "https://www.crestviewplatform.com/#organization",
         },

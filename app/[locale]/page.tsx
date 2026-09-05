@@ -8,9 +8,11 @@ import { localizedPublicMetadata } from "@/lib/seo";
 export async function generateMetadata({ params }: PageProps<"/[locale]">): Promise<Metadata> {
   const { locale } = await params;
   return localizedPublicMetadata(locale === "es" ? "es" : "en", "", {
-    title: locale === "es"
-      ? "Crestview Platform | Compra un negocio con confianza"
-      : "Crestview Platform | How to Buy a Business",
+    title: {
+      absolute: locale === "es"
+        ? "Crestview Platform | Compra un negocio con confianza"
+        : "Crestview Platform | How to Buy a Business",
+    },
     description: locale === "es"
       ? "Crestview Platform ayuda a compradores a encontrar, evaluar, financiar y comprar una pequeña empresa con herramientas guiadas en un solo lugar."
       : "Crestview Platform helps first-time and experienced buyers find, evaluate, finance, and purchase a small business with guided tools in one place.",

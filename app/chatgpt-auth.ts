@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { isLocalAuthenticationAllowed } from "@/lib/auth-environment";
 
 export type ChatGPTUser = {
   displayName: string;
@@ -33,6 +34,7 @@ export async function getChatGPTUser(): Promise<ChatGPTUser | null> {
         source: "supabase",
       };
     }
+    if (!isLocalAuthenticationAllowed()) return null;
     const localCookie = (await cookies()).get("crestview_local_user")?.value;
     if (!localCookie) return null;
     try {

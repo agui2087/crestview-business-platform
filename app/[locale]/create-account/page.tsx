@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { Brand } from "@/components/brand";
 import { LocalAuth } from "@/components/local-auth";
 import { SupabaseAuth } from "@/components/supabase-auth";
-import { getChatGPTUser, chatGPTSignInHref, isStandaloneRequest } from "@/app/chatgpt-auth";
+import { isStandaloneRequest } from "@/app/chatgpt-auth";
 import { isLocale } from "@/lib/i18n";
 import { isSupabaseConfigured } from "@/lib/supabase/server";
-import { createProfile } from "./actions";
 import { isLocalAuthenticationAllowed } from "@/lib/auth-environment";
 
 export const metadata: Metadata = { title: "Create your Crestview account" };
@@ -34,8 +33,11 @@ export default async function CreateAccountPage({ params }: { params: Promise<{ 
       </main>
     );
   }
-  const user = await getChatGPTUser();
-  if (!user) redirect(await chatGPTSignInHref(`/${locale}/create-account`));
+  const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+  const siteUrl = configuredSiteUrl?.startsWith("https://")
+    ? configuredSiteUrl.replace(/\/$/, "")
+    : "https://www.crestviewplatform.com";
+  const secureSignInUrl = `${siteUrl}/${locale}/sign-in?return_to=${encodeURIComponent(`/${locale}/dashboard`)}`;
 
   return (
     <main className="auth-page">
@@ -48,19 +50,11 @@ export default async function CreateAccountPage({ params }: { params: Promise<{ 
       </aside>
       <section className="auth-main" aria-labelledby="create-account-title">
         <div className="auth-card">
-          <span className="mini-label">One last step</span>
-          <h1 id="create-account-title">Create your Crestview profile</h1>
-          <p className="auth-card__intro">You are securely signed in as {user.email}.</p>
-          <form action={createProfile}>
-            <input type="hidden" name="locale" value={locale} />
-            <div className="field">
-              <label htmlFor="displayName">Your name</label>
-              <input id="displayName" name="displayName" autoComplete="name" defaultValue={user.fullName ?? ""} placeholder="Geovannia Flores" minLength={2} maxLength={80} required />
-              <small>This name appears throughout Crestview, including personalized broker request drafts and your account profile.</small>
-            </div>
-            <div className="account-note"><span aria-hidden="true">i</span><p>You can change your display name later in Settings. Crestview will never add it to a message without showing you the complete draft first.</p></div>
-            <button className="button button--primary auth-submit" type="submit">Create account and continue</button>
-          </form>
+          <span className="mini-label">Secure Crestview account</span>
+          <h1 id="create-account-title">Continue on Crestview</h1>
+          <p className="auth-card__intro">Buyer and broker accounts now use Crestview&apos;s secure, unified sign-in system.</p>
+          <div className="account-note"><span aria-hidden="true">i</span><p>Your listings, saved opportunities, messages, and documents stay connected to one account on the official Crestview domain.</p></div>
+          <a className="button button--primary auth-submit" href={secureSignInUrl}>Continue securely</a>
         </div>
       </section>
     </main>

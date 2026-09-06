@@ -44,6 +44,12 @@ Decision: replace application-level email matching with the database-backed `pla
 
 Reason: email is a mutable communication attribute and should not be an authorization key. Database roles provide a central and auditable source of truth.
 
+## 2026-09-06 — One production identity system
+
+Decision: retire the legacy ChatGPT-hosted profile write to Cloudflare D1. Standalone Crestview accounts continue to use Supabase Auth and `public.profiles`; legacy embedded account entry now hands users off to the canonical Crestview sign-in.
+
+Reason: maintaining two email- and UUID-keyed profile stores creates inconsistent roles, preferences, and ownership. One canonical identity prevents users from receiving different account state depending on where they entered the product.
+
 ## 2026-09-06 — Document content validation
 
 Decision: validate file signatures in addition to browser-supplied MIME types before storing uploads or replacements.

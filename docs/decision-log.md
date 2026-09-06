@@ -43,3 +43,9 @@ Reason: a shared design system can span products, but domain workflows and compl
 Decision: replace application-level email matching with the database-backed `platform_administrators` role. Migration `0020` preserves the original owner's access once, while future grants and revocations require an active administrator.
 
 Reason: email is a mutable communication attribute and should not be an authorization key. Database roles provide a central and auditable source of truth.
+
+## 2026-09-06 — Document content validation
+
+Decision: validate file signatures in addition to browser-supplied MIME types before storing uploads or replacements.
+
+Reason: a filename extension and MIME label can be forged. Signature checks reject common renamed or malformed files before they enter the confidential document vault; malware scanning remains a separate production gate.

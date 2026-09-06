@@ -7,6 +7,7 @@ import { getCrestviewUser } from "@/lib/current-user";
 import { isLocale } from "@/lib/i18n";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { addDealRoomDocument, advanceInquiry, createDocumentRequest, decideFinancialAccess, reportMarketplaceItem, requestFinancialAccess, resolveDocumentRequest, sendMessage, sendNda, signNda } from "../../marketplace/actions";
+import { allowedBrokerTransitions } from "@/lib/deal-workflow-policy";
 
 export const metadata: Metadata = { title: "Secure deal workspace" };
 
@@ -296,11 +297,11 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
         </section>
         <div className="deal-bottom-grid">
           <details className="panel deal-secondary-panel" id="deal-activity"><summary><span><strong>Activity history</strong><small>{workspace.events.length} recorded update{workspace.events.length === 1 ? "" : "s"}</small></span><b>View</b></summary><div className="deal-timeline">{workspace.events.map((event) => <article key={event.id}><span>✓</span><div><strong>{event.to_status.replaceAll("_", " ")}</strong><p>{event.note ?? "Deal status updated."}</p><small>{new Date(event.created_at).toLocaleString()}</small></div></article>)}</div></details>
-          <section className="panel" id="deal-stage"><div className="panel__header"><h2>Move the deal forward</h2></div><p className="panel-empty">Keep the stage current so both participants know what happens next.</p>{!workspace.isDemo && <form className="status-control" action={advanceInquiry}>
+          {!workspace.isBuyer && !workspace.isDemo && allowedBrokerTransitions(effectiveStatus).length > 0 && <section className="panel" id="deal-stage"><div className="panel__header"><h2>Move the deal forward</h2></div><p className="panel-empty">Keep the stage current so both participants know what happens next.</p><form className="status-control" action={advanceInquiry}>
             <input type="hidden" name="locale" value={locale} /><input type="hidden" name="inquiry_id" value={id} />
-            <select name="status">{dealStages.slice(1).map(([key,label]) => <option value={key} key={key}>{label}</option>)}</select>
+            <select name="status">{allowedBrokerTransitions(effectiveStatus).map((key) => <option value={key} key={key}>{dealStages.find(([stage]) => stage === key)?.[1] ?? key.replaceAll("_", " ")}</option>)}</select>
             <button className="button button--primary" type="submit">Update stage</button>
-          </form>}</section>
+          </form></section>}
         </div>
         {!workspace.isDemo && <details className="trust-report">
           <summary>Report a concern about this listing or participant</summary>

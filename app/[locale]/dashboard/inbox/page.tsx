@@ -115,11 +115,11 @@ export default async function InboxPage({ params, searchParams }: PageProps<"/[l
                 <textarea name="body" placeholder="Write a secure message…" required />
                 <button className="button button--primary" type="submit">Send message</button>
               </form>
-              <form className="status-control" action={advanceInquiry}>
+              {isBroker && <form className="status-control" action={advanceInquiry}>
                 <input type="hidden" name="locale" value={locale} /><input type="hidden" name="inquiry_id" value={featured.id} />
                 <select name="status"><option value="screening">Begin screening</option><option value="approved">Approve buyer</option><option value="declined">Decline request</option></select>
                 <button className="button button--light" type="submit">Update status</button>
-              </form>
+              </form>}
             </>}
           </section>
         </div>

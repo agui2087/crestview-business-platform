@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { isLocale } from "@/lib/i18n";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { canBrokerAdvanceDeal, dealStatuses } from "@/lib/deal-workflow-policy";
 
 const listingSchema = z.object({
   title: z.string().trim().min(5).max(140),
@@ -318,10 +319,14 @@ export async function sendMessage(formData: FormData) {
 
 export async function advanceInquiry(formData: FormData) {
   const { locale, supabase, user } = await context(formData);
+  await requireRole(locale, supabase, user.id, "broker");
   const inquiryId = z.string().uuid().parse(formData.get("inquiry_id"));
-  const status = z.enum(["screening","approved","declined","nda_sent","nda_signed","document_review","meeting","offer","closed"]).parse(formData.get("status"));
-  const { data: inquiry } = await supabase.from("deal_inquiries").select("buyer_id,broker_id,status").eq("id", inquiryId).or(`buyer_id.eq.${user.id},broker_id.eq.${user.id}`).maybeSingle();
+  const status = z.enum(dealStatuses).parse(formData.get("status"));
+  const { data: inquiry } = await supabase.from("deal_inquiries").select("buyer_id,broker_id,status").eq("id", inquiryId).eq("broker_id", user.id).maybeSingle();
   if (!inquiry) redirect(`/${locale}/dashboard/inbox?error=forbidden`);
+  if (!canBrokerAdvanceDeal(inquiry.status, status)) {
+    redirect(`/${locale}/dashboard/deals/${inquiryId}?error=invalid_stage`);
+  }
   await Promise.all([
     supabase.from("deal_inquiries").update({ status, updated_at: new Date().toISOString() }).eq("id", inquiryId),
     supabase.from("deal_status_events").insert({ inquiry_id: inquiryId, actor_id: user.id, from_status: inquiry.status, to_status: status }),

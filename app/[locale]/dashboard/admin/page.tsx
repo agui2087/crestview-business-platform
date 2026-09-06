@@ -16,9 +16,10 @@ type Summary = {
 
 export default async function AdminPage({ params }: { params: Promise<{ locale:string }> }) {
   const { locale } = await params; if (!isLocale(locale)) notFound();
-  const user = await getCrestviewUser(locale);
-  if (user.email.toLowerCase() !== "agui2087@outlook.com") redirect(`/${locale}/dashboard`);
+  await getCrestviewUser(locale);
   const supabase = await createSupabaseServerClient();
+  const { data: isAdmin, error: authorizationError } = await supabase.rpc("is_platform_admin");
+  if (authorizationError || !isAdmin) redirect(`/${locale}/dashboard`);
   const { data, error } = await supabase.rpc("platform_admin_summary");
   if (error) throw new Error("Admin information could not be loaded.");
   const summary = data as Summary;

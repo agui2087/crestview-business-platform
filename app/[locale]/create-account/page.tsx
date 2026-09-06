@@ -7,6 +7,7 @@ import { getChatGPTUser, chatGPTSignInHref, isStandaloneRequest } from "@/app/ch
 import { isLocale } from "@/lib/i18n";
 import { isSupabaseConfigured } from "@/lib/supabase/server";
 import { createProfile } from "./actions";
+import { isLocalAuthenticationAllowed } from "@/lib/auth-environment";
 
 export const metadata: Metadata = { title: "Create your Crestview account" };
 export const dynamic = "force-dynamic";
@@ -27,7 +28,7 @@ export default async function CreateAccountPage({ params }: { params: Promise<{ 
             <span className="mini-label">Your account</span>
             <h1 id="local-create-title">Create your Crestview account</h1>
             <p className="auth-card__intro">Create your account directly with Crestview and keep your acquisition workspace connected.</p>
-            {isSupabaseConfigured() ? <SupabaseAuth initialMode="create" locale={locale} /> : <LocalAuth initialMode="create" returnTo={`/${locale}/dashboard`} />}
+            {isSupabaseConfigured() ? <SupabaseAuth initialMode="create" locale={locale} /> : isLocalAuthenticationAllowed() ? <LocalAuth initialMode="create" returnTo={`/${locale}/dashboard`} /> : <p className="account-note">Account creation is temporarily unavailable because secure authentication is not configured.</p>}
           </div>
         </section>
       </main>

@@ -1,5 +1,6 @@
 import { getChatGPTUser } from "@/app/chatgpt-auth";
 import { allowedDocumentTypes, documentCategories, getDocumentStorage, insertDocument, listVault, maxDocumentBytes, ownerFolder, ownerKey, recordActivity, safeName, validCategory } from "@/lib/document-vault";
+import { validateUploadedDocument } from "@/lib/document-security";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,7 @@ export async function POST(request: Request) {
     if (!(file instanceof File)) return Response.json({ error: "Choose a file to upload." }, { status: 400 });
     if (!allowedDocumentTypes.has(file.type)) return Response.json({ error: "That file type is not supported." }, { status: 400 });
     if (file.size > maxDocumentBytes) return Response.json({ error: "Files must be 10 MB or smaller." }, { status: 400 });
+    if (!(await validateUploadedDocument(file))) return Response.json({ error: "The file contents do not match the selected file type." }, { status: 400 });
     const owner = ownerKey(user.email); const id = crypto.randomUUID(); const name = safeName(file.name);
     uploadedKey = `${ownerFolder(owner)}/${id}/${name}`;
     const storage = getDocumentStorage();

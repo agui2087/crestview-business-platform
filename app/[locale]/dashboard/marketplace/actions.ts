@@ -110,8 +110,14 @@ export async function createListing(formData: FormData) {
   if (publishing && (!(ndaFile instanceof File) || ndaFile.size === 0 || !ndaAttested)) {
     redirect(`/${locale}/dashboard/listings?new=1&error=nda_required#new-listing`);
   }
-  if (ndaFile instanceof File && ndaFile.size > 0 && (ndaFile.type !== "application/pdf" || ndaFile.size > 10 * 1024 * 1024)) {
-    redirect(`/${locale}/dashboard/listings?new=1&error=nda_file#new-listing`);
+  if (ndaFile instanceof File && ndaFile.size > 0) {
+    if (
+      ndaFile.type !== "application/pdf" ||
+      ndaFile.size > 10 * 1024 * 1024 ||
+      !(await validateUploadedDocument(ndaFile))
+    ) {
+      redirect(`/${locale}/dashboard/listings?new=1&error=nda_file#new-listing`);
+    }
   }
   if (publishing) {
     const { count } = await supabase.from("marketplace_listings")
@@ -156,7 +162,10 @@ export async function createListing(formData: FormData) {
       contentType: "application/pdf",
       upsert: false,
     });
-    if (uploadError) redirect(`/${locale}/dashboard/listings?error=nda_upload`);
+    if (uploadError) {
+      await supabase.from("marketplace_listings").delete().eq("id", listing.id).eq("broker_id", user.id);
+      redirect(`/${locale}/dashboard/listings?error=nda_upload`);
+    }
   }
   if (ndaBody || ndaStoragePath) {
     const { error: ndaError } = await supabase.from("listing_nda_templates").insert({
@@ -168,7 +177,11 @@ export async function createListing(formData: FormData) {
       auto_send: formData.get("auto_send_nda") === "on",
       broker_attested: ndaAttested,
     });
-    if (ndaError) redirect(`/${locale}/dashboard/listings?error=nda`);
+    if (ndaError) {
+      if (ndaStoragePath) await supabase.storage.from("deal-files").remove([ndaStoragePath]);
+      await supabase.from("marketplace_listings").delete().eq("id", listing.id).eq("broker_id", user.id);
+      redirect(`/${locale}/dashboard/listings?error=nda`);
+    }
   }
   const qualityScore = Math.min(100,
     30

@@ -8,6 +8,7 @@ import { z } from "zod";
 import { isLocale } from "@/lib/i18n";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { canBrokerAdvanceDeal, dealStatuses } from "@/lib/deal-workflow-policy";
+import { validateUploadedDocument } from "@/lib/document-security";
 
 const listingSchema = z.object({
   title: z.string().trim().min(5).max(140),
@@ -541,6 +542,7 @@ export async function resolveDocumentRequest(formData: FormData) {
 
 export async function addDealRoomDocument(formData: FormData) {
   const { locale, supabase, user } = await context(formData);
+  await requireRole(locale, supabase, user.id, "broker");
   const inquiryId = z.string().uuid().parse(formData.get("inquiry_id"));
   const { data: inquiry } = await supabase.from("deal_inquiries").select("buyer_id,status,financial_access_status").eq("id", inquiryId).eq("broker_id", user.id).maybeSingle();
   if (!inquiry) redirect(`/${locale}/dashboard/deals/${inquiryId}?error=forbidden`);
@@ -548,7 +550,9 @@ export async function addDealRoomDocument(formData: FormData) {
   const accessLevel = z.enum(["nda_signed","approved","broker_only"]).parse(formData.get("access_level"));
   const category = z.string().trim().min(2).max(80).parse(formData.get("category"));
   const externalUrlRaw = String(formData.get("external_url") ?? "").trim();
-  const externalUrl = externalUrlRaw ? z.string().url().parse(externalUrlRaw) : null;
+  const externalUrl = externalUrlRaw
+    ? z.string().url().refine((value) => new URL(value).protocol === "https:").parse(externalUrlRaw)
+    : null;
   const requestId = z.string().uuid().nullable().catch(null).parse(formData.get("request_id"));
   const documentFile = formData.get("document_file");
   let storagePath: string | null = null;
@@ -561,7 +565,11 @@ export async function addDealRoomDocument(formData: FormData) {
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ]);
-    if (!allowedTypes.has(documentFile.type) || documentFile.size > 20 * 1024 * 1024) {
+    if (
+      !allowedTypes.has(documentFile.type) ||
+      documentFile.size > 20 * 1024 * 1024 ||
+      !(await validateUploadedDocument(documentFile))
+    ) {
       redirect(`/${locale}/dashboard/deals/${inquiryId}?error=document_file`);
     }
     const safeName = documentFile.name.replace(/[^a-zA-Z0-9._-]/g, "-").slice(-100);
@@ -586,7 +594,10 @@ export async function addDealRoomDocument(formData: FormData) {
       access_level: accessLevel,
       permission_note: accessLevel === "approved" ? "Buyer access requires broker approval" : accessLevel === "broker_only" ? "Broker only" : "Available after NDA",
     }).select("id").single();
-  if (documentError || !document) redirect(`/${locale}/dashboard/deals/${inquiryId}?error=document_save`);
+  if (documentError || !document) {
+    if (storagePath) await supabase.storage.from("deal-files").remove([storagePath]);
+    redirect(`/${locale}/dashboard/deals/${inquiryId}?error=document_save`);
+  }
   await Promise.all([
     supabase.from("marketplace_audit_events").insert({ actor_id: user.id, inquiry_id: inquiryId, event_type: "document_added", details: { title, category, access_level: accessLevel } }),
     supabase.from("deal_status_events").insert({ inquiry_id: inquiryId, actor_id: user.id, to_status: inquiry.status, note: `${title} was added to the secure deal room.` }),

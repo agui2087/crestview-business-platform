@@ -7,6 +7,7 @@ import {
   type ProductCode,
 } from "@/lib/stripe/config";
 import { getStripe } from "@/lib/stripe/server";
+import { createRequestId, logOperationalEvent } from "@/lib/observability";
 
 export const runtime = "nodejs";
 
@@ -138,6 +139,7 @@ async function processSubscription(event: Stripe.Event, subscription: Stripe.Sub
 }
 
 export async function POST(request: Request) {
+  const requestId = request.headers.get("x-request-id") ?? createRequestId();
   const signature = request.headers.get("stripe-signature");
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!signature || !webhookSecret) {
@@ -151,7 +153,8 @@ export async function POST(request: Request) {
       signature,
       webhookSecret,
     );
-  } catch {
+  } catch (error) {
+    logOperationalEvent({ event: "stripe.signature_rejected", level: "warn", requestId, route: "/api/stripe/webhook", error });
     return NextResponse.json({ error: "Invalid webhook signature." }, { status: 400 });
   }
 
@@ -170,7 +173,15 @@ export async function POST(request: Request) {
         await applyBillingEvent(event);
     }
     return NextResponse.json({ received: true });
-  } catch {
+  } catch (error) {
+    logOperationalEvent({
+      event: "stripe.webhook_failed",
+      level: "error",
+      requestId,
+      route: "/api/stripe/webhook",
+      error,
+      details: { stripeEventId: event.id, stripeEventType: event.type },
+    });
     return NextResponse.json({ error: "Webhook processing failed." }, { status: 500 });
   }
 }

@@ -1,13 +1,13 @@
 import { getChatGPTUser } from "@/app/chatgpt-auth";
-import { allowedDocumentTypes, deleteDocument, findOwnedDocument, getDocumentStorage, maxDocumentBytes, ownerFolder, ownerKey, recordActivity, safeName, updateDocument, validCategory } from "@/lib/document-vault";
+import { allowedDocumentTypes, deleteDocument, findOwnedDocument, getDocumentStorage, maxDocumentBytes, ownerFolder, recordActivity, safeName, updateDocument, validCategory } from "@/lib/document-vault";
 import { validateUploadedDocument } from "@/lib/document-security";
 
 export const dynamic = "force-dynamic";
 type Context = { params: Promise<{ id: string }> };
 
 async function owned(context: Context) {
-  const user = await getChatGPTUser(); if (!user?.email) return null;
-  const owner = ownerKey(user.email); const { id } = await context.params;
+  const user = await getChatGPTUser(); if (!user?.id) return null;
+  const owner = user.id; const { id } = await context.params;
   const document = await findOwnedDocument(owner, id); return document ? { owner, document } : null;
 }
 
@@ -25,7 +25,7 @@ export async function PATCH(request: Request, context: Context) {
     const match = await owned(context); if (!match) return Response.json({ error: "Document not found." }, { status: 404 });
     const body = await request.json() as { originalName?: string; category?: string; dealName?: string; fiscalYear?: string };
     const nextName = body.originalName ? safeName(body.originalName) : match.document.originalName;
-    await updateDocument(match.document.id, { originalName: nextName, category: validCategory(body.category ?? match.document.category), dealName: body.dealName === undefined ? match.document.dealName : safeName(body.dealName).slice(0, 100) || null, fiscalYear: body.fiscalYear === undefined ? match.document.fiscalYear : body.fiscalYear.replace(/[^0-9]/g, "").slice(0, 4) || null });
+    await updateDocument(match.owner, match.document.id, { originalName: nextName, category: validCategory(body.category ?? match.document.category), dealName: body.dealName === undefined ? match.document.dealName : safeName(body.dealName).slice(0, 100) || null, fiscalYear: body.fiscalYear === undefined ? match.document.fiscalYear : body.fiscalYear.replace(/[^0-9]/g, "").slice(0, 4) || null });
     await recordActivity(match.owner, match.document.id, "updated", nextName); return Response.json({ ok: true });
   } catch { return Response.json({ error: "Document could not be updated." }, { status: 503 }); }
 }
@@ -39,7 +39,7 @@ export async function PUT(request: Request, context: Context) {
     if (!(await validateUploadedDocument(file))) return Response.json({ error: "The file contents do not match the selected file type." }, { status: 400 });
     const name = safeName(file.name); nextKey = `${ownerFolder(match.owner)}/${match.document.id}/${crypto.randomUUID()}-${name}`;
     const storage = getDocumentStorage(); const upload = await storage.upload(nextKey, file, { contentType: file.type, upsert: false }); if (upload.error) throw upload.error;
-    await updateDocument(match.document.id, { storageKey: nextKey, originalName: name, contentType: file.type, sizeBytes: file.size });
+    await updateDocument(match.owner, match.document.id, { storageKey: nextKey, originalName: name, contentType: file.type, sizeBytes: file.size });
     await storage.remove([match.document.storageKey]);
     await recordActivity(match.owner, match.document.id, "replaced", name); return Response.json({ ok: true });
   } catch {
@@ -52,6 +52,6 @@ export async function DELETE(_: Request, context: Context) {
   try {
     const match = await owned(context); if (!match) return Response.json({ error: "Document not found." }, { status: 404 });
     const removal = await getDocumentStorage().remove([match.document.storageKey]); if (removal.error) throw removal.error;
-    await deleteDocument(match.document.id); await recordActivity(match.owner, null, "deleted", match.document.originalName); return Response.json({ ok: true });
+    await deleteDocument(match.owner, match.document.id); await recordActivity(match.owner, null, "deleted", match.document.originalName); return Response.json({ ok: true });
   } catch { return Response.json({ error: "Document could not be deleted." }, { status: 503 }); }
 }

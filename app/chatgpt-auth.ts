@@ -5,6 +5,7 @@ import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase
 import { isLocalAuthenticationAllowed } from "@/lib/auth-environment";
 
 export type ChatGPTUser = {
+  id: string | null;
   displayName: string;
   email: string;
   fullName: string | null;
@@ -28,6 +29,7 @@ export async function getChatGPTUser(): Promise<ChatGPTUser | null> {
           ? user.user_metadata.display_name
           : null;
       return {
+        id: user.id,
         displayName: fullName ?? user.email,
         email: user.email,
         fullName,
@@ -41,6 +43,7 @@ export async function getChatGPTUser(): Promise<ChatGPTUser | null> {
       const parsed = JSON.parse(decodeURIComponent(localCookie)) as { email?: string; fullName?: string };
       if (!parsed.email || !parsed.fullName) return null;
       return {
+        id: null,
         displayName: parsed.fullName,
         email: parsed.email,
         fullName: parsed.fullName,
@@ -60,7 +63,7 @@ export async function getChatGPTUser(): Promise<ChatGPTUser | null> {
       ? safeDecodeURIComponent(encodedFullName)
       : null;
 
-  return { displayName: fullName ?? email, email, fullName, source: "chatgpt" };
+  return { id: null, displayName: fullName ?? email, email, fullName, source: "chatgpt" };
 }
 
 export async function requireChatGPTUser(returnTo: string): Promise<ChatGPTUser> {

@@ -61,7 +61,7 @@ export default async function ListingsPage({ params, searchParams }: PageProps<"
           <article><span>Buyer inquiries</span><strong>{inquiryCount}</strong></article>
           <article><span>Awaiting signature</span><strong>{awaitingSignatureCount}</strong></article>
         </div>
-        <div className="broker-flow">
+        <div className="broker-flow" aria-label="Broker listing workflow" tabIndex={0}>
           <span><strong>1</strong> Create the listing</span>
           <span><strong>2</strong> Add your standard NDA</span>
           <span><strong>3</strong> Review serious buyers</span>

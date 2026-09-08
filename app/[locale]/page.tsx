@@ -119,7 +119,7 @@ export default async function LandingPage({
 
               <article className="preview-card preview-card--score">
                 <div className="score-row">
-                  <div className="score-ring" aria-label="Score: 82 out of 100" />
+                  <div className="score-ring" role="img" aria-label="Score: 82 out of 100" />
                   <div className="score-copy">
                     <strong>
                       {locale === "en" ? "Explainable score" : "Puntaje explicable"}

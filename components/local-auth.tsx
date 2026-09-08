@@ -74,7 +74,7 @@ export function LocalAuth({ initialMode = "sign-in", returnTo = "/en/dashboard" 
 
   return (
     <div className="local-auth">
-      <div className="auth-tabs" role="tablist" aria-label="Account access">
+      <div className="auth-tabs" role="group" aria-label="Account access">
         <button className={`button ${mode === "sign-in" ? "button--primary is-active" : "button--light"}`} type="button" onClick={() => { setMode("sign-in"); setError(""); }}>Sign in</button>
         <button className={`button ${mode === "create" ? "button--primary is-active" : "button--light"}`} type="button" onClick={() => { setMode("create"); setError(""); }}>Create account</button>
       </div>

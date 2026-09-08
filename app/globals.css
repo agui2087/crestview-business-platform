@@ -146,6 +146,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .pricing-section__heading .eyebrow { margin-bottom:14px; }
 .pricing-section__heading h2 { max-width:720px; margin:0; font:400 clamp(2rem,4vw,3.5rem)/1.04 Georgia,"Times New Roman",serif; letter-spacing:-.05em; }
 .pricing-section__heading > p { margin:0; color:var(--muted); font-size:.83rem; line-height:1.65; }
+.pricing-band .pricing-section__heading > p,.pricing-band .pricing-disclaimer { color:#59675f; }
 .pricing-band { border-block:1px solid var(--line); background:#edf2ed; }
 .pricing-grid { display:grid; gap:16px; align-items:stretch; }
 .pricing-grid--two { grid-template-columns:repeat(2,minmax(0,1fr)); }
@@ -208,7 +209,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .preview-card--main { top: 42px; right: 0; padding: 24px; }
 .preview-card--score { left: 0; bottom: 36px; width: 58%; padding: 20px; }
 .preview-card__top { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-.mini-label { color: #7a857f; font-size: .69rem; font-weight: 780; letter-spacing: .08em; text-transform: uppercase; }
+.mini-label { color: #5e6b65; font-size: .69rem; font-weight: 780; letter-spacing: .08em; text-transform: uppercase; }
 .status-pill { padding: 6px 9px; border-radius: 99px; background: var(--brand-soft); color: var(--brand); font-size: .68rem; font-weight: 750; }
 .preview-card h3 { margin: 18px 0 5px; font-size: 1.15rem; letter-spacing: -.03em; }
 .preview-card__location { color: var(--muted); font-size: .78rem; }
@@ -396,6 +397,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .process-step p { margin: 0; color: #b8c8c0; font-size: .82rem; line-height: 1.6; }
 .cta-panel { display: flex; align-items: center; justify-content: space-between; gap: 40px; padding: 50px; border-radius: 24px; background: var(--brand-soft); }
 .cta-panel h2 { max-width: 670px; margin: 0; font-size: clamp(2rem,4vw,3.7rem); line-height: 1.04; letter-spacing: -.055em; }
+.footer__resources a { color:#596a62; }
 .footer { padding: 32px 0; border-top: 1px solid var(--line); }
 .footer__inner { display: flex; align-items: center; justify-content: space-between; gap: 24px; color: var(--muted); font-size: .76rem; }
 
@@ -1728,6 +1730,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .broker-next-step__decision form { justify-content:stretch; }
   .broker-next-step__decision form .button { flex:1 1 100%; justify-content:center; }
   .marketplace-flow,.broker-flow { display:flex; overflow-x:auto; background:transparent; border:0; border-radius:0; }
+  .marketplace-flow:focus-visible,.broker-flow:focus-visible { outline:3px solid var(--brand); outline-offset:3px; }
   .marketplace-flow > span,.broker-flow > span { min-width:185px; border:1px solid var(--line); border-radius:10px; }
   .broker-onboarding-strip { grid-template-columns:1fr; }
   .results-heading { align-items:flex-start; flex-direction:column; }

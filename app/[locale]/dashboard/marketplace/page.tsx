@@ -35,7 +35,7 @@ export default async function MarketplacePage({ params, searchParams }: PageProp
           <div><strong>Secure</strong><span>NDA-gated deal rooms</span></div>
           <div><strong>Connected</strong><span>Buyer and broker messaging</span></div>
         </div>
-        <div className="marketplace-flow" aria-label="How Crestview marketplace works">
+        <div className="marketplace-flow" aria-label="How Crestview marketplace works" tabIndex={0}>
           <span><strong>1</strong> Find a business</span>
           <span><strong>2</strong> Open and sign the NDA</span>
           <span><strong>3</strong> Request financial access</span>

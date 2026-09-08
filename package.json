@@ -11,7 +11,8 @@
     "lint": "eslint",
     "test": "node --experimental-strip-types --test lib/*.test.ts",
     "test:e2e": "playwright test",
-    "test:ci": "npm run typecheck && npm run lint && npm test && npm run build && npm run test:e2e",
+    "test:security": "npm audit --omit=dev --audit-level=high",
+    "test:ci": "npm run typecheck && npm run lint && npm run test:security && npm test && npm run build && npm run test:e2e",
     "typecheck": "next typegen && tsc --noEmit"
   },
   "dependencies": {
@@ -26,6 +27,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@cloudflare/vite-plugin": "1.37.1",
     "@cloudflare/workers-types": "4.20260702.1",
     "@playwright/test": "^1.63.0",

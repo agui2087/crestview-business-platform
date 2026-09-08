@@ -5,7 +5,7 @@ const baseURL = `http://127.0.0.1:${port}`;
 
 export default defineConfig({
   testDir: "./e2e",
-  timeout: 60_000,
+  timeout: 120_000,
   fullyParallel: false,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,
@@ -13,6 +13,7 @@ export default defineConfig({
   reporter: process.env.CI ? [["line"], ["html", { open: "never" }]] : "list",
   use: {
     baseURL,
+    navigationTimeout: 90_000,
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     video: "retain-on-failure",

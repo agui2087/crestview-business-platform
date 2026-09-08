@@ -9,11 +9,12 @@
 
 ## Monitoring
 
-1. Monitor `https://www.crestviewplatform.com/api/health` every five minutes from an external uptime monitor
-2. Alert when two consecutive checks fail or response time exceeds 2.5 seconds
-3. Search Vercel logs for structured events with `level=error`, especially `request.unhandled_error`, `stripe.webhook_failed`, and `health.database_failed`
-4. Review Stripe Workbench for failed deliveries daily and after every billing release
-5. Never copy raw customer documents, authorization headers, cookies, webhook signatures, or financial data into an incident ticket
+1. The `Production monitor` GitHub workflow checks application health, the database, both localized homepages, marketplace, and pricing every 15 minutes
+2. The monitor retries failures once, opens or updates a GitHub incident after two consecutive failures, and closes the incident automatically after recovery
+3. Treat response times above 2.5 seconds as failures; inspect the workflow summary to identify the affected route
+4. Search Vercel logs for structured events with `level=error`, especially `request.unhandled_error`, `stripe.webhook_failed`, and `health.database_failed`
+5. Review Stripe Workbench for failed deliveries daily and after every billing release
+6. Never copy raw customer documents, authorization headers, cookies, webhook signatures, or financial data into an incident ticket
 
 ## Database backups
 

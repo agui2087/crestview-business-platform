@@ -1,0 +1,93 @@
+name: Production monitor
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: crestview-production-monitor
+  cancel-in-progress: true
+
+jobs:
+  monitor:
+    if: github.repository == 'agui2087/crestview-business-platform'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - id: health
+        continue-on-error: true
+        run: node scripts/production-monitor.mjs
+      - name: Open or update incident
+        if: steps.health.outcome == 'failure'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const title = '[Production monitor] Crestview health check failed';
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100,
+            });
+            const existing = issues.find((issue) => issue.title === title && !issue.pull_request);
+            const body = [
+              'The automated production monitor failed twice in succession.',
+              '',
+              `Run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              '',
+              'Follow `docs/reliability-and-recovery-runbook.md` before resending Stripe events or changing production data.',
+            ].join('\n');
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+              });
+            }
+      - name: Close recovered incident
+        if: steps.health.outcome == 'success'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const title = '[Production monitor] Crestview health check failed';
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100,
+            });
+            for (const issue of issues.filter((item) => item.title === title && !item.pull_request)) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: `Production recovered. Health checks passed in run ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}.`,
+              });
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                state: 'closed',
+                state_reason: 'completed',
+              });
+            }
+      - name: Fail workflow when production is unhealthy
+        if: steps.health.outcome == 'failure'
+        run: exit 1

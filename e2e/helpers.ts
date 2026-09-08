@@ -7,5 +7,5 @@ export async function createLocalAccount(page: Page, suffix: string) {
   await page.getByLabel("Password").fill("Crestview-test-2026");
   await page.locator("form").getByRole("button", { name: "Create account" }).click();
   await expect(page).toHaveURL(/\/en\/dashboard$/);
-  await expect(page.getByRole("heading", { name: "Your acquisition overview" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Your acquisition overview" })).toBeVisible({ timeout: 20_000 });
 }

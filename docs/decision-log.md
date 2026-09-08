@@ -55,3 +55,9 @@ Reason: maintaining two email- and UUID-keyed profile stores creates inconsisten
 Decision: validate file signatures in addition to browser-supplied MIME types before storing uploads or replacements.
 
 Reason: a filename extension and MIME label can be forged. Signature checks reject common renamed or malformed files before they enter the confidential document vault; malware scanning remains a separate production gate.
+
+## 2026-09-08 — Automated production monitoring
+
+Decision: run a scheduled production monitor against health and representative public journeys, retry failures once, and manage a GitHub incident automatically until recovery.
+
+Reason: release-time verification does not detect later hosting, database, routing, or latency failures. A recurring, visible check provides a low-complexity operational alarm without logging customer data.

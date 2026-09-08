@@ -53,5 +53,5 @@ export async function MarketingHeader({ locale }: { locale: Locale }) {
 }
 
 export function MarketingFooter({ locale }: { locale: Locale }) {
-  return <footer className="footer"><div className="shell footer__inner"><Brand locale={locale} /><span>{labels[locale].footer}</span><nav aria-label={locale === "es" ? "Recursos" : "Resources"}><Link href={`/${locale}/guides`}>{locale === "es" ? "Guías para compradores" : "Business buyer guides"}</Link><Link href={`/${locale}/guides/tools`}>{locale === "es" ? "Calculadoras" : "Free calculators"}</Link><Link href={`/${locale}/real-estate`}>{locale === "es" ? "Bienes raíces beta" : "Real estate beta"}</Link></nav><span>© 2026 Crestview</span></div></footer>;
+  return <footer className="footer"><div className="shell footer__inner"><Brand locale={locale} /><span>{labels[locale].footer}</span><nav className="footer__resources" aria-label={locale === "es" ? "Recursos" : "Resources"}><Link href={`/${locale}/guides`}>{locale === "es" ? "Guías para compradores" : "Business buyer guides"}</Link><Link href={`/${locale}/guides/tools`}>{locale === "es" ? "Calculadoras" : "Free calculators"}</Link><Link href={`/${locale}/real-estate`}>{locale === "es" ? "Bienes raíces beta" : "Real estate beta"}</Link></nav><span>© 2026 Crestview</span></div></footer>;
 }

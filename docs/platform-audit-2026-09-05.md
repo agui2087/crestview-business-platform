@@ -51,6 +51,8 @@ The app sets frame, content-type, referrer, and permissions protections, but lac
 
 Recommendation: introduce CSP in report-only mode, fix violations, enforce it, add HSTS on the canonical domain, and add dependency scanning and secret detection to CI.
 
+Status update (September 8, 2026): remediated. HSTS is enforced, the reviewed Content Security Policy has moved from report-only to enforcement, high-severity production dependency auditing is part of the quality gate, and Gitleaks now scans full Git history on pull requests and main-branch releases.
+
 ### H4 — Administrator authorization is hard-coded to one email
 
 The admin page grants access by comparing the current email to a source-code literal. This is brittle, hard to audit, and not appropriate for delegated operations.
@@ -89,4 +91,3 @@ No enterprise claim or broad paid launch should occur until:
 4. Upload security and access-control tests pass
 5. Billing/webhook alerts and rollback procedures are operational
 6. At least one complete buyer and broker usability study is completed on desktop and mobile
-

@@ -19,7 +19,7 @@ export function SupabaseAuth({
 
   return (
     <div className="local-auth">
-      <div className="auth-tabs" role="tablist" aria-label="Account access">
+      <div className="auth-tabs" role="group" aria-label="Account access">
         <button className={`button ${mode === "sign-in" ? "button--primary is-active" : "button--light"}`} type="button" onClick={() => setMode("sign-in")}>Sign in</button>
         <button className={`button ${mode === "create" ? "button--primary is-active" : "button--light"}`} type="button" onClick={() => setMode("create")}>Create account</button>
       </div>

@@ -1,5 +1,23 @@
 import { expect, test } from "@playwright/test";
 
+test("building motion eases across scroll steps and settles in both directions", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name.startsWith("mobile"), "Mobile artwork is static.");
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/en");
+  const scene = page.locator("section[aria-labelledby='ownership-title']");
+  await expect.poll(() => scene.evaluate(el => el.style.getPropertyValue("--journey"))).toBe("0");
+  const firstFrame = await scene.evaluate(async el => {
+    document.documentElement.style.scrollBehavior = "auto";
+    scrollTo(0, el.getBoundingClientRect().top + scrollY + 225);
+    await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    return Number((el as HTMLElement).style.getPropertyValue("--journey"));
+  });
+  expect(firstFrame).toBeLessThan(0.95);
+  await expect.poll(() => scene.evaluate(el => Number(el.style.getPropertyValue("--journey")))).toBe(1);
+  await page.evaluate(() => scrollTo(0, 0));
+  await expect.poll(() => scene.evaluate(el => Number(el.style.getPropertyValue("--journey")))).toBe(0);
+});
+
 test("desktop scene stays pinned without leaving an empty scroll tail", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name.startsWith("mobile"), "Mobile uses a naturally flowing scene.");
   await page.setViewportSize({ width: 1440, height: 900 });

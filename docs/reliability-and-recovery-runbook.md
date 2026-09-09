@@ -42,3 +42,12 @@
 - One buyer and one broker smoke path load successfully
 - Stripe test webhook returns HTTP 200 after billing changes
 - A rollback target is identified before high-risk releases
+
+## Document security screening
+
+1. Keep `CLOUDMERSIVE_VIRUS_API_KEY` server-side and marked sensitive in Vercel; never expose it through a `NEXT_PUBLIC_` variable
+2. With the key configured, vault files, listing NDAs, and deal-room files are released only after the managed scanner returns a clean result
+3. Scanner timeouts, provider errors, and malformed responses fail closed; the new file is not released and an existing replacement remains unchanged
+4. Without the key, Crestview performs signature, executable, active-PDF, and antivirus-test checks and labels the result “File safety checked,” not “malware scanned”
+5. Review `document_security_events` for blocked files and provider outages without opening or copying customer documents
+6. Before enabling a third-party scanner in production, ensure Crestview's privacy disclosures and vendor terms cover transfer of uploaded customer files to the scanner

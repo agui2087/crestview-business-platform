@@ -67,3 +67,9 @@ Reason: release-time verification does not detect later hosting, database, routi
 Decision: enforce the reviewed Content Security Policy on every route and scan full Git history for secrets in the quality gate using the current Node 24-compatible Gitleaks action.
 
 Reason: report-only CSP cannot block injected content, and dependency auditing does not detect credentials committed to source control. These controls prevent two distinct classes of production exposure before merge.
+
+## 2026-09-08 — Document ingestion limits and safety screening
+
+Decision: apply the same pre-storage file safety checks to the personal vault, listing NDAs, and deal rooms, then require an atomic database reservation before every upload. Limit each user to 20 accepted uploads per hour, 250 stored documents, and 1 GB of document data.
+
+Reason: private storage and row-level authorization do not prevent disguised files, active PDF content, or resource exhaustion. Central limits keep concurrent requests from bypassing quotas, while the upload ledger preserves operational evidence. The built-in screen is intentionally labeled basic validation; Crestview must add a managed malware engine before making an enterprise-grade malware-scanning claim.

@@ -33,6 +33,7 @@ export default defineConfig({
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "",
       SUPABASE_SERVICE_ROLE_KEY: "",
       CRESTVIEW_ENABLE_LOCAL_AUTH: "true",
+      CRESTVIEW_PILOT_ENABLED: "true",
     },
   },
 });

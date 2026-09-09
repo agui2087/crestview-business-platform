@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Brand } from "@/components/brand";
 import { UserProvider } from "@/components/user-provider";
 import { LocaleSwitcher } from "@/components/locale-switcher";
+import { PilotEventTracker } from "@/components/pilot-event-tracker";
 import { chatGPTSignOutPath } from "@/app/chatgpt-auth";
 import { getCrestviewUser } from "@/lib/current-user";
 import type { Locale } from "@/lib/i18n";
@@ -17,6 +18,7 @@ const navItems = [
   ["tasks", "Tasks", "Tareas", "✓"],
   ["reports", "Reports", "Informes", "↗"],
   ["documents", "Documents", "Documentos", "▣"],
+  ["feedback", "Pilot feedback", "Comentarios del piloto", "✦"],
   ["workforce", "Workforce", "Personal", "♙"],
   ["real-estate", "Real estate beta", "Bienes raíces beta", "⌂"],
   ["plans", "Plans & billing", "Planes y facturación", "$"],
@@ -28,7 +30,7 @@ const navGroups = [
   { label: ["Explore", "Explorar"], slugs: ["marketplace", "opportunities", "lists"] },
   { label: ["Workspace", "Espacio de trabajo"], slugs: ["pipeline", "tasks", "documents", "reports"] },
   { label: ["Sell", "Vender"], slugs: ["listings", "workforce"] },
-  { label: ["Account", "Cuenta"], slugs: ["real-estate", "plans", "settings"] },
+  { label: ["Account", "Cuenta"], slugs: ["feedback", "real-estate", "plans", "settings"] },
 ] as const;
 
 type NavSlug = (typeof navItems)[number][0];
@@ -49,11 +51,13 @@ export async function PlatformShell({
   active: NavSlug;
   children: React.ReactNode;
 }) {
+  const pilotEnabled = process.env.CRESTVIEW_PILOT_ENABLED === "true";
   const user = await getCrestviewUser(locale);
   const roles = "accountRoles" in user ? user.accountRoles : ["buyer"];
   const isBroker = roles.includes("broker");
   const isBuyer = roles.includes("buyer") || roles.includes("advisor");
   const visible = (slug: NavSlug) => {
+    if (slug === "feedback") return pilotEnabled;
     if (slug === "listings") return isBroker;
     if (slug === "workforce") return isBroker || roles.includes("workforce");
     if (["opportunities", "lists", "pipeline"].includes(slug)) return isBuyer;
@@ -69,11 +73,12 @@ export async function PlatformShell({
   return (
     <UserProvider user={{ displayName: user.displayName, email: user.email }}>
     <main className="dashboard">
+      {pilotEnabled && <PilotEventTracker />}
       <aside className="sidebar">
         <div className="sidebar-header">
           <Brand locale={locale} />
           <details className="mobile-nav">
-            <summary>
+            <summary aria-label={locale === "es" ? "Abrir navegación del panel" : "Open dashboard navigation"}>
               <span>{locale === "es" ? "Menú" : "Menu"}</span>
               <span className="mobile-nav__icon" aria-hidden="true">☰</span>
             </summary>
@@ -83,6 +88,7 @@ export async function PlatformShell({
                   className={slug === active ? "is-active" : ""}
                   href={navHref(locale, slug)}
                   key={slug}
+                  aria-current={slug === active ? "page" : undefined}
                 >
                   <span className="nav-icon" aria-hidden="true">{icon}</span>
                   {locale === "es" ? spanish : english}
@@ -98,7 +104,7 @@ export async function PlatformShell({
               {group.slugs.filter(visible).map((slug) => {
                 const item = navItems.find(([candidate]) => candidate === slug)!;
                 return (
-                  <Link className={slug === active ? "is-active" : ""} href={navHref(locale, slug)} key={slug}>
+                  <Link className={slug === active ? "is-active" : ""} href={navHref(locale, slug)} key={slug} aria-current={slug === active ? "page" : undefined}>
                     <span className="nav-icon" aria-hidden="true">{item[3]}</span>
                     {locale === "es" ? item[2] : item[1]}
                   </Link>

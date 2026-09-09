@@ -12,15 +12,18 @@ import {
 } from "@/lib/stripe/config";
 import { hasValidOrigin, redirectToSignIn, stripeReturnUrl } from "@/lib/stripe/request";
 import { getStripe } from "@/lib/stripe/server";
+import { createRequestId, logOperationalEvent, reportOperationalEvent } from "@/lib/observability";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  const requestId = request.headers.get("x-request-id")?.slice(0, 120) ?? createRequestId();
   const formData = await request.formData();
   const localeValue = String(formData.get("locale") ?? "en");
   const locale = isLocale(localeValue) ? localeValue : "en";
 
   if (!hasValidOrigin(request)) {
+    logOperationalEvent({ event: "security.origin_rejected", level: "warn", requestId, route: "/api/stripe/checkout" });
     return NextResponse.redirect(stripeReturnUrl(request, locale, { billing_error: "request" }), 303);
   }
 
@@ -100,8 +103,10 @@ export async function POST(request: Request) {
     );
 
     if (!session.url) throw new Error("Stripe did not return a Checkout URL.");
+    logOperationalEvent({ event: "stripe.checkout_created", requestId, route: "/api/stripe/checkout", details: { productCode, quantity } });
     return NextResponse.redirect(session.url, 303);
-  } catch {
+  } catch (error) {
+    await reportOperationalEvent({ event: "stripe.checkout_failed", level: "error", requestId, route: "/api/stripe/checkout", error, details: { productCode: productCodeValue } });
     return NextResponse.redirect(stripeReturnUrl(request, locale, { billing_error: "checkout" }), 303);
   }
 }

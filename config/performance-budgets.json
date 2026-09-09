@@ -1,0 +1,14 @@
+{
+  "public": [
+    { "name": "homepage", "path": "/en", "requests": 60, "concurrency": 12, "p95Ms": 1200, "maxErrorRate": 0.01 },
+    { "name": "public-listings", "path": "/en/listings", "requests": 80, "concurrency": 16, "p95Ms": 1500, "maxErrorRate": 0.01 },
+    { "name": "listing-search", "path": "/en/listings?industry=Construction", "requests": 80, "concurrency": 16, "p95Ms": 1500, "maxErrorRate": 0.01 },
+    { "name": "health", "path": "/api/health", "requests": 40, "concurrency": 8, "p95Ms": 750, "maxErrorRate": 0.01 }
+  ],
+  "authenticated": [
+    { "name": "dashboard", "path": "/en/dashboard", "requests": 50, "concurrency": 10, "p95Ms": 1800, "maxErrorRate": 0.01 },
+    { "name": "marketplace-dashboard", "path": "/en/dashboard/marketplace", "requests": 60, "concurrency": 12, "p95Ms": 1800, "maxErrorRate": 0.01 },
+    { "name": "document-vault", "path": "/en/dashboard/documents", "requests": 40, "concurrency": 8, "p95Ms": 1800, "maxErrorRate": 0.01 }
+  ],
+  "upload": { "name": "document-upload", "requests": 6, "concurrency": 2, "p95Ms": 3500, "maxErrorRate": 0 }
+}

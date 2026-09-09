@@ -1,0 +1,90 @@
+name: Encrypted backup and restore drill
+
+on:
+  schedule:
+    - cron: "35 9 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: crestview-backup-restore
+  cancel-in-progress: false
+
+jobs:
+  backup-and-restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: restore_operator
+          POSTGRES_PASSWORD: restore_test_only
+          POSTGRES_DB: crestview_restore
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U restore_operator -d crestview_restore"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      RESTORE_SUPABASE_URL: ${{ secrets.RESTORE_SUPABASE_URL }}
+      RESTORE_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.RESTORE_SUPABASE_SERVICE_ROLE_KEY }}
+      CRESTVIEW_BACKUP_PASSPHRASE: ${{ secrets.CRESTVIEW_BACKUP_PASSPHRASE }}
+      PGPASSWORD: restore_test_only
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --omit=dev
+      - name: Require backup credentials
+        run: |
+          test -n "$SUPABASE_DB_URL"
+          test -n "$NEXT_PUBLIC_SUPABASE_URL"
+          test -n "$SUPABASE_SERVICE_ROLE_KEY"
+          test -n "$RESTORE_SUPABASE_URL"
+          test -n "$RESTORE_SUPABASE_SERVICE_ROLE_KEY"
+          test -n "$CRESTVIEW_BACKUP_PASSPHRASE"
+          test "$NEXT_PUBLIC_SUPABASE_URL" != "$RESTORE_SUPABASE_URL"
+      - name: Create logical database backup
+        run: pg_dump "$SUPABASE_DB_URL" --format=custom --no-owner --no-acl --schema=public --schema=auth --file=crestview-database.dump
+      - name: Restore database into isolated PostgreSQL
+        run: |
+          psql postgresql://restore_operator@127.0.0.1:5432/crestview_restore --set ON_ERROR_STOP=1 --command 'create schema if not exists extensions; create extension if not exists pgcrypto with schema extensions; create extension if not exists "uuid-ossp" with schema extensions;'
+          pg_restore --dbname=postgresql://restore_operator@127.0.0.1:5432/crestview_restore --no-owner --no-acl --exit-on-error crestview-database.dump
+      - name: Verify critical restored records and schema
+        run: |
+          psql postgresql://restore_operator@127.0.0.1:5432/crestview_restore --set ON_ERROR_STOP=1 --command "select to_regclass('public.profiles'), to_regclass('public.marketplace_listings'), to_regclass('public.deal_inquiries'), to_regclass('public.vault_documents'), to_regclass('public.billing_entitlements'), to_regclass('public.stripe_webhook_events');"
+          psql postgresql://restore_operator@127.0.0.1:5432/crestview_restore --set ON_ERROR_STOP=1 --command "select (select count(*) from public.profiles) as profiles, (select count(*) from public.marketplace_listings) as listings, (select count(*) from public.vault_documents) as vault_documents;"
+      - name: Back up private object storage
+        run: node scripts/backup-storage.mjs work/storage-backup
+      - name: Verify restored storage bytes
+        run: node scripts/verify-storage-backup.mjs work/storage-backup
+      - name: Restore and verify private objects in isolated Supabase
+        run: node scripts/restore-storage.mjs work/storage-backup
+      - name: Package and encrypt backup
+        run: |
+          tar -czf crestview-storage.tar.gz -C work storage-backup
+          openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 -in crestview-database.dump -out crestview-database.dump.enc -pass env:CRESTVIEW_BACKUP_PASSPHRASE
+          openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 -in crestview-storage.tar.gz -out crestview-storage.tar.gz.enc -pass env:CRESTVIEW_BACKUP_PASSPHRASE
+          sha256sum crestview-database.dump.enc crestview-storage.tar.gz.enc > SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: crestview-encrypted-backup-${{ github.run_id }}
+          path: |
+            crestview-database.dump.enc
+            crestview-storage.tar.gz.enc
+            SHA256SUMS
+          retention-days: 30
+          if-no-files-found: error
+      - name: Remove plaintext backup material
+        if: always()
+        run: rm -rf crestview-database.dump crestview-storage.tar.gz work/storage-backup

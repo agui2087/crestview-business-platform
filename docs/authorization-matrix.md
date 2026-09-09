@@ -14,6 +14,7 @@ This matrix is the required access contract for application routes and server ac
 | Deal-room documents | None | Explicitly released documents | Assigned listing documents | Organization documents | Audited support tool only |
 | Workforce records | None | None | Own organization if enabled | Own organization | Audited support tool only |
 | Billing and entitlements | None | Own | Own | Organization when implemented | Read-only operational view |
+| Pilot journey events and feedback | None | Own | Own | Own | Aggregated or audited support view only |
 | Platform administration | None | None | None | None | Database role required |
 
 ## Enforcement rules
@@ -23,5 +24,6 @@ This matrix is the required access contract for application routes and server ac
 3. Organization access requires an active membership record; a claimed role in a form or URL is insufficient.
 4. Service-role clients may only run after the requesting user and resource ownership are verified.
 5. Signed storage URLs are short-lived and issued only after the same authorization check as the underlying record.
-6. Platform administrators are stored in `platform_administrators`, can be granted or revoked only by an active administrator, and cannot revoke their own access.
+6. Platform administrators are stored in `platform_administrators`. Grants and revocations require an active administrator with recent AAL2 verification, append an immutable audit event, and cannot revoke the acting administrator's own access.
 7. Denials must not reveal whether another user's resource exists.
+8. Pilot telemetry accepts only the authenticated user's immutable ID, normalized route names, allowlisted event names, and small allowlisted metadata; it never accepts contact details, document content, or financial fields.

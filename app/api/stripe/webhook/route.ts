@@ -7,7 +7,7 @@ import {
   type ProductCode,
 } from "@/lib/stripe/config";
 import { getStripe } from "@/lib/stripe/server";
-import { createRequestId, logOperationalEvent } from "@/lib/observability";
+import { createRequestId, logOperationalEvent, reportOperationalEvent } from "@/lib/observability";
 
 export const runtime = "nodejs";
 
@@ -139,7 +139,7 @@ async function processSubscription(event: Stripe.Event, subscription: Stripe.Sub
 }
 
 export async function POST(request: Request) {
-  const requestId = request.headers.get("x-request-id") ?? createRequestId();
+  const requestId = request.headers.get("x-request-id")?.slice(0, 120) ?? createRequestId();
   const signature = request.headers.get("stripe-signature");
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!signature || !webhookSecret) {
@@ -169,12 +169,25 @@ export async function POST(request: Request) {
       case "customer.subscription.deleted":
         await processSubscription(event, event.data.object);
         break;
+      case "invoice.payment_failed":
+      case "payment_intent.payment_failed":
+      case "checkout.session.async_payment_failed":
+        await applyBillingEvent(event);
+        await reportOperationalEvent({
+          event: "stripe.payment_failed",
+          level: "error",
+          requestId,
+          route: "/api/stripe/webhook",
+          message: "Stripe reported a failed customer payment.",
+          details: { stripeEventId: event.id, stripeEventType: event.type },
+        });
+        break;
       default:
         await applyBillingEvent(event);
     }
     return NextResponse.json({ received: true });
   } catch (error) {
-    logOperationalEvent({
+    await reportOperationalEvent({
       event: "stripe.webhook_failed",
       level: "error",
       requestId,

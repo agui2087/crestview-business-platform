@@ -12,6 +12,8 @@
     "test": "node --experimental-strip-types --test lib/*.test.ts",
     "test:e2e": "playwright test",
     "monitor:production": "node scripts/production-monitor.mjs",
+    "test:load": "node scripts/load-test.mjs",
+    "verify:scanner": "node scripts/verify-cloudmersive.mjs",
     "test:security": "npm audit --omit=dev --audit-level=high",
     "test:ci": "npm run typecheck && npm run lint && npm run test:security && npm test && npm run build && npm run test:e2e",
     "typecheck": "next typegen && tsc --noEmit"

@@ -26,7 +26,14 @@ export default async function PublicListingsPage({ params, searchParams }: { par
   const cities = [...new Set(listings.map((item) => `${item.city}, ${item.state_code}`))].sort();
   const industries = [...new Set(listings.map((item) => item.industry))].sort();
   return <><MarketingHeader locale={locale} /><main>
-    <section className="listings-hero"><div className="shell"><p className="eyebrow">{es ? "Mercado Crestview" : "Crestview marketplace"}</p><h1>{es ? "Negocios para compradores serios." : "Businesses for serious buyers."}</h1><p>{es ? "Explora oportunidades públicas y crea una cuenta cuando estés listo para solicitar información confidencial." : "Explore public opportunities, then create an account when you are ready to request confidential information."}</p></div></section>
+    <section className="listings-hero"><div className="shell listings-hero__grid">
+      <div className="listings-hero__copy"><p className="eyebrow">{es ? "Mercado Crestview" : "Crestview marketplace"}</p><h1>{es ? "Negocios para compradores serios." : "Businesses for serious buyers."}</h1><p>{es ? "Explora oportunidades públicas y crea una cuenta cuando estés listo para solicitar información confidencial." : "Explore public opportunities, then create an account when you are ready to request confidential information."}</p></div>
+      <div className="listings-hero__art" aria-hidden="true">
+        <article><span>{es ? "SERVICIOS LOCALES" : "LOCAL SERVICES"}</span><strong>{es ? "Finanzas verificadas" : "Financials reviewed"}</strong><small>{es ? "Fuente identificada" : "Source identified"}</small></article>
+        <article><span>{es ? "NEGOCIO ESTABLECIDO" : "ESTABLISHED BUSINESS"}</span><strong>{es ? "Listo para diligencia" : "Ready for diligence"}</strong><small>{es ? "Acceso con NDA" : "NDA-gated access"}</small></article>
+        <i /><i />
+      </div>
+    </div></section>
     <section className="section section--compact"><div className="shell public-listings">
       <form className="marketplace-filter" method="get"><label><span>{es ? "Ubicación" : "Location"}</span><select name="city" defaultValue={city}><option value="">{es ? "Todos los mercados" : "All markets"}</option>{cities.map((value) => <option value={value} key={value}>{value}</option>)}</select></label><label><span>{es ? "Industria" : "Industry"}</span><select name="industry" defaultValue={industry}><option value="">{es ? "Todas las industrias" : "All industries"}</option>{industries.map((value) => <option value={value} key={value}>{value}</option>)}</select></label><button className="button button--primary" type="submit">{es ? "Mostrar resultados" : "Show results"}</button>{(city || industry) && <Link className="filter-reset" href={`/${locale}/listings`}>{es ? "Limpiar" : "Clear"}</Link>}</form>
       <div className="results-heading"><div><strong>{visible.length} {es ? "oportunidades" : visible.length === 1 ? "opportunity" : "opportunities"}</strong><span>{es ? "Información pública proporcionada por la fuente del anuncio" : "Public information provided by each listing source"}</span></div></div>

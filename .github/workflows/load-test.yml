@@ -1,0 +1,40 @@
+name: Staging load test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: crestview-staging-load-test
+  cancel-in-progress: false
+
+jobs:
+  load-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CRESTVIEW_LOAD_ORIGIN: ${{ secrets.CRESTVIEW_STAGING_ORIGIN }}
+      CRESTVIEW_LOAD_AUTH_COOKIE: ${{ secrets.CRESTVIEW_STAGING_AUTH_COOKIE }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Require isolated staging target
+        run: |
+          test -n "$CRESTVIEW_LOAD_ORIGIN"
+          test -n "$CRESTVIEW_LOAD_AUTH_COOKIE"
+          case "$CRESTVIEW_LOAD_ORIGIN" in
+            *crestviewplatform.com*|*.chatgpt.site*) echo "Production targets are not permitted"; exit 1 ;;
+          esac
+      - run: mkdir -p work
+      - run: node scripts/load-test.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: crestview-load-test-${{ github.run_id }}
+          path: work/load-test-results.json
+          retention-days: 30
+          if-no-files-found: error

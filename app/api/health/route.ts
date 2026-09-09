@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { logOperationalEvent } from "@/lib/observability";
+import { reportOperationalEvent } from "@/lib/observability";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
@@ -13,11 +13,12 @@ export async function GET() {
   try {
     const { error } = await createSupabaseAdminClient()
       .from("account_profiles")
-      .select("id", { head: true, count: "exact" })
+      .select("id")
+      .limit(1)
       .abortSignal(AbortSignal.timeout(2500));
     if (!error) database = "ok";
   } catch (error) {
-    logOperationalEvent({ event: "health.database_failed", level: "error", route: "/api/health", error });
+    await reportOperationalEvent({ event: "health.database_failed", level: "error", route: "/api/health", error });
   }
 
   const healthy = database === "ok";

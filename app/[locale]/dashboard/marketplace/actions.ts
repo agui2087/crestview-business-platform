@@ -10,6 +10,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { canBrokerAdvanceDeal, dealStatuses } from "@/lib/deal-workflow-policy";
 import { maxDealRoomDocumentBytes, maxVaultDocumentBytes, scanUploadedDocument, securityStatusForScan, validateUploadedDocument } from "@/lib/document-security";
+import { logOperationalEvent, reportOperationalEvent } from "@/lib/observability";
 
 const listingSchema = z.object({
   title: z.string().trim().min(5).max(140),
@@ -58,6 +59,30 @@ async function finishUpload(
   status: "committed" | "rejected",
 ) {
   await supabase.rpc("finish_document_upload", { p_reservation_id: reservationId, p_status: status });
+}
+
+async function reportRejectedScan(
+  userId: string,
+  scope: "deal_room" | "listing_nda",
+  scan: Awaited<ReturnType<typeof scanUploadedDocument>>,
+) {
+  const status = scan.status === "blocked" ? "blocked" : "scan_error";
+  const admin = createSupabaseAdminClient();
+  const { error } = await admin.from("document_security_events").insert({
+    scope,
+    document_id: null,
+    actor_id: userId,
+    status,
+    provider: scan.provider,
+    sha256: scan.sha256,
+    details: scan.reason ? { reason: scan.reason } : {},
+  });
+  if (error) await reportOperationalEvent({ event: "document.security_event_failed", level: "error", error, details: { scope, status } });
+  if (scan.status === "unavailable") {
+    await reportOperationalEvent({ event: "document.scan_unavailable", level: "error", message: scan.reason ?? undefined, details: { scope, provider: scan.provider, sha256: scan.sha256 } });
+  } else {
+    logOperationalEvent({ event: "document.scan_blocked", level: "warn", details: { scope, provider: scan.provider, sha256: scan.sha256 } });
+  }
 }
 
 async function requireRole(
@@ -135,13 +160,16 @@ export async function createListing(formData: FormData) {
     redirect(`/${locale}/dashboard/listings?new=1&error=nda_required#new-listing`);
   }
   if (ndaFile instanceof File && ndaFile.size > 0) {
-    ndaScan = await scanUploadedDocument(ndaFile);
     if (
       ndaFile.type !== "application/pdf" ||
       ndaFile.size > maxVaultDocumentBytes ||
-      !(await validateUploadedDocument(ndaFile)) ||
-      ndaScan.status !== "clean"
+      !(await validateUploadedDocument(ndaFile))
     ) {
+      redirect(`/${locale}/dashboard/listings?new=1&error=nda_file#new-listing`);
+    }
+    ndaScan = await scanUploadedDocument(ndaFile);
+    if (ndaScan.status !== "clean") {
+      await reportRejectedScan(user.id, "listing_nda", ndaScan);
       redirect(`/${locale}/dashboard/listings?new=1&error=nda_file#new-listing`);
     }
   }
@@ -620,13 +648,16 @@ export async function addDealRoomDocument(formData: FormData) {
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ]);
-    documentScan = await scanUploadedDocument(documentFile);
     if (
       !allowedTypes.has(documentFile.type) ||
       documentFile.size > maxDealRoomDocumentBytes ||
-      !(await validateUploadedDocument(documentFile)) ||
-      documentScan.status !== "clean"
+      !(await validateUploadedDocument(documentFile))
     ) {
+      redirect(`/${locale}/dashboard/deals/${inquiryId}?error=document_file`);
+    }
+    documentScan = await scanUploadedDocument(documentFile);
+    if (documentScan.status !== "clean") {
+      await reportRejectedScan(user.id, "deal_room", documentScan);
       redirect(`/${locale}/dashboard/deals/${inquiryId}?error=document_file`);
     }
     const reservationId = await reserveUpload(supabase, user.id, "deal_room", inquiryId, documentFile.size);

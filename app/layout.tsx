@@ -83,13 +83,14 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
+        <a className="site-skip-link" href="#main-content">Skip to main content</a>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
             __html: JSON.stringify(structuredData).replace(/</g, "\\u003c"),
           }}
         />
-        {children}
+        <div id="main-content" tabIndex={-1}>{children}</div>
       </body>
     </html>
   );

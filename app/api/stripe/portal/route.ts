@@ -3,15 +3,18 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isLocale } from "@/lib/i18n";
 import { hasValidOrigin, redirectToSignIn, stripeReturnUrl } from "@/lib/stripe/request";
 import { getStripe } from "@/lib/stripe/server";
+import { createRequestId, logOperationalEvent, reportOperationalEvent } from "@/lib/observability";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  const requestId = request.headers.get("x-request-id")?.slice(0, 120) ?? createRequestId();
   const formData = await request.formData();
   const localeValue = String(formData.get("locale") ?? "en");
   const locale = isLocale(localeValue) ? localeValue : "en";
 
   if (!hasValidOrigin(request)) {
+    logOperationalEvent({ event: "security.origin_rejected", level: "warn", requestId, route: "/api/stripe/portal" });
     return NextResponse.redirect(stripeReturnUrl(request, locale, { billing_error: "request" }), 303);
   }
 
@@ -34,7 +37,8 @@ export async function POST(request: Request) {
       return_url: stripeReturnUrl(request, locale).toString(),
     });
     return NextResponse.redirect(session.url, 303);
-  } catch {
+  } catch (error) {
+    await reportOperationalEvent({ event: "stripe.portal_failed", level: "error", requestId, route: "/api/stripe/portal", error });
     return NextResponse.redirect(stripeReturnUrl(request, locale, { billing_error: "portal" }), 303);
   }
 }

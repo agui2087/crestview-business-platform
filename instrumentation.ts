@@ -1,13 +1,13 @@
-import { logOperationalEvent } from "@/lib/observability";
+import { reportOperationalEvent } from "@/lib/observability";
 
 export async function register() {}
 
-export function onRequestError(
+export async function onRequestError(
   error: unknown,
   request: { path: string; method: string },
   context: { routerKind: string; routePath: string; routeType: string; renderSource?: string },
 ) {
-  logOperationalEvent({
+  await reportOperationalEvent({
     event: "request.unhandled_error",
     level: "error",
     route: request.path,

@@ -6,12 +6,12 @@ The current build includes:
 
 - a responsive public website;
 - English and Spanish routes;
-- a sign-in preview;
-- an organization dashboard preview with sample data;
-- initial security headers;
-- architecture and product documentation.
-
-Authentication, Supabase data, and OpenAI analysis are deliberately not connected yet. Preview screens identify sample or inactive functionality.
+- Supabase-backed authentication/data with a local-only development fallback;
+- buyer, broker, listing, NDA, document-vault, billing, workforce, and pilot-feedback workflows;
+- private document storage with signature validation, quotas, retention metadata, and optional fail-closed Cloudmersive scanning;
+- enforced browser security headers, structured/redacted error reporting, production monitoring, encrypted backup/restore drills, and CI security gates;
+- desktop/mobile accessibility checks and repeatable load-test budgets;
+- architecture, recovery, legal-draft, pilot, and independent-review documentation.
 
 ## Getting Started
 
@@ -32,7 +32,12 @@ Copy `.env.example` to `.env.local` only after creating the corresponding extern
 
 ```bash
 npm run lint
+npm run typecheck
+npm test
 npm run build
+npm run test:e2e
 ```
 
-Read the five root-level architecture documents before adding platform features.
+`npm run test:load` runs the versioned performance scenarios. Authenticated and upload scenarios require an isolated staging session; the runner refuses document-upload writes to known production hosts.
+
+Start with `docs/enterprise-hardening-status-2026-09-09.md` for the implementation record and the production actions that still require Geo, account credentials, counsel, external vendors, or pilot participants.

@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
-import { readFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { resolve } from "node:path";
 import { createClient } from "@supabase/supabase-js";
+import { assertIsolatedRestoreTarget, readVerifiedBackupFile, verifyStorageBackup } from "./storage-backup-safety.mjs";
 
 const backupRoot = resolve(process.argv[2] ?? "work/storage-backup");
 const supabaseUrl = process.env.RESTORE_SUPABASE_URL?.trim();
@@ -9,10 +9,12 @@ const serviceKey = process.env.RESTORE_SUPABASE_SERVICE_ROLE_KEY?.trim();
 const runLabel = (process.env.GITHUB_RUN_ID ?? Date.now().toString()).replace(/[^a-zA-Z0-9-]/g, "").slice(0, 32);
 
 if (!supabaseUrl || !serviceKey) throw new Error("Isolated restore-target credentials are not configured.");
-if (supabaseUrl === process.env.NEXT_PUBLIC_SUPABASE_URL) throw new Error("Storage restore target must not be the source project.");
+assertIsolatedRestoreTarget(process.env.NEXT_PUBLIC_SUPABASE_URL, supabaseUrl);
+
+// Verify every local object before creating buckets or sending private bytes.
+const manifest = await verifyStorageBackup(backupRoot);
 
 const supabase = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
-const manifest = JSON.parse(await readFile(join(backupRoot, "manifest.json"), "utf8"));
 const restoreBuckets = new Map();
 
 try {
@@ -26,7 +28,7 @@ try {
   for (const file of manifest.files ?? []) {
     const targetBucket = restoreBuckets.get(file.bucket);
     if (!targetBucket) throw new Error(`Restore bucket is missing for ${file.bucket}.`);
-    const bytes = await readFile(join(backupRoot, file.bucket, ...String(file.path).split("/")));
+    const bytes = await readVerifiedBackupFile(backupRoot, file);
     const upload = await supabase.storage.from(targetBucket).upload(file.path, bytes, { upsert: false, contentType: "application/octet-stream" });
     if (upload.error) throw upload.error;
     const restored = await supabase.storage.from(targetBucket).download(file.path);
@@ -38,10 +40,18 @@ try {
     }
   }
 
-  console.log(`Restored and verified ${(manifest.files ?? []).length} objects in an isolated Supabase project.`);
 } finally {
+  let cleanupFailed = false;
   for (const targetBucket of restoreBuckets.values()) {
-    await supabase.storage.emptyBucket(targetBucket).catch(() => undefined);
-    await supabase.storage.deleteBucket(targetBucket).catch(() => undefined);
+    try {
+      const emptied = await supabase.storage.emptyBucket(targetBucket);
+      if (emptied.error) { cleanupFailed = true; continue; }
+      const deleted = await supabase.storage.deleteBucket(targetBucket);
+      if (deleted.error) cleanupFailed = true;
+    } catch {
+      cleanupFailed = true;
+    }
   }
+  if (cleanupFailed) throw new Error("Restore cleanup failed. Private drill buckets may remain in the isolated target; operator review is required.");
 }
+console.log(`Restored and verified ${manifest.files.length} objects in an isolated Supabase project; drill buckets removed.`);

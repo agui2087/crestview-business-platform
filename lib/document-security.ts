@@ -7,6 +7,17 @@ export const maxVaultDocumentBytes = 10 * 1024 * 1024;
 export const maxDealRoomDocumentBytes = 20 * 1024 * 1024;
 
 export type DocumentSafetyResult = { safe: true } | { safe: false; reason: string };
+export type MalwareScanResult = {
+  status: "clean" | "blocked" | "unavailable";
+  provider: "cloudmersive" | "local";
+  reason: string | null;
+  sha256: string;
+};
+
+type ScanOptions = {
+  apiKey?: string;
+  fetchImpl?: typeof fetch;
+};
 
 function startsWith(bytes: Uint8Array, signature: number[]) {
   return signature.every((value, index) => bytes[index] === value);
@@ -50,4 +61,62 @@ export async function inspectDocumentSafety(file: File): Promise<DocumentSafetyR
     return { safe: false, reason: "Active-content PDF files are not permitted." };
   }
   return { safe: true };
+}
+
+async function sha256(file: File) {
+  const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * Runs Crestview's deterministic checks and, when configured, Cloudmersive's
+ * advanced malware scan. The managed scanner is fail-closed: a timeout,
+ * malformed response, or provider error leaves the file unavailable.
+ */
+export async function scanUploadedDocument(file: File, options: ScanOptions = {}): Promise<MalwareScanResult> {
+  const fileSha256 = await sha256(file);
+  const local = await inspectDocumentSafety(file);
+  if (!local.safe) return { status: "blocked", provider: "local", reason: local.reason, sha256: fileSha256 };
+
+  const apiKey = options.apiKey ?? process.env.CLOUDMERSIVE_VIRUS_API_KEY;
+  if (!apiKey) return { status: "clean", provider: "local", reason: null, sha256: fileSha256 };
+
+  const body = new FormData();
+  body.append("inputFile", file, file.name);
+  try {
+    const response = await (options.fetchImpl ?? fetch)("https://api.cloudmersive.com/virus/scan/file/advanced", {
+      method: "POST",
+      headers: {
+        Apikey: apiKey,
+        fileName: file.name,
+        allowExecutables: "false",
+        allowInvalidFiles: "false",
+        allowScripts: "false",
+        allowPasswordProtectedFiles: "false",
+        allowMacros: "false",
+        allowXmlExternalEntities: "false",
+        allowInsecureDeserialization: "false",
+        allowHtml: "false",
+        allowUnsafeArchives: "false",
+        allowOleEmbeddedObject: "false",
+        allowUnwantedAction: "false",
+        restrictFileTypes: ".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.png,.jpg,.jpeg",
+      },
+      body,
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!response.ok) return { status: "unavailable", provider: "cloudmersive", reason: "Managed security scan could not be completed.", sha256: fileSha256 };
+    const result = await response.json() as Record<string, unknown>;
+    if (result.CleanResult === true) return { status: "clean", provider: "cloudmersive", reason: null, sha256: fileSha256 };
+    if (result.CleanResult === false) return { status: "blocked", provider: "cloudmersive", reason: "The managed security scanner blocked this file.", sha256: fileSha256 };
+    return { status: "unavailable", provider: "cloudmersive", reason: "Managed security scan returned an invalid result.", sha256: fileSha256 };
+  } catch {
+    return { status: "unavailable", provider: "cloudmersive", reason: "Managed security scan is temporarily unavailable.", sha256: fileSha256 };
+  }
+}
+
+export function securityStatusForScan(result: MalwareScanResult) {
+  if (result.status === "blocked") return "blocked" as const;
+  if (result.status === "unavailable") return "quarantined" as const;
+  return result.provider === "cloudmersive" ? "malware_scanned" as const : "basic_validated" as const;
 }

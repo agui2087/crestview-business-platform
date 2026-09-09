@@ -12,14 +12,40 @@ export function OwnershipScene({ locale }: { locale: string }) {
     if (!section) return;
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
     let frame = 0;
-    const paint = () => {
-      frame = 0;
+    let current = 0;
+    let target = 0;
+    let lastTime = 0;
+    const measure = () => {
       const box = section.getBoundingClientRect();
-      const progress = reduced.matches ? 1 : Math.max(0, Math.min(1, -box.top / Math.max(1, box.height - window.innerHeight)));
-      section.style.setProperty("--journey", String(progress));
+      const progress = Math.max(0, Math.min(1, -box.top / Math.max(1, box.height - window.innerHeight)));
+      // Ease into and out of assembly instead of stopping at a linear boundary.
+      return reduced.matches ? 1 : progress * progress * (3 - 2 * progress);
     };
-    const update = () => { if (!frame) frame = requestAnimationFrame(paint); };
-    paint();
+    const paint = (time: number) => {
+      frame = 0;
+      const elapsed = Math.min(64, Math.max(0, time - lastTime));
+      lastTime = time;
+      // Time-based damping makes wheel steps glide, equally at 60 or 120 Hz.
+      current += (target - current) * (1 - Math.exp(-elapsed / 90));
+      if (Math.abs(target - current) < 0.0005) current = target;
+      section.style.setProperty("--journey", String(current));
+      if (current !== target) frame = requestAnimationFrame(paint);
+    };
+    const update = () => {
+      target = measure();
+      if (reduced.matches) {
+        cancelAnimationFrame(frame);
+        frame = 0;
+        current = target;
+        section.style.setProperty("--journey", String(current));
+      } else if (!frame && current !== target) {
+        lastTime = performance.now();
+        frame = requestAnimationFrame(paint);
+      }
+    };
+    // Restore a scrolled page without animating in from the wrong position.
+    current = target = measure();
+    section.style.setProperty("--journey", String(current));
     window.addEventListener("scroll", update, { passive: true });
     window.addEventListener("resize", update);
     reduced.addEventListener("change", update);

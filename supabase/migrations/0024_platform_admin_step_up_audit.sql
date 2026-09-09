@@ -54,6 +54,8 @@ begin
 end;
 $$;
 
+drop function if exists public.revoke_platform_administrator(uuid);
+
 create or replace function public.revoke_platform_administrator(target_user_id uuid, revoke_reason text default null)
 returns void
 language plpgsql
@@ -78,12 +80,9 @@ end;
 $$;
 
 revoke all on function public.grant_platform_administrator(uuid, text) from public, anon;
-revoke all on function public.revoke_platform_administrator(uuid) from public, anon, authenticated;
+revoke all on function public.revoke_platform_administrator(uuid, text) from public, anon;
 grant execute on function public.grant_platform_administrator(uuid, text) to authenticated;
 grant execute on function public.revoke_platform_administrator(uuid, text) to authenticated;
 
-drop function if exists public.revoke_platform_administrator(uuid);
-
 comment on table public.platform_administrator_events is
   'Append-only audit history for platform administrator grants and revocations.';
-

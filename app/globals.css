@@ -1520,6 +1520,9 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .document-row > div:first-child { display: grid; gap: 3px; }
 .document-row span,.document-row small { color: var(--muted); font-size: .62rem; }
 .document-row strong { font-size: .76rem; }
+.document-scan-status { width:max-content; margin-top:4px; padding:4px 7px; border-radius:999px; background:#edf6f0; color:var(--brand); font-size:.52rem; font-weight:850; }
+.document-scan-status.is-quarantined { background:#fff5d8; color:#755516; }
+.document-scan-status.is-blocked { background:#fff0ed; color:#9a3529; }
 .document-row > div:last-child { display: flex; gap: 16px; }
 .document-row a,.document-row button { border: 0; background: transparent; color: var(--brand); font: inherit; font-size: .68rem; font-weight: 800; cursor: pointer; }
 .document-list-heading > div { display:grid; gap:2px; }

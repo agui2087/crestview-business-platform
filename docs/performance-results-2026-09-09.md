@@ -16,7 +16,7 @@ Maximum concurrency: 16
 | Listing search | 80 | 16 | 238 ms | 0% | ≤ 1,500 ms / ≤ 1% | Pass |
 | Health/database probe | 40 | 8 | 1,945 ms | 0% | ≤ 750 ms / ≤ 1% | **Fail** |
 
-The health endpoint remained available but was too slow for its release budget. The implementation was changed from an exact row-count probe to a one-row connectivity query; production must be redeployed and this scenario rerun before the health performance gate can pass.
+The health endpoint remained available but was too slow for its release budget. A one-row connectivity query was tested after the baseline, but it timed out in production and was reverted to the previously reliable head/count probe. The 750 ms performance gate remains open and requires Supabase-path profiling and a production retest; availability monitoring continues to use the known-good query.
 
 Authenticated dashboard/marketplace/document-vault reads and the temporary upload-and-delete scenario were not run because no isolated staging origin or test-user session was available. They remain a Geo/staging-credential action and must not be redirected to production.
 

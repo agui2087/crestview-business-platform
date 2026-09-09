@@ -20,6 +20,8 @@ This document is the release record for the hardening phase. “Implemented” m
 - Type checking, linting, 23 unit/security tests, and the optimized production build passed
 - 27 desktop/mobile browser tests passed, including automated WCAG 2.2 A/AA checks, responsive overflow, skip navigation, and mobile keyboard navigation; one desktop-inapplicable mobile-menu case was skipped
 - A 260-request public production baseline had zero HTTP errors. Homepage, listings, and listing search passed. The health probe failed its 750 ms p95 budget at 1,945 ms; an experimental query optimization was reverted after a production timeout, so Supabase-path profiling and a production retest remain required
+- Supabase migration `0026_private_pilot_feedback.sql` was applied and verified: both pilot tables have RLS, two self-access policies, insert/select-only authenticated grants, and one rate-limit trigger each
+- Production release `a06d2b7` passed all five live monitor checks; a direct health check reported application/database `ok` in 130 ms
 - No credentialed restore, Cloudmersive, authenticated load, or document-upload load test was represented as complete
 
 ## Required before calling the controls production-active
@@ -33,6 +35,7 @@ This document is the release record for the hardening phase. “Implemented” m
 | Geo / vendor owner | Complete Cloudmersive privacy/security review and add the API key as a sensitive Production secret | Clean file accepted, EICAR test file rejected, provider-unavailable simulation rejected, all visible in redacted logs |
 | Geo / staging administrator | Supply an isolated staging origin and test-user session to the manual load workflow | JSON result passes every budget, including temporary upload-and-delete |
 | Attorney / privacy counsel | Approve or revise all documents under `docs/legal/` | Dated written approval and final policy publication |
+| Geo / pilot owner | Keep `CRESTVIEW_PILOT_ENABLED` off until counsel-approved consent and participant support are ready; then enable and redeploy | Disabled API returns 404 before launch; authenticated smoke event/feedback succeeds only after approval |
 | Pilot owner | Recruit consenting buyers/brokers and run the pilot checklist | Participant roster stored outside product logs, feedback triage, and exit decision |
 | Independent assessor | Set scope and perform the penetration test after the above gates | Signed report, remediation register, retest evidence |
 

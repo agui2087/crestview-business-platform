@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { MarketingFooter, MarketingHeader } from "@/components/marketing-shell";
 import { getDictionary, isLocale } from "@/lib/i18n";
 import { localizedPublicMetadata } from "@/lib/seo";
+import { OwnershipScene } from "@/components/ownership-scene";
+import { OwnershipChapters } from "@/components/ownership-chapters";
 
 export async function generateMetadata({ params }: PageProps<"/[locale]">): Promise<Metadata> {
   const { locale } = await params;
@@ -37,104 +39,8 @@ export default async function LandingPage({
       <MarketingHeader locale={locale} />
 
       <main>
-        <section className="hero">
-          <div className="hero-shapes" aria-hidden="true">
-            <span className="hero-shapes__arch" />
-            <span className="hero-shapes__sun" />
-            <span className="hero-shapes__step" />
-          </div>
-          <div className="shell hero__grid">
-            <div>
-              <p className="eyebrow">{copy.home.eyebrow}</p>
-              <h1>
-                {copy.home.titleBefore} <em>{copy.home.titleEmphasis}</em>
-              </h1>
-              <p className="hero__copy">{copy.home.body}</p>
-              <div className="hero__actions">
-                <a className="button button--primary" href="#platform">
-                  {copy.home.primary} <span aria-hidden="true">→</span>
-                </a>
-                <Link className="button button--light" href={`/${locale}/dashboard`}>
-                  {copy.home.secondary}
-                </Link>
-              </div>
-              <p className="hero__note">
-                <span aria-hidden="true" />
-                {copy.home.note}
-              </p>
-            </div>
-
-            <div className="deal-preview" aria-label="DealFlow opportunity example">
-              <div className="deal-preview__canvas" aria-hidden="true">
-                <span />
-                <span />
-                <span />
-              </div>
-              <article className="preview-card preview-card--main">
-                <div className="preview-card__top">
-                  <span className="mini-label">
-                    {locale === "en" ? "Deal review" : "Revisión del negocio"}
-                  </span>
-                  <span className="status-pill">
-                    {locale === "en" ? "Strong fit" : "Buen potencial"}
-                  </span>
-                </div>
-                <h3>Pacific HVAC Services</h3>
-                <span className="preview-card__location">San Diego, California</span>
-                <div className="preview-metrics">
-                  <div className="preview-metric">
-                    <span>{locale === "en" ? "Price" : "Precio"}</span>
-                    <strong>$1.8M</strong>
-                  </div>
-                  <div className="preview-metric">
-                    <span>{locale === "en" ? "Revenue" : "Ingresos"}</span>
-                    <strong>$2.7M</strong>
-                  </div>
-                  <div className="preview-metric">
-                    <span>Cash flow</span>
-                    <strong>$540K</strong>
-                  </div>
-                </div>
-                <div className="signal-list">
-                  <div className="signal">
-                    <i aria-hidden="true" />
-                    {locale === "en"
-                      ? "Recurring commercial service contracts"
-                      : "Contratos comerciales recurrentes"}
-                  </div>
-                  <div className="signal">
-                    <i aria-hidden="true" />
-                    {locale === "en"
-                      ? "Seller financing available"
-                      : "Financiamiento del vendedor disponible"}
-                  </div>
-                  <div className="signal signal--warning">
-                    <i aria-hidden="true" />
-                    {locale === "en"
-                      ? "Customer concentration needs review"
-                      : "Revisar concentración de clientes"}
-                  </div>
-                </div>
-              </article>
-
-              <article className="preview-card preview-card--score">
-                <div className="score-row">
-                  <div className="score-ring" role="img" aria-label="Score: 82 out of 100" />
-                  <div className="score-copy">
-                    <strong>
-                      {locale === "en" ? "Explainable score" : "Puntaje explicable"}
-                    </strong>
-                    <span>
-                      {locale === "en"
-                        ? "Based on 11 factors · 3 items missing"
-                        : "Basado en 11 factores · faltan 3 datos"}
-                    </span>
-                  </div>
-                </div>
-              </article>
-            </div>
-          </div>
-        </section>
+        <OwnershipScene locale={locale} />
+        <OwnershipChapters locale={locale} />
 
         <section className="trust-strip" aria-label="Platform principles">
           <div className="shell trust-strip__inner">

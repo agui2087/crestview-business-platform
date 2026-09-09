@@ -20,12 +20,25 @@ export default async function HowItWorksPage({ params }: { params: Promise<{ loc
   const copy = getDictionary(locale);
   const es = locale === "es";
   return <><MarketingHeader locale={locale} /><main>
-    <section className="marketing-page-hero how-it-works-hero"><div className="shell">
-      <p className="eyebrow">{copy.home.processLabel}</p>
-      <h1>{es ? "Comprar un negocio, explicado paso a paso." : "Buying a business, explained step by step."}</h1>
-      <p>{es ? "Crestview fue creado para cualquier persona que quiera comprar un negocio, con experiencia o sin ella. Explora oportunidades, elige una, sigue una lista guiada y mantén el negocio organizado en un solo lugar después de la compra." : "Crestview was built for anyone who wants to buy a business—whether this is your first acquisition or you have done it before. Browse opportunities, choose one, follow a guided checklist, and keep the business organized in one place after the purchase."}</p>
-      <div className="hero__actions"><Link className="button button--primary" href={`/${locale}/listings`}>{es ? "Ver anuncios" : "Browse listings"} →</Link><Link className="button button--light" href={`/${locale}/create-account`}>{es ? "Crear cuenta" : "Create an account"}</Link></div>
-    </div></section>
+    <section className="marketing-page-hero how-it-works-hero">
+      <div className="shell how-it-works-hero__grid">
+        <div className="how-it-works-hero__copy">
+          <p className="eyebrow">{copy.home.processLabel}</p>
+          <h1>{es ? "Comprar un negocio, explicado paso a paso." : "Buying a business, explained step by step."}</h1>
+          <p>{es ? "Crestview fue creado para cualquier persona que quiera comprar un negocio, con experiencia o sin ella. Explora oportunidades, elige una, sigue una lista guiada y mantén el negocio organizado en un solo lugar después de la compra." : "Crestview was built for anyone who wants to buy a business—whether this is your first acquisition or you have done it before. Browse opportunities, choose one, follow a guided checklist, and keep the business organized in one place after the purchase."}</p>
+          <div className="hero__actions"><Link className="button button--primary" href={`/${locale}/listings`}>{es ? "Ver anuncios" : "Browse listings"} →</Link><Link className="button button--light" href={`/${locale}/create-account`}>{es ? "Crear cuenta" : "Create an account"}</Link></div>
+        </div>
+        <div className="how-it-works-path" aria-hidden="true">
+          <div className="how-it-works-path__shapes"><span /><span /><span /></div>
+          {copy.home.steps.map(([title], index) => (
+            <div className="how-it-works-path__step" key={title}>
+              <span>0{index + 1}</span>
+              <strong>{title}</strong>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
     <section className="section section--dark"><div className="shell"><div className="section-heading"><div><p className="eyebrow eyebrow--lime">{copy.home.processLabel}</p><h2>{copy.home.processTitle}</h2></div><p>{copy.home.processBody}</p></div><div className="process-grid">{copy.home.steps.map(([title, body], index) => <article className="process-step" key={title}><span>0{index + 1}</span><h3>{title}</h3><p>{body}</p></article>)}</div></div></section>
     <section className="section"><div className="shell journey-grid">
       <article><span>FOR EVERY BUYER</span><h2>{es ? "No necesitas saberlo todo para comenzar" : "You do not need to know everything to begin"}</h2><p>{es ? "La experiencia ayuda, pero no es un requisito. Las explicaciones claras y los próximos pasos te ayudan a avanzar con confianza." : "Experience helps, but it is not required. Plain-language explanations and clear next steps help you move forward with confidence."}</p></article>

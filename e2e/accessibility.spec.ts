@@ -20,7 +20,24 @@ async function expectAccessible(page: Page) {
   expect(viewportOverflow, "The page must not scroll horizontally at this viewport").toBe(false);
 }
 
-for (const route of ["/en", "/en/how-it-works", "/en/pricing", "/en/sign-in", "/en/create-account"]) {
+const publicRoutes = [
+  "/en",
+  "/en/how-it-works",
+  "/en/vision",
+  "/en/listings",
+  "/en/pricing",
+  "/en/guides",
+  "/en/guides/tools",
+  "/en/real-estate",
+  "/en/sign-in",
+  "/en/create-account",
+  "/es",
+  "/es/how-it-works",
+  "/es/vision",
+  "/es/pricing",
+];
+
+for (const route of publicRoutes) {
   test(`public page ${route} meets the accessibility release gate`, async ({ page }) => {
     await page.goto(route);
     await expectAccessible(page);

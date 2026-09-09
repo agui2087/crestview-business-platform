@@ -1,6 +1,6 @@
 import { getChatGPTUser } from "@/app/chatgpt-auth";
-import { allowedDocumentTypes, deleteDocument, findOwnedDocument, getDocumentStorage, maxDocumentBytes, ownerFolder, recordActivity, safeName, updateDocument, validCategory } from "@/lib/document-vault";
-import { validateUploadedDocument } from "@/lib/document-security";
+import { allowedDocumentTypes, deleteDocument, findOwnedDocument, finishDocumentUpload, getDocumentStorage, maxDocumentBytes, ownerFolder, recordActivity, reserveDocumentUpload, safeName, updateDocument, validCategory } from "@/lib/document-vault";
+import { inspectDocumentSafety, validateUploadedDocument } from "@/lib/document-security";
 
 export const dynamic = "force-dynamic";
 type Context = { params: Promise<{ id: string }> };
@@ -32,19 +32,23 @@ export async function PATCH(request: Request, context: Context) {
 
 export async function PUT(request: Request, context: Context) {
   let nextKey: string | null = null;
+  let reservationId: string | null = null;
   try {
     const match = await owned(context); if (!match) return Response.json({ error: "Document not found." }, { status: 404 });
     const form = await request.formData(); const file = form.get("file");
     if (!(file instanceof File) || !allowedDocumentTypes.has(file.type) || file.size > maxDocumentBytes) return Response.json({ error: "Choose a supported file up to 10 MB." }, { status: 400 });
     if (!(await validateUploadedDocument(file))) return Response.json({ error: "The file contents do not match the selected file type." }, { status: 400 });
+    const safety = await inspectDocumentSafety(file); if (!safety.safe) return Response.json({ error: safety.reason }, { status: 400 });
+    reservationId = await reserveDocumentUpload(match.owner, "vault", match.document.id, file.size);
     const name = safeName(file.name); nextKey = `${ownerFolder(match.owner)}/${match.document.id}/${crypto.randomUUID()}-${name}`;
     const storage = getDocumentStorage(); const upload = await storage.upload(nextKey, file, { contentType: file.type, upsert: false }); if (upload.error) throw upload.error;
     await updateDocument(match.owner, match.document.id, { storageKey: nextKey, originalName: name, contentType: file.type, sizeBytes: file.size });
     await storage.remove([match.document.storageKey]);
-    await recordActivity(match.owner, match.document.id, "replaced", name); return Response.json({ ok: true });
+    await recordActivity(match.owner, match.document.id, "replaced", name); await finishDocumentUpload(reservationId, "committed"); return Response.json({ ok: true });
   } catch {
     if (nextKey) await getDocumentStorage().remove([nextKey]).catch(() => undefined);
-    return Response.json({ error: "Document could not be replaced." }, { status: 503 });
+    if (reservationId) await finishDocumentUpload(reservationId, "rejected").catch(() => undefined);
+    return Response.json({ error: "Document could not be replaced. You may have reached the hourly or storage limit." }, { status: 429 });
   }
 }
 

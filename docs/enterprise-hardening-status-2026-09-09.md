@@ -19,7 +19,7 @@ This document is the release record for the hardening phase. “Implemented” m
 
 - Type checking, linting, 23 unit/security tests, and the optimized production build passed
 - 27 desktop/mobile browser tests passed, including automated WCAG 2.2 A/AA checks, responsive overflow, skip navigation, and mobile keyboard navigation; one desktop-inapplicable mobile-menu case was skipped
-- A 260-request public production baseline had zero HTTP errors. Homepage, listings, and listing search passed. The health probe failed its 750 ms p95 budget at 1,945 ms; the query has been made cheaper and requires redeploy/retest
+- A 260-request public production baseline had zero HTTP errors. Homepage, listings, and listing search passed. The health probe failed its 750 ms p95 budget at 1,945 ms; an experimental query optimization was reverted after a production timeout, so Supabase-path profiling and a production retest remain required
 - No credentialed restore, Cloudmersive, authenticated load, or document-upload load test was represented as complete
 
 ## Required before calling the controls production-active

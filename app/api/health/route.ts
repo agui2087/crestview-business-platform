@@ -13,10 +13,10 @@ export async function GET() {
   try {
     const { error } = await createSupabaseAdminClient()
       .from("account_profiles")
-      .select("id")
-      .limit(1)
+      .select("id", { head: true, count: "exact" })
       .abortSignal(AbortSignal.timeout(2500));
-    if (!error) database = "ok";
+    if (error) throw error;
+    database = "ok";
   } catch (error) {
     await reportOperationalEvent({ event: "health.database_failed", level: "error", route: "/api/health", error });
   }

@@ -8,7 +8,7 @@ import { z } from "zod";
 import { isLocale } from "@/lib/i18n";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { canBrokerAdvanceDeal, dealStatuses } from "@/lib/deal-workflow-policy";
-import { validateUploadedDocument } from "@/lib/document-security";
+import { inspectDocumentSafety, maxDealRoomDocumentBytes, maxVaultDocumentBytes, validateUploadedDocument } from "@/lib/document-security";
 
 const listingSchema = z.object({
   title: z.string().trim().min(5).max(140),
@@ -35,6 +35,28 @@ async function context(formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect(`/${locale}/sign-in`);
   return { locale, supabase, user };
+}
+
+async function reserveUpload(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  userId: string,
+  scope: "deal_room" | "listing_nda",
+  resourceId: string | null,
+  sizeBytes: number,
+) {
+  const { data, error } = await supabase.rpc("reserve_document_upload", {
+    p_user_id: userId, p_scope: scope, p_resource_id: resourceId, p_size_bytes: sizeBytes,
+  });
+  if (error || !data) return null;
+  return String(data);
+}
+
+async function finishUpload(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  reservationId: string,
+  status: "committed" | "rejected",
+) {
+  await supabase.rpc("finish_document_upload", { p_reservation_id: reservationId, p_status: status });
 }
 
 async function requireRole(
@@ -111,10 +133,12 @@ export async function createListing(formData: FormData) {
     redirect(`/${locale}/dashboard/listings?new=1&error=nda_required#new-listing`);
   }
   if (ndaFile instanceof File && ndaFile.size > 0) {
+    const safety = await inspectDocumentSafety(ndaFile);
     if (
       ndaFile.type !== "application/pdf" ||
-      ndaFile.size > 10 * 1024 * 1024 ||
-      !(await validateUploadedDocument(ndaFile))
+      ndaFile.size > maxVaultDocumentBytes ||
+      !(await validateUploadedDocument(ndaFile)) ||
+      !safety.safe
     ) {
       redirect(`/${locale}/dashboard/listings?new=1&error=nda_file#new-listing`);
     }
@@ -156,6 +180,11 @@ export async function createListing(formData: FormData) {
   const ndaBody = String(formData.get("nda_template_body") ?? "").trim();
   let ndaStoragePath: string | null = null;
   if (ndaFile instanceof File && ndaFile.size > 0) {
+    const reservationId = await reserveUpload(supabase, user.id, "listing_nda", listing.id, ndaFile.size);
+    if (!reservationId) {
+      await supabase.from("marketplace_listings").delete().eq("id", listing.id).eq("broker_id", user.id);
+      redirect(`/${locale}/dashboard/listings?error=upload_limit`);
+    }
     const safeName = ndaFile.name.replace(/[^a-zA-Z0-9._-]/g, "-").slice(-100);
     ndaStoragePath = `${user.id}/listing-ndas/${listing.id}/${Date.now()}-${safeName}`;
     const { error: uploadError } = await supabase.storage.from("deal-files").upload(ndaStoragePath, ndaFile, {
@@ -163,9 +192,11 @@ export async function createListing(formData: FormData) {
       upsert: false,
     });
     if (uploadError) {
+      await finishUpload(supabase, reservationId, "rejected");
       await supabase.from("marketplace_listings").delete().eq("id", listing.id).eq("broker_id", user.id);
       redirect(`/${locale}/dashboard/listings?error=nda_upload`);
     }
+    await finishUpload(supabase, reservationId, "committed");
   }
   if (ndaBody || ndaStoragePath) {
     const { error: ndaError } = await supabase.from("listing_nda_templates").insert({
@@ -578,19 +609,27 @@ export async function addDealRoomDocument(formData: FormData) {
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ]);
+    const safety = await inspectDocumentSafety(documentFile);
     if (
       !allowedTypes.has(documentFile.type) ||
-      documentFile.size > 20 * 1024 * 1024 ||
-      !(await validateUploadedDocument(documentFile))
+      documentFile.size > maxDealRoomDocumentBytes ||
+      !(await validateUploadedDocument(documentFile)) ||
+      !safety.safe
     ) {
       redirect(`/${locale}/dashboard/deals/${inquiryId}?error=document_file`);
     }
+    const reservationId = await reserveUpload(supabase, user.id, "deal_room", inquiryId, documentFile.size);
+    if (!reservationId) redirect(`/${locale}/dashboard/deals/${inquiryId}?error=upload_limit`);
     const safeName = documentFile.name.replace(/[^a-zA-Z0-9._-]/g, "-").slice(-100);
     storagePath = `${user.id}/deal-rooms/${inquiryId}/${Date.now()}-${safeName}`;
     const { error: uploadError } = await supabase.storage.from("deal-files").upload(storagePath, documentFile, {
       contentType: documentFile.type, upsert: false,
     });
-    if (uploadError) redirect(`/${locale}/dashboard/deals/${inquiryId}?error=document_upload`);
+    if (uploadError) {
+      await finishUpload(supabase, reservationId, "rejected");
+      redirect(`/${locale}/dashboard/deals/${inquiryId}?error=document_upload`);
+    }
+    await finishUpload(supabase, reservationId, "committed");
     originalFilename = documentFile.name;
     mimeType = documentFile.type;
     fileSizeBytes = documentFile.size;

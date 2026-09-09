@@ -3,6 +3,11 @@ const officeTypes = new Set([
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ]);
 
+export const maxVaultDocumentBytes = 10 * 1024 * 1024;
+export const maxDealRoomDocumentBytes = 20 * 1024 * 1024;
+
+export type DocumentSafetyResult = { safe: true } | { safe: false; reason: string };
+
 function startsWith(bytes: Uint8Array, signature: number[]) {
   return signature.every((value, index) => bytes[index] === value);
 }
@@ -25,4 +30,24 @@ export function hasValidDocumentSignature(contentType: string, bytes: Uint8Array
 export async function validateUploadedDocument(file: File) {
   const sample = new Uint8Array(await file.slice(0, 4096).arrayBuffer());
   return hasValidDocumentSignature(file.type, sample);
+}
+
+/**
+ * A fail-closed pre-storage safety screen. This does not pretend to replace a
+ * commercial malware engine; it blocks the standard antivirus test payload,
+ * executable headers, and active-content PDF markers before a file is stored.
+ */
+export async function inspectDocumentSafety(file: File): Promise<DocumentSafetyResult> {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const text = new TextDecoder("latin1").decode(bytes);
+  if (text.includes("EICAR-STANDARD-ANTIVIRUS-TEST-FILE")) {
+    return { safe: false, reason: "The file was blocked by the security scanner." };
+  }
+  if (startsWith(bytes, [0x4d, 0x5a])) {
+    return { safe: false, reason: "Executable files are not permitted." };
+  }
+  if (file.type === "application/pdf" && /\/(JavaScript|JS|Launch|EmbeddedFile)\b/i.test(text)) {
+    return { safe: false, reason: "Active-content PDF files are not permitted." };
+  }
+  return { safe: true };
 }

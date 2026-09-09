@@ -7,8 +7,9 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { isLocale } from "@/lib/i18n";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { canBrokerAdvanceDeal, dealStatuses } from "@/lib/deal-workflow-policy";
-import { inspectDocumentSafety, maxDealRoomDocumentBytes, maxVaultDocumentBytes, validateUploadedDocument } from "@/lib/document-security";
+import { maxDealRoomDocumentBytes, maxVaultDocumentBytes, scanUploadedDocument, securityStatusForScan, validateUploadedDocument } from "@/lib/document-security";
 
 const listingSchema = z.object({
   title: z.string().trim().min(5).max(140),
@@ -129,16 +130,17 @@ export async function createListing(formData: FormData) {
   if (publishing) await requireActiveBrokerPlan(locale, supabase, user.id);
   const ndaFile = formData.get("nda_file");
   const ndaAttested = formData.get("nda_attested") === "on";
+  let ndaScan: Awaited<ReturnType<typeof scanUploadedDocument>> | null = null;
   if (publishing && (!(ndaFile instanceof File) || ndaFile.size === 0 || !ndaAttested)) {
     redirect(`/${locale}/dashboard/listings?new=1&error=nda_required#new-listing`);
   }
   if (ndaFile instanceof File && ndaFile.size > 0) {
-    const safety = await inspectDocumentSafety(ndaFile);
+    ndaScan = await scanUploadedDocument(ndaFile);
     if (
       ndaFile.type !== "application/pdf" ||
       ndaFile.size > maxVaultDocumentBytes ||
       !(await validateUploadedDocument(ndaFile)) ||
-      !safety.safe
+      ndaScan.status !== "clean"
     ) {
       redirect(`/${locale}/dashboard/listings?new=1&error=nda_file#new-listing`);
     }
@@ -199,7 +201,8 @@ export async function createListing(formData: FormData) {
     await finishUpload(supabase, reservationId, "committed");
   }
   if (ndaBody || ndaStoragePath) {
-    const { error: ndaError } = await supabase.from("listing_nda_templates").insert({
+    const admin = createSupabaseAdminClient();
+    const { error: ndaError } = await admin.from("listing_nda_templates").insert({
       listing_id: listing.id,
       broker_id: user.id,
       document_name: String(formData.get("nda_document_name") ?? "Confidentiality agreement").trim(),
@@ -207,12 +210,17 @@ export async function createListing(formData: FormData) {
       storage_path: ndaStoragePath,
       auto_send: formData.get("auto_send_nda") === "on",
       broker_attested: ndaAttested,
+      security_status: ndaScan ? securityStatusForScan(ndaScan) : "basic_validated",
+      scan_provider: ndaScan?.provider ?? "local",
+      scan_completed_at: ndaScan ? new Date().toISOString() : null,
+      scan_sha256: ndaScan?.sha256 ?? null,
     });
     if (ndaError) {
       if (ndaStoragePath) await supabase.storage.from("deal-files").remove([ndaStoragePath]);
       await supabase.from("marketplace_listings").delete().eq("id", listing.id).eq("broker_id", user.id);
       redirect(`/${locale}/dashboard/listings?error=nda`);
     }
+    if (ndaScan) await admin.from("document_security_events").insert({ scope: "listing_nda", document_id: listing.id, actor_id: user.id, status: securityStatusForScan(ndaScan), provider: ndaScan.provider, sha256: ndaScan.sha256 });
   }
   const qualityScore = Math.min(100,
     30
@@ -254,6 +262,7 @@ export async function updateListingStatus(formData: FormData) {
       .eq("broker_id", user.id)
       .eq("auto_send", true)
       .eq("broker_attested", true)
+      .in("security_status", ["basic_validated", "malware_scanned"])
       .not("storage_path", "is", null)
       .maybeSingle();
     if (!ndaTemplate) redirect(`/${locale}/dashboard/listings?error=nda_required`);
@@ -293,8 +302,9 @@ export async function createInquiry(formData: FormData) {
   const { data: listing } = await supabase.from("marketplace_listings").select("id,title,broker_id").eq("id", listingId).eq("status", "published").maybeSingle();
   if (!listing || listing.broker_id === user.id) redirect(`/${locale}/dashboard/marketplace?error=inquiry`);
   const { data: ndaTemplate } = await supabase.from("listing_nda_templates")
-    .select("document_name,template_body,storage_path,version,auto_send,broker_attested")
-    .eq("listing_id", listing.id).eq("auto_send", true).eq("broker_attested", true).maybeSingle();
+    .select("document_name,template_body,storage_path,version,auto_send,broker_attested,security_status")
+    .eq("listing_id", listing.id).eq("auto_send", true).eq("broker_attested", true)
+    .in("security_status", ["basic_validated", "malware_scanned"]).maybeSingle();
   const { data: existingInquiry } = await supabase.from("deal_inquiries")
     .select("id").eq("listing_id", listing.id).eq("buyer_id", user.id).maybeSingle();
   if (existingInquiry) redirect(`/${locale}/dashboard/deals/${existingInquiry.id}`);
@@ -603,18 +613,19 @@ export async function addDealRoomDocument(formData: FormData) {
   let originalFilename: string | null = null;
   let mimeType: string | null = null;
   let fileSizeBytes: number | null = null;
+  let documentScan: Awaited<ReturnType<typeof scanUploadedDocument>> | null = null;
   if (documentFile instanceof File && documentFile.size > 0) {
     const allowedTypes = new Set([
       "application/pdf", "text/csv", "application/vnd.ms-excel",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ]);
-    const safety = await inspectDocumentSafety(documentFile);
+    documentScan = await scanUploadedDocument(documentFile);
     if (
       !allowedTypes.has(documentFile.type) ||
       documentFile.size > maxDealRoomDocumentBytes ||
       !(await validateUploadedDocument(documentFile)) ||
-      !safety.safe
+      documentScan.status !== "clean"
     ) {
       redirect(`/${locale}/dashboard/deals/${inquiryId}?error=document_file`);
     }
@@ -635,7 +646,8 @@ export async function addDealRoomDocument(formData: FormData) {
     fileSizeBytes = documentFile.size;
   }
   if (!storagePath && !externalUrl) redirect(`/${locale}/dashboard/deals/${inquiryId}?error=document_required`);
-  const { data: document, error: documentError } = await supabase.from("deal_room_documents").insert({
+  const admin = createSupabaseAdminClient();
+  const { data: document, error: documentError } = await admin.from("deal_room_documents").insert({
       inquiry_id: inquiryId, uploaded_by: user.id, title,
       category,
       storage_path: storagePath,
@@ -645,11 +657,16 @@ export async function addDealRoomDocument(formData: FormData) {
       external_url: externalUrl,
       access_level: accessLevel,
       permission_note: accessLevel === "approved" ? "Buyer access requires broker approval" : accessLevel === "broker_only" ? "Broker only" : "Available after NDA",
+      security_status: documentScan ? securityStatusForScan(documentScan) : "basic_validated",
+      scan_provider: documentScan?.provider ?? "external_link",
+      scan_completed_at: documentScan ? new Date().toISOString() : null,
+      scan_sha256: documentScan?.sha256 ?? null,
     }).select("id").single();
   if (documentError || !document) {
     if (storagePath) await supabase.storage.from("deal-files").remove([storagePath]);
     redirect(`/${locale}/dashboard/deals/${inquiryId}?error=document_save`);
   }
+  if (documentScan) await admin.from("document_security_events").insert({ scope: "deal_room", document_id: document.id, actor_id: user.id, status: securityStatusForScan(documentScan), provider: documentScan.provider, sha256: documentScan.sha256 });
   await Promise.all([
     supabase.from("marketplace_audit_events").insert({ actor_id: user.id, inquiry_id: inquiryId, event_type: "document_added", details: { title, category, access_level: accessLevel } }),
     supabase.from("deal_status_events").insert({ inquiry_id: inquiryId, actor_id: user.id, to_status: inquiry.status, note: `${title} was added to the secure deal room.` }),

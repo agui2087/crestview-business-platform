@@ -1,9 +1,10 @@
 import "server-only";
 import { createHash } from "node:crypto";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { maxVaultDocumentBytes } from "@/lib/document-security";
 
 export const documentCategories = ["Financials", "Tax returns", "Bank statements", "Debt", "Legal", "Employees", "Customers", "Assets", "Closing", "Operations", "NDA", "Other"] as const;
-export const maxDocumentBytes = 10 * 1024 * 1024;
+export const maxDocumentBytes = maxVaultDocumentBytes;
 export const vaultBucket = "vault-files";
 export const allowedDocumentTypes = new Set([
   "application/pdf", "text/csv", "text/plain", "application/vnd.ms-excel",
@@ -75,6 +76,21 @@ export async function updateDocument(ownerId: string, id: string, values: Partia
 
 export async function deleteDocument(ownerId: string, id: string) {
   const { error } = await createSupabaseAdminClient().from("vault_documents").delete().eq("id", id).eq("owner_id", ownerId);
+  if (error) throw error;
+}
+
+export async function reserveDocumentUpload(ownerId: string, scope: "vault" | "deal_room" | "listing_nda", resourceId: string | null, sizeBytes: number) {
+  const { data, error } = await createSupabaseAdminClient().rpc("reserve_document_upload", {
+    p_user_id: ownerId, p_scope: scope, p_resource_id: resourceId, p_size_bytes: sizeBytes,
+  });
+  if (error) throw error;
+  return String(data);
+}
+
+export async function finishDocumentUpload(reservationId: string, status: "committed" | "rejected") {
+  const { error } = await createSupabaseAdminClient().rpc("finish_document_upload", {
+    p_reservation_id: reservationId, p_status: status,
+  });
   if (error) throw error;
 }
 

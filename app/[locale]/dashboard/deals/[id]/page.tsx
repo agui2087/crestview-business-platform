@@ -18,7 +18,7 @@ type WorkspaceData = {
   messages: { id: string; body: string; sender_id: string; created_at: string }[];
   nda: { status: string; document_name: string; template_body: string | null; storage_path?: string | null; template_version?: number; signed_at: string | null; signer_name: string | null } | null;
   ndaUrl: string | null;
-  documents: { id: string; title: string; category: string; external_url: string | null; secure_url?: string | null; storage_path?: string | null; original_filename?: string | null; mime_type?: string | null; file_size_bytes?: number | null; access_level?: string; permission_note?: string | null; version: number; created_at: string }[];
+  documents: { id: string; title: string; category: string; external_url: string | null; secure_url?: string | null; storage_path?: string | null; original_filename?: string | null; mime_type?: string | null; file_size_bytes?: number | null; access_level?: string; permission_note?: string | null; security_status?: string | null; scan_provider?: string | null; scan_completed_at?: string | null; version: number; created_at: string }[];
   requests: { id: string; item_name: string; note: string | null; status: string; document_id: string | null; created_at: string; resolved_at: string | null }[];
   events: { id: string; to_status: string; note: string | null; created_at: string }[];
   listingFinancials?: { asking_price: number | null; annual_revenue: number | null; cash_flow: number | null };
@@ -55,7 +55,7 @@ async function getWorkspace(id: string, userId?: string): Promise<WorkspaceData>
   const [{ data: messages }, { data: nda }, { data: documents }, { data: requests }, { data: events }] = await Promise.all([
     supabase.from("deal_messages").select("id,body,sender_id,created_at").eq("inquiry_id", id).order("created_at"),
     supabase.from("deal_ndas").select("status,document_name,template_body,storage_path,template_version,signed_at,signer_name").eq("inquiry_id", id).maybeSingle(),
-    supabase.from("deal_room_documents").select("id,title,category,storage_path,original_filename,mime_type,file_size_bytes,external_url,access_level,permission_note,version,created_at").eq("inquiry_id", id).eq("is_active", true).order("created_at"),
+    supabase.from("deal_room_documents").select("id,title,category,storage_path,original_filename,mime_type,file_size_bytes,external_url,access_level,permission_note,security_status,scan_provider,scan_completed_at,version,created_at").eq("inquiry_id", id).eq("is_active", true).order("created_at"),
     supabase.from("deal_document_requests").select("id,item_name,note,status,document_id,created_at,resolved_at").eq("inquiry_id", id).order("created_at"),
     supabase.from("deal_status_events").select("id,to_status,note,created_at").eq("inquiry_id", id).order("created_at"),
   ]);
@@ -66,6 +66,8 @@ async function getWorkspace(id: string, userId?: string): Promise<WorkspaceData>
     ndaUrl = data?.signedUrl ?? null;
   }
   const documentsWithUrls = await Promise.all((documents ?? []).map(async (document) => {
+    const canRelease = ["basic_validated", "malware_scanned"].includes(document.security_status ?? "basic_validated");
+    if (!canRelease) return { ...document, secure_url: null };
     if (!document.storage_path) return { ...document, secure_url: null };
     const { data } = await supabase.storage.from("deal-files").createSignedUrl(document.storage_path, 60 * 15);
     return { ...document, secure_url: data?.signedUrl ?? null };
@@ -284,7 +286,11 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
         <section className={`panel secure-room ${roomUnlocked || workspace.isDemo ? "is-unlocked" : "is-locked"}`}>
           <div className="panel__header"><div><span className="source-label">Permission-controlled documents</span><h2>Secure deal room</h2></div><span className="stage">{roomUnlocked ? financialApproved ? "Financial access approved" : "NDA access only" : "NDA required"}</span></div>
           {!roomUnlocked && !workspace.isDemo && <div className="room-lock"><span>🔒</span><h3>Sign the NDA to unlock documents</h3><p>Only approved participants can access confidential materials. Every upload and status change remains attached to this deal.</p></div>}
-          {(roomUnlocked || workspace.isDemo) && <div className="document-folders">{documentGroups.map((group) => group.documents.length ? <section key={group.category}><header><strong>{group.category}</strong><span>{group.documents.length} received</span></header><div className="room-documents">{group.documents.map((document) => <article key={document.id}><span>▤</span><div><strong>{document.title}</strong><small>{document.original_filename || "Secure record"} · Version {document.version} · {document.permission_note ?? (document.access_level === "approved" ? "Broker approval required" : document.access_level === "broker_only" ? "Broker only" : "Available after NDA")}</small></div>{document.secure_url || document.external_url ? <a href={document.secure_url || document.external_url || "#"} target="_blank" rel="noreferrer">Open securely</a> : <span className="stage">Protected</span>}</article>)}</div></section> : null)}<details className="empty-document-folders"><summary>Show empty folders ({documentGroups.filter((group) => !group.documents.length).length})</summary><div>{documentGroups.filter((group) => !group.documents.length).map((group) => <span key={group.category}>{group.category}</span>)}</div></details></div>}
+          {(roomUnlocked || workspace.isDemo) && <div className="document-folders">{documentGroups.map((group) => group.documents.length ? <section key={group.category}><header><strong>{group.category}</strong><span>{group.documents.length} received</span></header><div className="room-documents">{group.documents.map((document) => {
+            const scanStatus = document.security_status ?? "basic_validated";
+            const scanLabel = scanStatus === "malware_scanned" ? "Managed security scan passed" : scanStatus === "basic_validated" ? "File safety checked" : scanStatus === "blocked" ? "Blocked" : "Security check in progress";
+            return <article key={document.id}><span>▤</span><div><strong>{document.title}</strong><small>{document.original_filename || "Secure record"} · Version {document.version} · {document.permission_note ?? (document.access_level === "approved" ? "Broker approval required" : document.access_level === "broker_only" ? "Broker only" : "Available after NDA")}</small><span className={`document-scan-status ${scanStatus === "quarantined" ? "is-quarantined" : scanStatus === "blocked" ? "is-blocked" : ""}`}>{scanLabel}</span></div>{document.secure_url || document.external_url ? <a href={document.secure_url || document.external_url || "#"} target="_blank" rel="noreferrer">Open securely</a> : <span className="stage">Protected</span>}</article>;
+          })}</div></section> : null)}<details className="empty-document-folders"><summary>Show empty folders ({documentGroups.filter((group) => !group.documents.length).length})</summary><div>{documentGroups.filter((group) => !group.documents.length).map((group) => <span key={group.category}>{group.category}</span>)}</div></details></div>}
           {!workspace.isBuyer && !workspace.isDemo && <details className="room-upload" id="deal-upload" open><summary>Upload a secure document</summary><form action={addDealRoomDocument}>
             <input type="hidden" name="locale" value={locale} /><input type="hidden" name="inquiry_id" value={id} />
             <label>Title<input name="title" placeholder="Document title" required /></label><label>Folder<select name="category"><option>Overview</option><option>Financial</option><option>Tax</option><option>Legal</option><option>Employees</option><option>Customers</option><option>Assets</option><option>Closing</option><option>Operations</option><option>Other</option></select></label>

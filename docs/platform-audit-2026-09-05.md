@@ -45,6 +45,8 @@ The Supabase bucket is private, database tables use RLS/service-role access, fil
 
 Recommendation: move ownership to user UUID, validate file signatures, add quotas and rate limits, define retention/deletion behavior, and add malware scanning before positioning the vault for sensitive financial documents at scale.
 
+Status update (September 8, 2026): substantially remediated. Vault ownership now uses immutable user UUIDs. Vault, listing NDA, and deal-room uploads receive signature validation and a fail-closed safety screen before storage. Atomic database reservations enforce a maximum of 20 uploads per user per hour, 250 stored documents, and 1 GB of stored document data. The database now records upload security events and explicit retention metadata. A managed malware-scanning provider and its administrative review queue remain required before Crestview represents the vault as suitable for sensitive documents at enterprise scale.
+
 ### H3 — Security headers are incomplete
 
 The app sets frame, content-type, referrer, and permissions protections, but lacks a production Content Security Policy and HSTS. A formal dependency/security scan is not part of CI.

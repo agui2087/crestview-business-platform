@@ -17,6 +17,8 @@ export type VaultDocument = {
   id: string; ownerId: string; opportunityId: string | null; storageKey: string;
   originalName: string; contentType: string; sizeBytes: number; category: string;
   dealName: string | null; fiscalYear: string | null; createdAt: string; updatedAt: string;
+  securityStatus: "quarantined" | "basic_validated" | "malware_scanned" | "blocked";
+  scanProvider: string | null; scanCompletedAt: string | null;
 };
 
 type VaultActivity = { id: string; documentId: string | null; action: string; documentName: string; createdAt: string };
@@ -31,6 +33,9 @@ function mapDocument(row: Record<string, unknown>): VaultDocument {
     storageKey: String(row.storage_key), originalName: String(row.original_name), contentType: String(row.content_type),
     sizeBytes: Number(row.size_bytes), category: String(row.category), dealName: row.deal_name ? String(row.deal_name) : null,
     fiscalYear: row.fiscal_year ? String(row.fiscal_year) : null, createdAt: String(row.created_at), updatedAt: String(row.updated_at),
+    securityStatus: String(row.security_status ?? "basic_validated") as VaultDocument["securityStatus"],
+    scanProvider: row.scan_provider ? String(row.scan_provider) : null,
+    scanCompletedAt: row.scan_completed_at ? String(row.scan_completed_at) : null,
   };
 }
 
@@ -57,18 +62,21 @@ export async function listVault(ownerId: string) {
   return { files: (filesResult.data ?? []).map(mapDocument), activity };
 }
 
-export async function insertDocument(document: Omit<VaultDocument, "createdAt" | "updatedAt">) {
+export async function insertDocument(document: Omit<VaultDocument, "createdAt" | "updatedAt"> & { scanSha256?: string | null; scanFailureReason?: string | null }) {
   const { error } = await createSupabaseAdminClient().from("vault_documents").insert({
     id: document.id, owner_id: document.ownerId, owner_key: "uuid-owned", opportunity_id: document.opportunityId, storage_key: document.storageKey,
     original_name: document.originalName, content_type: document.contentType, size_bytes: document.sizeBytes,
     category: document.category, deal_name: document.dealName, fiscal_year: document.fiscalYear,
+    security_status: document.securityStatus, scan_provider: document.scanProvider,
+    scan_completed_at: document.scanCompletedAt, scan_sha256: document.scanSha256 ?? null,
+    scan_failure_reason: document.scanFailureReason ?? null,
   });
   if (error) throw error;
 }
 
-export async function updateDocument(ownerId: string, id: string, values: Partial<Omit<VaultDocument, "id" | "ownerId" | "createdAt">>) {
+export async function updateDocument(ownerId: string, id: string, values: Partial<Omit<VaultDocument, "id" | "ownerId" | "createdAt">> & { scanSha256?: string | null; scanFailureReason?: string | null }) {
   const payload: Record<string, unknown> = { updated_at: new Date().toISOString() };
-  const keys: Record<string, string> = { opportunityId: "opportunity_id", storageKey: "storage_key", originalName: "original_name", contentType: "content_type", sizeBytes: "size_bytes", category: "category", dealName: "deal_name", fiscalYear: "fiscal_year" };
+  const keys: Record<string, string> = { opportunityId: "opportunity_id", storageKey: "storage_key", originalName: "original_name", contentType: "content_type", sizeBytes: "size_bytes", category: "category", dealName: "deal_name", fiscalYear: "fiscal_year", securityStatus: "security_status", scanProvider: "scan_provider", scanCompletedAt: "scan_completed_at", scanSha256: "scan_sha256", scanFailureReason: "scan_failure_reason" };
   for (const [key, value] of Object.entries(values)) payload[keys[key] ?? key] = value;
   const { error } = await createSupabaseAdminClient().from("vault_documents").update(payload).eq("id", id).eq("owner_id", ownerId);
   if (error) throw error;
@@ -90,6 +98,15 @@ export async function reserveDocumentUpload(ownerId: string, scope: "vault" | "d
 export async function finishDocumentUpload(reservationId: string, status: "committed" | "rejected") {
   const { error } = await createSupabaseAdminClient().rpc("finish_document_upload", {
     p_reservation_id: reservationId, p_status: status,
+  });
+  if (error) throw error;
+}
+
+export async function recordSecurityEvent(values: { documentId: string | null; ownerId: string; status: string; provider: string; sha256: string; reason?: string | null }) {
+  const { error } = await createSupabaseAdminClient().from("document_security_events").insert({
+    scope: "vault", document_id: values.documentId, actor_id: values.ownerId,
+    status: values.status, provider: values.provider, sha256: values.sha256,
+    details: values.reason ? { reason: values.reason } : {},
   });
   if (error) throw error;
 }

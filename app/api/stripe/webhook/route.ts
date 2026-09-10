@@ -80,6 +80,9 @@ async function processPaidCheckout(event: Stripe.Event, session: Stripe.Checkout
     !customerId ||
     !priceId ||
     !productCode ||
+    lineItems.has_more ||
+    lineItems.data.length !== 1 ||
+    lineItem.quantity !== 1 ||
     productDefinitions[productCode].mode !== "payment" ||
     session.metadata?.product_code !== productCode
   ) {
@@ -91,16 +94,18 @@ async function processPaidCheckout(event: Stripe.Event, session: Stripe.Checkout
     ? new Date(Date.now() + durationDays * 86_400_000).toISOString()
     : null;
 
-  await applyBillingEvent(event, {
-    userId,
-    customerId,
-    productCode,
-    priceId,
-    quantity: lineItem.quantity ?? 1,
-    entitlementActive: true,
-    entitlementOperation: "increment",
-    entitlementExpiresAt,
+  const { error } = await createSupabaseAdminClient().rpc("fulfill_stripe_checkout_payment", {
+    p_session_id: session.id,
+    p_event_id: event.id,
+    p_event_type: event.type,
+    p_user_id: userId,
+    p_customer_id: customerId,
+    p_product_code: productCode,
+    p_price_id: priceId,
+    p_quantity: lineItem.quantity,
+    p_expires_at: entitlementExpiresAt,
   });
+  if (error) throw error;
 }
 
 async function processSubscription(event: Stripe.Event, subscription: Stripe.Subscription) {

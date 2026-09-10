@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { logOperationalEvent, reportOperationalEvent } from "@/lib/observability";
+import { authReturnPath } from "@/lib/auth-return-path";
 
 const credentialsSchema = z.object({
   email: z.string().email().max(254),
@@ -14,10 +15,13 @@ const credentialsSchema = z.object({
 });
 
 export async function signIn(formData: FormData) {
+  const locale = formData.get("locale") === "es" ? "es" : "en";
+  const returnTo = authReturnPath(formData.get("return_to"), locale);
+  const failurePath = `/${locale}/sign-in?error=invalid&return_to=${encodeURIComponent(returnTo)}`;
   const parsed = credentialsSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     logOperationalEvent({ event: "auth.sign_in_validation_failed", level: "warn", route: "/[locale]/sign-in" });
-    redirect("/en/sign-in?error=invalid");
+    redirect(failurePath);
   }
   const input = parsed.data;
   const supabase = await createSupabaseServerClient();
@@ -28,20 +32,23 @@ export async function signIn(formData: FormData) {
   if (error) {
     const providerFailure = !error.status || error.status >= 500;
     await reportOperationalEvent({ event: providerFailure ? "auth.provider_failed" : "auth.sign_in_rejected", level: providerFailure ? "error" : "warn", route: "/[locale]/sign-in", details: { providerStatus: error.status, providerCode: error.code } });
-    redirect(`/${input.locale}/sign-in?error=invalid`);
+    redirect(failurePath);
   }
-  redirect(`/${input.locale}/dashboard`);
+  redirect(returnTo);
 }
 
 export async function signUp(formData: FormData) {
+  const locale = formData.get("locale") === "es" ? "es" : "en";
+  const returnTo = authReturnPath(formData.get("return_to"), locale);
+  const failurePath = `/${locale}/sign-in?error=signup&return_to=${encodeURIComponent(returnTo)}`;
   const parsed = credentialsSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     logOperationalEvent({ event: "auth.sign_up_validation_failed", level: "warn", route: "/[locale]/sign-in" });
-    redirect("/en/sign-in?error=signup");
+    redirect(failurePath);
   }
   const input = parsed.data;
   const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email: input.email,
     password: input.password,
     options: {
@@ -56,7 +63,8 @@ export async function signUp(formData: FormData) {
   });
   if (error) {
     await reportOperationalEvent({ event: "auth.sign_up_failed", level: error.status && error.status < 500 ? "warn" : "error", route: "/[locale]/sign-in", details: { providerStatus: error.status, providerCode: error.code } });
-    redirect(`/${input.locale}/sign-in?error=signup`);
+    redirect(failurePath);
   }
-  redirect(`/${input.locale}/sign-in?message=check-email`);
+  if (data.session) redirect(returnTo);
+  redirect(`/${input.locale}/sign-in?message=check-email&return_to=${encodeURIComponent(returnTo)}`);
 }

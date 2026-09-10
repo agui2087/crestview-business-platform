@@ -1,0 +1,4 @@
+.listing-management > article { flex-wrap: wrap; }
+.listing-management .listing-draft-continuation { flex-basis: 100%; min-width: 0; width: 100%; }
+.listing-draft-continuation .listing-editor { width: 100%; }
+.listing-draft-continuation input:not([type=checkbox]), .listing-draft-continuation textarea { max-width: 100%; }

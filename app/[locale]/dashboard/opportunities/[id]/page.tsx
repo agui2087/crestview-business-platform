@@ -1,10 +1,13 @@
 import Link from "next/link";
+import "./journey.css";
 import { notFound } from "next/navigation";
 import { AcquisitionPlanner } from "@/components/acquisition-planner";
 import { GuidedAcquisitionWorkspace } from "@/components/guided-acquisition-workspace";
 import { LenderReadinessPackage } from "@/components/lender-readiness-package";
 import { PlatformShell } from "@/components/platform-shell";
-import { getOpportunity, opportunities } from "@/lib/demo-data";
+import { opportunities } from "@/lib/demo-data";
+import { resolveOpportunity } from "@/lib/opportunity-resolver";
+import { inquiryIdFromOpportunity } from "@/lib/deal-opportunity";
 import { isLocale } from "@/lib/i18n";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { calculateBuyerFit, calculateDealScore, type BuyerFitPreferences } from "@/lib/deal-score";
@@ -19,9 +22,10 @@ export function generateStaticParams() {
 export default async function OpportunityDetailPage({ params }: { params: Promise<{ locale: string; id: string }> }) {
   const { locale, id } = await params;
   if (!isLocale(locale)) notFound();
-  const opportunity = getOpportunity(id);
+  const opportunity = await resolveOpportunity(id,locale);
   if (!opportunity) notFound();
   const es = locale === "es";
+  const inquiryId = inquiryIdFromOpportunity(id);
   const dealScore = calculateDealScore(opportunity);
   const priceToCashFlow = opportunity.priceValue && opportunity.cashFlowValue ? opportunity.priceValue / opportunity.cashFlowValue : null;
   const priceToRevenue = opportunity.priceValue && opportunity.revenueValue ? opportunity.priceValue / opportunity.revenueValue : null;
@@ -103,7 +107,8 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
 
   return (
     <PlatformShell locale={locale} active="opportunities">
-      <div className="dashboard-content">
+      <div className="dashboard-content acquisition-detail-page">
+        {inquiryId && <div className="notice"><strong>{es ? "Tu plan privado" : "Your private acquisition plan"}</strong><p>{es ? "Tus notas, cálculos y lista no se comparten con el corredor. Los mensajes, documentos y estado compartido permanecen en el espacio del trato." : "Your notes, calculations, and checklist are not shared with the broker. Messages, documents, and the shared deal stage stay in the deal room."}</p><Link href={`/${locale}/dashboard/deals/${inquiryId}`}>{es ? "Volver al espacio compartido" : "Return to shared deal room"}</Link></div>}
         <Link className="back-link" href={`/${locale}/dashboard/opportunities`}>{es ? "← Todas las oportunidades" : "← All opportunities"}</Link>
         <div className="detail-heading">
           <div><span>{opportunity.source} · {opportunity.sourceId}</span><h1>{opportunity.title}</h1><p>{opportunity.industry} · {opportunity.location}</p></div>

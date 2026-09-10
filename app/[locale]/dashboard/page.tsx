@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeading, PlatformShell } from "@/components/platform-shell";
-import { getOpportunity } from "@/lib/demo-data";
+import { resolveOpportunities } from "@/lib/opportunity-resolver";
 import { getCrestviewUser } from "@/lib/current-user";
 import { isLocale } from "@/lib/i18n";
 import { platformCopy } from "@/lib/platform-copy";
@@ -63,6 +63,7 @@ export default async function DashboardPage({ params }: PageProps<"/[locale]/das
   }
   const activeDeals = deals.filter((deal) => !["saved", "complete", "passed"].includes(deal.stage)).length;
   const buyerProfileStarted = Boolean(buyerFinance?.available_cash || buyerProfile);
+  const resolved=await resolveOpportunities(deals.map(item=>item.opportunity_key),locale);
   return (
     <PlatformShell locale={locale} active="overview">
       <div className="dashboard-content">
@@ -114,7 +115,7 @@ export default async function DashboardPage({ params }: PageProps<"/[locale]/das
           <section className="panel">
             <div className="panel__header"><h2>{text.overview.priority}</h2><Link href={`/${locale}/dashboard/pipeline`}>{text.common.viewAll} →</Link></div>
             {deals.slice(0, 5).map((deal) => {
-              const opportunity = getOpportunity(deal.opportunity_key);
+              const opportunity = resolved.get(deal.opportunity_key);
               return opportunity ? <Link className="deal-row deal-row--linked" href={`/${locale}/dashboard/opportunities/${opportunity.id}`} key={deal.id}>
                 <div className="deal-name"><strong>{opportunity.title}</strong><span>{opportunity.location}</span></div>
                 <span>{opportunity.price}</span><span className="stage">{deal.stage}</span><span>{new Date(deal.updated_at).toLocaleDateString(locale)}</span>

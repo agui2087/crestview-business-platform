@@ -1,6 +1,6 @@
 # Staging bootstrap audit — 2026-09-10
 
-Production remains unchanged at PR51. This is an environment diagnostic, not a new live feature or a passed browser test.
+The baseline correction shipped in PR52. This audit is an environment diagnostic, not a new live feature or a passed browser test. No hosted database migration was executed for that release.
 
 Read-only inspection of staging project `bxtrkycetuoqooammgpp` found one auth account and five public tables: billing_customers, billing_entitlements, billing_subscriptions, stripe_checkout_fulfillments and stripe_webhook_events. No profiles, employees, Workforce membership/leave tables or private vault exist. Existing staging billing data must be preserved. Production is the different project `gsabakontancxutgsbem`.
 
@@ -17,3 +17,11 @@ Read-only production schema inspection confirmed the newer user-key-based shape 
 The full isolated sequence passes after the correction, including document-security and Workforce dependencies. The baseline test is included in the normal regression suite to prevent recurrence. Staging itself remains billing-only: preparing it requires an incremental manifest that skips already-applied billing schema and preserves its existing account/data. Do not apply the fresh-install sequence wholesale to staging.
 
 After the baseline is validated, staging still needs the reviewed schema, isolated synthetic identities, secure configuration and browser/server/database tests. Existing form-handler/database tests remain passing but are not full hosted E2E acceptance. No staging migration, user invitation, credential change or production data mutation was performed during this audit.
+
+## Incremental rehearsal
+
+The regression test now also begins with the released 0010 billing schema, a modeled existing checkout-receipt table and one synthetic account with a record in each of the five billing tables. It applies 0001–0041 in order while skipping 0010 (already present) and 0027/0028 (unrelated billing changes). All five billing tables' records, the existing billing-event routine definition and its privileges, and the auth account count remain unchanged. Workforce/security dependencies initialize successfully. No profile or HR access is silently created for the pre-existing account.
+
+This proves preservation for the explicit fixture, not equivalence to hosted staging. Before applying this candidate sequence to staging, inspect its existing table definitions, routines, triggers and grants; stop on differences or any additional non-billing application tables. Preserve the existing billing implementation rather than replacing it with 0010. Capture schema and protected record-count evidence before/after. Run the reviewed bootstrap transactionally and verify role privileges before connecting a test app. Do not use this procedure on production, rerun it against an initialized application schema, or treat it as a general legacy upgrade.
+
+Hosted staging migration, synthetic identity provisioning and full browser tests are still pending. This test adds no authentication bypass and does not contact Stripe, Supabase or any payment provider.

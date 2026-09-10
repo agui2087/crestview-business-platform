@@ -384,6 +384,7 @@ export async function createInquiry(formData: FormData) {
     .select("id").eq("listing_id", listing.id).eq("buyer_id", user.id).maybeSingle();
   if (existingInquiry) redirect(`/${locale}/dashboard/deals/${existingInquiry.id}`);
   const message = String(formData.get("message") ?? "").trim();
+  if (!z.string().min(10).max(5000).safeParse(message).success) redirect(`/${locale}/dashboard/marketplace?error=inquiry`);
   const automaticNda = Boolean(ndaTemplate);
   const now = new Date().toISOString();
   const { data: inquiry, error } = await supabase.from("deal_inquiries").upsert({
@@ -397,10 +398,17 @@ export async function createInquiry(formData: FormData) {
     requested_items: ["NDA"],
     status: automaticNda ? "nda_sent" : "submitted",
     updated_at: now,
-  }, { onConflict: "listing_id,buyer_id" }).select("id").single();
-  if (error || !inquiry) redirect(`/${locale}/dashboard/marketplace?error=inquiry`);
+  }, { onConflict: "listing_id,buyer_id", ignoreDuplicates: true }).select("id").maybeSingle();
+  if (error) redirect(`/${locale}/dashboard/marketplace?error=inquiry`);
+  if (!inquiry) {
+    // A second tab may have created the inquiry after our first read. Never
+    // overwrite its stage, signed agreement, or financial access on a retry.
+    const {data:concurrent}=await supabase.from("deal_inquiries").select("id").eq("listing_id",listing.id).eq("buyer_id",user.id).maybeSingle();
+    if (concurrent) redirect(`/${locale}/dashboard/deals/${concurrent.id}`);
+    redirect(`/${locale}/dashboard/marketplace?error=inquiry`);
+  }
   if (automaticNda && ndaTemplate) {
-    const { error: ndaError } = await supabase.from("deal_ndas").upsert({
+    const { error: ndaError } = await supabase.from("deal_ndas").insert({
       inquiry_id: inquiry.id,
       broker_id: listing.broker_id,
       buyer_id: user.id,
@@ -411,7 +419,7 @@ export async function createInquiry(formData: FormData) {
       status: "sent",
       sent_at: now,
       signature_record: { source: "listing_template", version: ndaTemplate.version },
-    }, { onConflict: "inquiry_id" });
+    });
     if (ndaError) redirect(`/${locale}/dashboard/marketplace?error=nda`);
     await supabase.from("deal_status_events").insert({
       inquiry_id: inquiry.id, actor_id: user.id, to_status: "nda_sent",

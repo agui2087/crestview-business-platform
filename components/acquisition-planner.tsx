@@ -408,13 +408,14 @@ export function AcquisitionPlanner({
     const nextStatuses = {
       ...stepStatuses,
       [key]: stepStatuses[key] === "complete" ? "open" : "complete",
+      ...(stepStatuses[key] === "complete" ? { [String(current)]: "open" } : {}),
     };
     setStepStatuses(nextStatuses);
     persist(current, nextStatuses);
   }
 
   function recordDecision(decision: "continue" | "pause" | "pass") {
-    const nextStatuses = { ...stepStatuses, [`decision:${current}`]: decision };
+    const nextStatuses = { ...stepStatuses, [`decision:${current}`]: decision, ...(decision !== "continue" ? { [String(current)]: "open" } : {}) };
     setStepStatuses(nextStatuses);
     persist(current, nextStatuses);
   }
@@ -595,9 +596,9 @@ export function AcquisitionPlanner({
         <div className="decision-gate">
           <div><span>{es ? "Decisión de esta etapa" : "Stage decision"}</span><strong>{es ? "¿Qué debes hacer ahora?" : "What should happen next?"}</strong><p>{es ? "Registra una decisión clara. Puedes cambiarla después." : "Record a clear decision. You can change it later."}</p></div>
           <div>
-            <button className={currentDecision === "continue" ? "is-selected" : ""} type="button" onClick={() => recordDecision("continue")}>Ready for next step</button>
-            <button className={currentDecision === "pause" ? "is-selected" : ""} type="button" onClick={() => recordDecision("pause")}>I need more time</button>
-            <button className={currentDecision === "pass" ? "is-selected" : ""} type="button" onClick={() => recordDecision("pass")}>Not a fit</button>
+            <button className={currentDecision === "continue" ? "is-selected" : ""} type="button" onClick={() => recordDecision("continue")}>{atLastStep ? (es ? "Revisión terminada" : "Review finished") : (es ? "Listo para continuar" : "Ready for next step")}</button>
+            <button className={currentDecision === "pause" ? "is-selected" : ""} type="button" onClick={() => recordDecision("pause")}>{es ? "Necesito más tiempo" : "I need more time"}</button>
+            <button className={currentDecision === "pass" ? "is-selected" : ""} type="button" onClick={() => recordDecision("pass")}>{es ? "No es adecuado" : "Not a fit"}</button>
           </div>
         </div>
         {saveMessage && <p className="workspace-save-message" aria-live="polite">{saveMessage}</p>}
@@ -605,8 +606,10 @@ export function AcquisitionPlanner({
         <div className="stage-actions">
           <button className="button button--light" disabled={current === 0} onClick={() => setCurrent((value) => Math.max(0, value - 1))}>Back</button>
           <button className="button button--light" disabled={isSaving} onClick={() => persist()}>{isSaving ? "Saving…" : "Save progress"}</button>
-          {!atLastStep && <><button className="skip-link" onClick={() => setSkipOpen(true)}>Do this later</button><button className="button button--primary" disabled={isSaving || currentDecision !== "continue"} onClick={() => advance("complete")}>Save and continue</button></>}
+          {!atLastStep && <button className="skip-link" onClick={() => setSkipOpen(true)}>{es ? "Hacer después" : "Do this later"}</button>}
+          <button className="button button--primary" disabled={isSaving || currentDecision !== "continue" || completedChecklistItems !== currentChecklist.length || (atLastStep && stepStatuses[String(current)] === "complete")} onClick={() => advance("complete")}>{atLastStep ? (stepStatuses[String(current)] === "complete" ? (es ? "Lista revisada" : "Checklist reviewed") : (es ? "Finalizar revisión de la lista" : "Finish checklist review")) : (es ? "Guardar y continuar" : "Save and continue")}</button>
         </div>
+        {completedChecklistItems !== currentChecklist.length && <p className="advisor-note">{es ? "Completa los elementos y registra tu decisión para finalizar esta etapa. Puedes guardar o volver después." : "Complete the items and record your decision to finish this stage. You can save or return later."}</p>}
       </div>
 
       {skipOpen && <dialog ref={skipDialog} className="confirm-modal acquisition-skip-dialog" aria-labelledby="skip-title" onCancel={() => setSkipOpen(false)}><span aria-hidden="true">!</span><h2 id="skip-title">{es ? "¿Quieres dejar este paso para después?" : "Are you sure you want to skip this step?"}</h2><p>{es ? "El trabajo pendiente puede crear riesgos financieros, legales u operativos. El paso quedará marcado para que vuelvas después." : "Missing work can create financial, legal, or operational risk. Crestview will mark this step as skipped so you can return later."}</p><div><button autoFocus className="button button--light" onClick={() => setSkipOpen(false)}>{es ? "Seguir trabajando" : "Keep working"}</button><button className="button button--primary" disabled={isSaving} onClick={() => { setSkipOpen(false); advance("skipped"); }}>{es ? "Omitir y continuar" : "Skip and continue"}</button></div></dialog>}

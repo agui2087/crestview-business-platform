@@ -31,5 +31,16 @@ for (const locale of ["en","es"]) {
     }
     await expect(page.getByText('Purchase complete',{exact:true})).toHaveCount(0);
     await expect(page.locator('.acquisition-workspace a[href$="/dashboard/workforce/setup"]')).toBeVisible();
+    const finish=page.getByRole('button',{name:locale==='es'?'Finalizar revisión de la lista':'Finish checklist review',exact:true});
+    await expect(finish).toBeDisabled();
+    const finalItems=page.locator('.acquisition-stage .check-card input[type="checkbox"]');
+    for(const item of await finalItems.all()) await item.check();
+    await page.getByRole('button',{name:locale==='es'?'Revisión terminada':'Review finished',exact:true}).click();
+    await expect(finish).toBeEnabled();
+    await finish.click();
+    await expect(page.getByRole('button',{name:locale==='es'?'Lista revisada':'Checklist reviewed',exact:true})).toBeDisabled();
+    await finalItems.first().uncheck();
+    await expect(finish).toBeDisabled();
+    await expect(page.getByText('Purchase complete',{exact:true})).toHaveCount(0);
   });
 }

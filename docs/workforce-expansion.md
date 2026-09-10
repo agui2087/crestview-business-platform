@@ -30,7 +30,7 @@ Progress is tracked by verified acceptance criteria, not by files written. The e
 
 - Owner-scoped workspaces now have accepted/revocable HR, manager and linked employee memberships. Managers can access only explicitly assigned profiles. Internal employee notes are excluded from authenticated directory reads. Permission changes are logged in `workforce_access_history`.
 - HR/owners can add/edit profiles, archive/restore them, assign managers and review field-change history. Version checks prevent stale form overwrites; audit failures roll back writes.
-- Employees can submit dated leave requests or safe contact/language change requests. Designated reviewers or HR/owners decide requests once with a reason; self-approval is rejected. A dated request list supplies the initial coverage view, not a shift calendar or paid-leave calculation.
+- Employees can submit dated leave requests or safe contact/language change requests. Designated reviewers or HR/owners decide requests once with a reason; self-approval is rejected. The monthly leave calendar distinguishes pending and approved absences; it is not a shift calendar or paid-leave calculation.
 - Five-task onboarding/offboarding starter checklists are created atomically. Custom tasks have an assignee, due date and completion evidence. Verification requires a different authorized reviewer.
 - The command center provides pending-request, overdue-task and expiry queues. These are in-app notifications, not email/SMS delivery.
 - Position-based training requirements support renewal intervals, assignments, evidence summaries/references and independent verification. New attachment-sharing permissions have NOT been added to the private document vault. Do not paste confidential document contents into evidence summaries.
@@ -41,7 +41,7 @@ Progress is tracked by verified acceptance criteria, not by files written. The e
 - Provider-specific payroll connector, credentials, field mapping and vendor sandbox acceptance.
 - Company-approved accrual, carryover, holidays and escalation/delegation rules; no leave entitlement is invented.
 - HR/legal-approved policy text, retention periods and electronic acknowledgment requirements. Current policy tasks record evidence only.
-- Full scheduling calendar, automatic email reminders, custom reusable checklist editing, task reassignment and broader multi-company portfolio administration.
+- Shift scheduling, automatic email reminders, custom reusable checklist editing, task reassignment and broader multi-company portfolio administration are further enhancements beyond this initial release.
 - Secure employee/manager file-sharing for training evidence requires a separate document-access design and review; current vault controls are unchanged.
 - Real multi-account user acceptance testing, beyond isolated database and presentation tests.
 

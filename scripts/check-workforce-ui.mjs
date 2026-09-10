@@ -35,6 +35,7 @@ const mockRequire=(name)=>{
   if(name==='next/link')return {__esModule:true,default:({children,...props})=>React.createElement('a',props,children)};
   if(name==='next/navigation')return {notFound(){throw Error('not found')},redirect(){throw Error('redirect')}};
   if(name==='@/lib/i18n')return {isLocale:x=>['en','es'].includes(x)};
+  if(name==='@/lib/workforce-calendar')return require('../lib/workforce-calendar.ts');
   if(name==='@/lib/supabase/server')return {isSupabaseConfigured:()=>true,createSupabaseServerClient:async()=>db};
   if(name==='./actions')return {workforceOperation:async()=>{}};
   if(name==='@/components/platform-shell')return {PlatformShell:({children})=>React.createElement('main',{id:'main-content'},children),PageHeading:({title,body,action})=>React.createElement('header',null,React.createElement('h1',null,title),React.createElement('p',null,body),action)};

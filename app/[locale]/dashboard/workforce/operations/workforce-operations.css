@@ -10,5 +10,10 @@
 .wf-ops .wf-item { padding-block: 16px; border-bottom: 1px solid #d0dbd4; }
 .wf-ops .wf-links { display: flex; flex-wrap: wrap; gap: 16px; }
 .wf-ops .panel li, .wf-ops .panel p { overflow-wrap: anywhere; }
+.wf-calendar-scroll { max-width: 100%; overflow-x: auto; }
+.wf-calendar { width: 100%; min-width: 580px; table-layout: fixed; border-collapse: collapse; }
+.wf-calendar th,.wf-calendar td { padding: 8px; border: 1px solid #c9d4cd; text-align: left; vertical-align: top; }
+.wf-calendar td { height: 80px; }
+.wf-calendar ul { padding: 0; list-style: none; font-size: .8rem; }
 .wf-ops :is(a,button,input,select,textarea,summary):focus-visible { outline: 3px solid #526822; outline-offset: 3px; }
 @media(max-width:600px) { .wf-ops form { flex-direction: column; align-items: stretch; } .wf-ops label { flex-basis: auto; } }

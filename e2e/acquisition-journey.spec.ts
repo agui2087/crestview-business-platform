@@ -38,7 +38,10 @@ for (const locale of ["en","es"]) {
     await page.getByRole('button',{name:locale==='es'?'Revisión terminada':'Review finished',exact:true}).click();
     await expect(finish).toBeEnabled();
     await finish.click();
-    await expect(page.getByRole('button',{name:locale==='es'?'Lista revisada':'Checklist reviewed',exact:true})).toBeDisabled();
+    // This presentation environment has no hosted database. A rejected save
+    // must remain visibly incomplete rather than pretending persistence worked.
+    await expect(page.getByText(locale==='es'?'No se guardó el progreso. Vuelve a intentarlo antes de salir.':'Progress was not saved. Retry before leaving this page.',{exact:true})).toBeVisible();
+    await expect(page.getByRole('button',{name:locale==='es'?'Lista revisada':'Checklist reviewed',exact:true})).toHaveCount(0);
     await finalItems.first().uncheck();
     await expect(finish).toBeDisabled();
     await expect(page.getByText('Purchase complete',{exact:true})).toHaveCount(0);

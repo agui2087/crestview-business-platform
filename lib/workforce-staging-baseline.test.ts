@@ -2,6 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readdir,readFile} from 'node:fs/promises';
 import {PGlite} from '@electric-sql/pglite';
+import {buildWorkforceStagingBootstrap} from './workforce-staging-bootstrap.ts';
+
+test('staging bootstrap rejects production and incomplete manifests',()=>{
+  assert.throws(()=>buildWorkforceStagingBootstrap('gsabakontancxutgsbem',[]),/isolated staging/);
+  assert.throws(()=>buildWorkforceStagingBootstrap('bxtrkycetuoqooammgpp',[]),/manifest/);
+});
 
 for (const existingBilling of [false, true]) test(existingBilling
   ? 'incremental Workforce bootstrap preserves modeled billing data and routines'
@@ -46,7 +52,18 @@ for (const existingBilling of [false, true]) test(existingBilling
       beforeRows=await billingSnapshot();beforeRoutine=await routineSnapshot();
     }
     const names=(await readdir(directory)).filter(n=>/^\d{4}_.*\.sql$/.test(n)&&Number(n.slice(0,4))<=41&&![27,28].includes(Number(n.slice(0,4)))).sort();
-    for(const name of names){
+    if(existingBilling){
+      const migrations=await Promise.all(names.map(async name=>({name,sql:(await readFile(new URL(name,directory),'utf8')).replace('create extension if not exists "pgcrypto";','')})));
+      const damaged=migrations.map(m=>m.name.startsWith('0041_')?{...m,sql:m.sql+"\nupdate public.billing_entitlements set quantity=99;"}:m);
+      await assert.rejects(db.exec(buildWorkforceStagingBootstrap('bxtrkycetuoqooammgpp',damaged)),/Billing preservation failed/);
+      await db.exec('rollback;');
+      assert.deepEqual(await billingSnapshot(),beforeRows);
+      assert.equal((await db.query<{name:string|null}>("select to_regclass('public.employees') as name")).rows[0].name,null);
+      const sql=buildWorkforceStagingBootstrap('bxtrkycetuoqooammgpp',migrations);
+      await db.exec(sql);
+      await assert.rejects(db.exec(sql),/billing-only staging state/);
+      await db.exec('rollback;');
+    } else for(const name of names){
       if(existingBilling&&name==='0010_stripe_billing.sql')continue;
       let sql=await readFile(new URL(name,directory),'utf8');
       // PGlite already provides gen_random_uuid; hosted PostgreSQL keeps pgcrypto.

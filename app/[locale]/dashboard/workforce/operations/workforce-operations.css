@@ -1,0 +1,14 @@
+.wf-ops .panel { margin-block: 20px; padding: clamp(16px, 3vw, 28px); }
+.wf-ops .panel h2 { margin-bottom: 12px; }
+.wf-ops .panel p { margin-block: 10px; line-height: 1.6; }
+.wf-ops form { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin-block: 16px; }
+.wf-ops label { display: grid; gap: 6px; flex: 1 1 200px; min-width: 0; }
+.wf-ops input,.wf-ops select,.wf-ops textarea { width: 100%; min-width: 0; padding: 10px; border: 1px solid #87988e; border-radius: 8px; background: #fff; color: #172c24; font: inherit; box-sizing: border-box; }
+.wf-ops button { min-height: 44px; padding: 10px 16px; cursor: pointer; }
+.wf-ops details { border-top: 1px solid #d0dbd4; padding-block: 16px; }
+.wf-ops summary { cursor: pointer; font-weight: 600; padding-block: 8px; }
+.wf-ops .wf-item { padding-block: 16px; border-bottom: 1px solid #d0dbd4; }
+.wf-ops .wf-links { display: flex; flex-wrap: wrap; gap: 16px; }
+.wf-ops .panel li, .wf-ops .panel p { overflow-wrap: anywhere; }
+.wf-ops :is(a,button,input,select,textarea,summary):focus-visible { outline: 3px solid #526822; outline-offset: 3px; }
+@media(max-width:600px) { .wf-ops form { flex-direction: column; align-items: stretch; } .wf-ops label { flex-basis: auto; } }

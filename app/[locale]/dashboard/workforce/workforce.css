@@ -6,3 +6,4 @@
 .employee-records button { min-height: 44px; }
 .csv-import label { display: grid; gap: 6px; min-width: 0; }
 .csv-import input[type="file"] { max-width: 100%; }
+.csv-import code { white-space: normal; overflow-wrap: anywhere; }

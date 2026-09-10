@@ -4,8 +4,9 @@ import Link from "next/link";
 import { PageHeading, PlatformShell } from "@/components/platform-shell";
 import { isLocale } from "@/lib/i18n";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { EmployeeImport } from "./import-preview";
 import { needsAttention, pendingTimeOff } from "@/lib/workforce";
-import { addEmployeeRecord, createEmployee, importEmployees, updateTimeOff } from "./actions";
+import { addEmployeeRecord, createEmployee, updateTimeOff } from "./actions";
 
 type EmployeeRecord = {
   id: string;
@@ -52,6 +53,7 @@ export default async function WorkforcePage({ params, searchParams }: { params: 
         .from("employees")
         .select("id,full_name,email,position,department,manager_name,start_date,employment_status,preferred_locale,employee_records(id,record_type,title,status,expires_on,hours)")
         .eq("user_id", user.id)
+        .is("archived_at", null)
         .order("full_name");
       loadFailed = !!error;
       employees = (data ?? []) as Employee[];
@@ -74,7 +76,7 @@ export default async function WorkforcePage({ params, searchParams }: { params: 
           eyebrow={es ? "Centro de personal" : "People operations"}
           title={es ? "Personal" : "Workforce"}
           body={es ? "Perfiles, incorporación, capacitación, certificaciones y tiempo libre en un solo lugar." : "Employee profiles, onboarding, training, certifications, and time off in one organized workspace."}
-          action={<Link className="button button--light" href="/api/export/employees">{es ? "Exportar empleados" : "Export employees"}</Link>}
+          action={<Link className="button button--light" href={`/${locale}/dashboard/workforce/operations`}>{es ? "Centro de operaciones" : "Command center"}</Link>}
         />
 
         {notice && messages[notice] && <p role={["failed", "invalid", "csv"].includes(notice) ? "alert" : "status"} className="workforce-alerts">{messages[notice]}</p>}
@@ -107,12 +109,7 @@ export default async function WorkforcePage({ params, searchParams }: { params: 
               <label>{es ? "Idioma" : "Language"}<select name="preferred_locale"><option value="en">English</option><option value="es">Español</option></select></label>
               <button className="button button--primary">{es ? "Agregar empleado" : "Add employee"}</button>
             </form>
-            <form className="csv-import" action={importEmployees}>
-              <input type="hidden" name="locale" value={locale} />
-              <div><strong>{es ? "Importar empleados desde CSV" : "Import employees from CSV"}</strong><span>{es ? "Hasta 500 empleados y 750 KB. Usa los encabezados del archivo exportado." : "Up to 500 employees and 750 KB. Use the exported file’s column headers."}</span></div>
-              <label>{es ? "Archivo CSV" : "CSV file"}<input required type="file" name="file" accept=".csv,text/csv" /></label>
-              <button className="button button--light">{es ? "Importar CSV" : "Import CSV"}</button>
-            </form>
+            <EmployeeImport locale={locale}/>
           </div>
         </details>
 

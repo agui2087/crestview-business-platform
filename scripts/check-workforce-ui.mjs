@@ -19,7 +19,7 @@ const fixture={
   workforce_training_evidence:[{id:'evidence',original_name:'Reviewed certificate.pdf',shared_by:owner,shared_at:'2026-09-01',revoked_at:null,revoke_reason:null}],
   workforce_payroll_imports:[{id:'batch',reference:'Reviewed source batch',created_at:'2026-09-01T12:00:00Z',voided_at:null}],
   workforce_payroll_history:[{id:1,action:'IMPORT',reason:'Reviewed analytical import',created_at:'2026-09-01T12:00:00Z'}],
-  workforce_leave_policies:[{id:'policy',employee_id:employee,leave_type:'Custom leave',starts_on:'2026-01-01',ends_on:'2026-12-31',accrual_minutes:600,balance_cap_minutes:6000,version:1,review_reference:'Reviewed fixture'}],
+  workforce_leave_policies:[{id:'policy',employee_id:employee,leave_type:'Custom leave',starts_on:'2025-01-01',ends_on:'2025-12-31',accrual_minutes:600,balance_cap_minutes:6000,version:1,review_reference:'Reviewed fixture'},{id:'next-policy',employee_id:employee,leave_type:'Custom leave',starts_on:'2026-01-01',ends_on:'2026-12-31',accrual_minutes:600,balance_cap_minutes:6000,version:1,review_reference:'Reviewed next period'}],
   workforce_leave_ledger:[{id:'entry',effective_on:'2026-01-01',kind:'opening',minutes:480,reference:'migration',reason:'Reviewed opening'}],
   workforce_schedules:[{id:'schedule',employee_id:employee,starts_on:'2026-09-01',ends_on:null,timezone:'America/Los_Angeles',daily_minutes:[480,480,480,480,480,0,0],version:1,cancelled:false,reason:'Reviewed weekly plan'}],
   workforce_business_settings:{business_name:'Example business',timezone:'America/Los_Angeles',version:1},

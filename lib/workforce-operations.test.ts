@@ -13,7 +13,7 @@ test('Workforce operations: permissions, lifecycle, requests, tasks and revocati
     await db.exec(`create role authenticated; create role anon; create schema auth; create table auth.users(id uuid primary key,email text); create table public.profiles(id uuid primary key);
       create function auth.uid() returns uuid language sql as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$; grant usage on schema auth to authenticated;`);
     for (let i=0;i<ids.length;i++) await db.query('insert into auth.users values($1,$2)',[ids[i],`person${i}@example.com`]);
-    for (const name of ['0008_workforce_and_organizations','0029_workforce_record_integrity','0030_workforce_operations']) await db.exec(await readFile(new URL(`../supabase/migrations/${name}.sql`,import.meta.url),'utf8'));
+    for (const name of ['0008_workforce_and_organizations','0029_workforce_record_integrity','0030_workforce_operations','0031_workforce_checklist_management']) await db.exec(await readFile(new URL(`../supabase/migrations/${name}.sql`,import.meta.url),'utf8'));
     await as(owner);
     const e = String((await one("insert into employees(user_id,full_name) values($1,'Test employee') returning id",[owner])).id);
     const other = String((await one("insert into employees(user_id,full_name) values($1,'Other team') returning id",[owner])).id);
@@ -89,6 +89,42 @@ test('Workforce operations: permissions, lifecycle, requests, tasks and revocati
       assert.equal((await db.query("select id from workforce_tasks where title='Safety renewal'")).rows.length,1);
       await assert.rejects(db.query("select workforce_assign_requirement($1,$2,'2026-10-01',$3)",[other,rule,owner]));
       await as(employee); await assert.rejects(db.query("select workforce_add_requirement($1,'Operator','Unauthorized',365)",[owner]));
+    });
+    await t.test('custom templates are scoped, versioned, atomic and preserve assigned titles',async()=>{
+      await as(owner);
+      const template=String((await one("select workforce_save_template($1,null,0,'Custom induction','training',array['Meet manager','Review policy']) id",[owner])).id);
+      for(const id of [manager,employee,outsider]) {
+        await as(id); await assert.rejects(db.query("select workforce_save_template($1,null,0,'Wrong','training',array['Wrong'])",[owner]));
+      }
+      await as(outsider); assert.equal((await db.query('select * from workforce_templates')).rows.length,0);
+      await assert.rejects(db.query("select workforce_assign_template($1,$2,1,'2026-10-01',$3)",[e,template,owner]));
+      await as(owner);
+      await assert.rejects(db.query("select workforce_save_template($1,null,0,'Invalid','training',array[''])",[owner]));
+      await assert.rejects(db.query("select workforce_assign_template($1,$2,1,'2026-10-01',$3)",[e,template,outsider]));
+      assert.equal((await db.query('select id from workforce_tasks where template_id=$1',[template])).rows.length,0);
+      await as(manager); assert.equal((await one("select workforce_assign_template($1,$2,1,'2026-10-01',$3) n",[e,template,employee])).n,2);
+      await assert.rejects(db.query("select workforce_assign_template($1,$2,1,'2026-10-01',$3)",[e,template,employee]));
+      await as(hr); await db.query("select workforce_save_template($1,$2,1,'Edited induction','training',array['New task'])",[owner,template]);
+      await assert.rejects(db.query("select workforce_save_template($1,$2,1,'Stale','training',array['Stale'])",[owner,template]));
+      assert.deepEqual((await db.query<{title:string}>('select title from workforce_tasks where template_id=$1 order by title',[template])).rows.map(r=>r.title),['Meet manager','Review policy']);
+      await assert.rejects(db.query("select workforce_assign_template($1,$2,1,'2026-10-01',$3)",[other,template,owner]));
+      await db.query("select workforce_save_template($1,$2,2,'Archived induction','training',array['New task'],true)",[owner,template]);
+      await assert.rejects(db.query("select workforce_assign_template($1,$2,3,'2026-10-01',$3)",[other,template,owner]));
+      assert.equal((await db.query('select id from workforce_template_history where template_id=$1',[template])).rows.length,3);
+      await assert.rejects(db.query('delete from workforce_templates'),{code:'42501'});
+    });
+    await t.test('rescheduling enforces scope, version, valid assignee and immutable completion',async()=>{
+      await as(owner); const task=String((await one("select workforce_assign_task($1,'policy','Review handbook',$2,'2026-10-01') id",[e,owner])).id);
+      for(const id of [employee,outsider]) { await as(id); await assert.rejects(db.query("select workforce_reschedule_task($1,1,$2,'2026-10-03','Wrong')",[task,id])); }
+      await as(manager);
+      await assert.rejects(db.query("select workforce_reschedule_task($1,1,$2,'2026-10-03','Wrong assignee')",[task,outsider]));
+      await assert.rejects(db.query("select workforce_reschedule_task($1,1,$2,'2026-10-03','')",[task,employee]));
+      await db.query("select workforce_reschedule_task($1,1,$2,'2026-10-03','Coverage adjusted')",[task,employee]);
+      assert.equal((await one('select version from workforce_tasks where id=$1',[task])).version,2);
+      await assert.rejects(db.query("select workforce_reschedule_task($1,1,$2,'2026-10-04','Stale')",[task,employee]));
+      await as(employee); await db.query("select workforce_finish_task($1,'Reviewed handbook',false)",[task]);
+      await as(owner); await assert.rejects(db.query("select workforce_reschedule_task($1,3,$2,'2026-10-04','Already done')",[task,owner]));
+      assert.equal((await one('select due_on::text from workforce_tasks where id=$1',[task])).due_on,'2026-10-03');
     });
     await t.test('audit failures roll back employee changes',async()=>{
       await as(owner);

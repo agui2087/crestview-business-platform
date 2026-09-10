@@ -18,7 +18,8 @@ const fixture={
   workforce_members:[{id:'member',owner_id:owner,user_id:worker,role:'employee',employee_id:employee,accepted_at:'2026-01-01',revoked_at:null}],
   employees:[{id:employee,user_id:owner,full_name:'Example Employee',email:'example@example.com',phone:null,position:'Operator',department:'Operations',manager_name:null,manager_user_id:null,start_date:'2026-01-01',employment_status:'active',preferred_locale:'en',version:1,archived_at:null}],
   workforce_requests:[{id:'request',employee_id:employee,kind:'leave',title:'Planned vacation',starts_on:'2026-10-01',ends_on:'2026-10-02',leave_type:'Vacation',status:'pending',created_by:worker,approver_id:owner,decision_reason:null,changes:{}}],
-  workforce_tasks:[{id:'task',employee_id:employee,category:'training',title:'Safety induction',assignee_id:worker,due_on:'2026-01-01',status:'open',evidence:null,completed_by:null,verified_at:null,requirement_id:'requirement'}],
+  workforce_tasks:[{id:'task',employee_id:employee,category:'training',title:'Safety induction',assignee_id:worker,due_on:'2026-01-01',status:'open',evidence:null,completed_by:null,verified_at:null,requirement_id:'requirement',version:1,change_reason:null}],
+  workforce_templates:[{id:'template',title:'Custom onboarding',category:'onboarding',items:['Meet your manager','Review policies'],version:1,archived:false}],
   workforce_history:[],
   employee_records:[{id:'record',employee_id:employee,title:'Safety certificate',expires_on:'2026-01-01',record_type:'certification'}],
   workforce_requirements:[{id:'requirement',position:'Operator',title:'Safety induction',renewal_days:365}],
@@ -30,17 +31,28 @@ const db={auth:{getUser:async()=>({data:{user:{id:owner}}})},rpc:async()=>({data
 const source=await readFile(new URL('../app/[locale]/dashboard/workforce/operations/page.tsx',import.meta.url),'utf8');
 const compiled=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true,target:ts.ScriptTarget.ES2022}}).outputText;
 const exports={};
+const checklistSource=await readFile(new URL('../app/[locale]/dashboard/workforce/operations/checklist-management.tsx',import.meta.url),'utf8');
+const checklistCompiled=ts.transpileModule(checklistSource,{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true,target:ts.ScriptTarget.ES2022}}).outputText;
+const checklistExports={};
+const analyticsSource=await readFile(new URL('../app/[locale]/dashboard/workforce/operations/analytics.tsx',import.meta.url),'utf8');
+const analyticsCompiled=ts.transpileModule(analyticsSource,{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true,target:ts.ScriptTarget.ES2022}}).outputText;
+const analyticsExports={};
 const mockRequire=(name)=>{
   if(name.endsWith('.css'))return {};
   if(name==='next/link')return {__esModule:true,default:({children,...props})=>React.createElement('a',props,children)};
   if(name==='next/navigation')return {notFound(){throw Error('not found')},redirect(){throw Error('redirect')}};
   if(name==='@/lib/i18n')return {isLocale:x=>['en','es'].includes(x)};
   if(name==='@/lib/workforce-calendar')return require('../lib/workforce-calendar.ts');
+  if(name==='@/lib/workforce-analytics')return require('../lib/workforce-analytics.ts');
   if(name==='@/lib/supabase/server')return {isSupabaseConfigured:()=>true,createSupabaseServerClient:async()=>db};
   if(name==='./actions')return {workforceOperation:async()=>{}};
+  if(name==='./checklist-management')return checklistExports;
+  if(name==='./analytics')return analyticsExports;
   if(name==='@/components/platform-shell')return {PlatformShell:({children})=>React.createElement('main',{id:'main-content'},children),PageHeading:({title,body,action})=>React.createElement('header',null,React.createElement('h1',null,title),React.createElement('p',null,body),action)};
   return require(name);
 };
+runInNewContext(checklistCompiled,{exports:checklistExports,require:mockRequire,Date,Promise,console});
+runInNewContext(analyticsCompiled,{exports:analyticsExports,require:mockRequire,Date,Promise,console});
 runInNewContext(compiled,{exports,require:mockRequire,Date,Promise,console});
 const css=(await readFile(new URL('../app/globals.css',import.meta.url),'utf8'))+'\n'+await readFile(new URL('../app/[locale]/dashboard/workforce/operations/workforce-operations.css',import.meta.url),'utf8');
 const out=path.join(tmpdir(),'crestview-workforce-ui');await mkdir(out,{recursive:true});

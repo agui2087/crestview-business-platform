@@ -9,6 +9,9 @@
 .wf-ops summary { cursor: pointer; font-weight: 600; padding-block: 8px; }
 .wf-ops .wf-item { padding-block: 16px; border-bottom: 1px solid #d0dbd4; }
 .wf-ops .wf-links { display: flex; flex-wrap: wrap; gap: 16px; }
+.wf-analytics-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,200px),1fr)); gap: 16px; }
+.wf-analytics-grid > div { padding: 16px; border: 1px solid #c9d4cd; border-radius: 12px; background: #f2f7f3; }
+.wf-analytics-grid dd { margin: 8px 0 0; font-size: 1.4rem; font-weight: 650; }
 .wf-ops .panel li, .wf-ops .panel p { overflow-wrap: anywhere; }
 .wf-calendar-scroll { max-width: 100%; overflow-x: auto; }
 .wf-calendar { width: 100%; min-width: 580px; table-layout: fixed; border-collapse: collapse; }

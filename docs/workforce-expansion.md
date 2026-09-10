@@ -41,11 +41,23 @@ Progress is tracked by verified acceptance criteria, not by files written. The e
 - Provider-specific payroll connector, credentials, field mapping and vendor sandbox acceptance.
 - Company-approved accrual, carryover, holidays and escalation/delegation rules; no leave entitlement is invented.
 - HR/legal-approved policy text, retention periods and electronic acknowledgment requirements. Current policy tasks record evidence only.
-- Shift scheduling, automatic email reminders, custom reusable checklist editing, task reassignment and broader multi-company portfolio administration are further enhancements beyond this initial release.
+- Shift scheduling, automatic email reminders and broader multi-company portfolio administration remain further enhancements. Custom checklist editing and task reassignment are implemented in migration 0031, subject to its release gates below.
 - Secure employee/manager file-sharing for training evidence requires a separate document-access design and review; current vault controls are unchanged.
 - Real multi-account user acceptance testing, beyond isolated database and presentation tests.
 
 ## Verification
+
+## Follow-up release 0031: checklist management and owner analytics
+
+- Custom, owner-scoped checklists with 1–30 tasks; owner/HR can edit or archive, authorized managers can assign. Changes never rewrite already assigned task titles. Stale edits/assignments and duplicate open assignments are rejected.
+- Open tasks can be reassigned/rescheduled with a reason, record version and authorized assignee. Completed tasks remain immutable through this workflow. Existing task audit triggers record the changes.
+- Descriptive analytics: current non-archived/non-terminated headcount, department counts, task completion, overdue work, separate verification status and pending leave. These are permission-scoped snapshots, not productivity scores, payroll costs or company-wide totals when the 500-record limit is reached.
+- Customer policy setup is documented in `docs/workforce-owner-policy-setup.md`. Each business needs its own reviewed location-specific policy; no universal leave entitlement is imposed.
+- No payroll provider was selected. The product direction is a people-management/analytics layer with payments and tax processing handled by a third party. Cost analytics still needs actual compensation/payroll source data.
+
+Apply 0031 after 0030 before deploying the application that reads template/version fields. It is additive; retain its tables on application rollback. Do not include unrelated billing migrations.
+
+The earlier live owner QA passed profile creation/edit/archive/restore, checklist creation/completion, leave submission/withdrawal and UI self-approval protections. Its synthetic employee, five tasks and one request were removed; 12 audit entries were retained. This is not live multi-role UAT of the 0031 features.
 
 `lib/workforce-operations.test.ts` executes the migrations in isolated PostgreSQL with separate owner, HR, manager, employee and outsider identities. It covers acceptance, scope, stale writes, self-approval rejection, decisions, safe profile requests, task verification, checklist/requirement duplication, audit rollback, archive and revocation.
 

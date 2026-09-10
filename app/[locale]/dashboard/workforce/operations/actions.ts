@@ -12,12 +12,13 @@ export async function workforceOperation(form: FormData) {
   const { data: { user } } = await db.auth.getUser();
   if (!user) redirect(`/${locale}/sign-in`);
   const owner = get("owner") || user.id;
-  const setup = ["business","location","department"].includes(get("operation"));
+  const setup = ["business","location","department","placement"].includes(get("operation"));
   const path = `/${locale}/dashboard/workforce/${setup?"setup":"operations"}`;
   let result: { error: unknown; data?: unknown } = { error: true };
   const operation = get("operation");
   const validDates = ["start", "end", "due", "start_date"].every(key => validDate(get(key)));
   if (validDates) {
+    if (operation === "placement") result = await db.rpc("workforce_set_placement", {p_employee:get("id"),p_version:Number(get("version")),p_location:get("location")||null,p_department:get("department_id")||null});
     if (operation === "business") result = await db.rpc("workforce_save_business", {p_owner:owner,p_version:Number(get("version")),p_name:get("name"),p_timezone:get("timezone")});
     if (operation === "location") result = await db.rpc("workforce_save_location", {p_owner:owner,p_id:get("id")||null,p_version:Number(get("version")),p_name:get("name"),p_country:get("country"),p_region:get("region"),p_timezone:get("timezone"),p_archived:get("archived")==="true"});
     if (operation === "department") result = await db.rpc("workforce_save_department", {p_owner:owner,p_id:get("id")||null,p_version:Number(get("version")),p_name:get("name"),p_archived:get("archived")==="true"});

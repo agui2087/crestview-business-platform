@@ -12,6 +12,10 @@ The reminder follow-up adds a current in-app queue for personal assigned deadlin
 
 ### End-to-end environment gap
 
+PR47 adds reviewed atomic carryover between effective policy periods. Source balance and policy versions are checked; debit and opening credit commit together; a retry cannot duplicate the transfer. Untransferred minutes remain in the source ledger. It is not a scheduled annual reset, automatic forfeiture or payout.
+
+The next integration layer, `lib/workforce-form-integration.test.ts`, executes the actual operations and leave Server Action handlers with FormData against isolated PostgreSQL migrations. It covers owner, HR, assigned/unassigned manager, employee and outsider identities: invitation acceptance, leave decisions, training completion/independent verification, carryover confirmation/replay, revoked access and signed-out redirects. Next navigation/session/Supabase transport are test substitutes; database authorization and application handler logic are real. These are **not** hosted browser E2E tests. Local environment inspection found no Supabase credentials configured; no production credentials or real records were used.
+
 The existing Playwright configuration explicitly disables Supabase and uses local acquisition authentication. New Workforce routes require Supabase, so that suite cannot establish hosted multi-role Workforce correctness. The development machine currently has neither Docker nor the Supabase CLI available. Isolated PostgreSQL permission tests, mocked-storage route tests and rendered accessibility tests remain valuable but are not a substitute for real browser/server/database integration.
 
 Before declaring end-to-end completion, provide an isolated Supabase test stack (or verified staging configuration) with synthetic owner, HR, assigned/unassigned manager, employee and outsider accounts. Run browser mutations for assignments, leave approvals/debits, payroll imports/voids, evidence sharing/revocation and permission changes. Keep production credentials and real employee records out of the test runner. No test-only authentication bypass should ship in the application.

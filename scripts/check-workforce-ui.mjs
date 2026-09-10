@@ -15,6 +15,7 @@ import assert from 'node:assert/strict';
 const require=createRequire(import.meta.url);
 const owner='00000000-0000-4000-8000-000000000001', worker='00000000-0000-4000-8000-000000000002', employee='00000000-0000-4000-8000-000000000003';
 const fixture={
+  workforce_schedules:[{id:'schedule',employee_id:employee,starts_on:'2026-09-01',ends_on:null,timezone:'America/Los_Angeles',daily_minutes:[480,480,480,480,480,0,0],version:1,cancelled:false,reason:'Reviewed weekly plan'}],
   workforce_business_settings:{business_name:'Example business',timezone:'America/Los_Angeles',version:1},
   workforce_locations:[{id:'location',name:'Main office',country_code:'US',region:'California',timezone:'America/Los_Angeles',archived:false,version:1}],
   workforce_departments:[{id:'department',name:'Operations',archived:false,version:1}],
@@ -32,7 +33,8 @@ const db={auth:{getUser:async()=>({data:{user:{id:owner}}})},rpc:async()=>({data
   const chain=new Proxy({}, {get:(_,key)=>key==='then'?Promise.resolve(result).then.bind(Promise.resolve(result)):()=>chain});return chain;
 }};
 const setup=process.env.CRESTVIEW_UI_SETUP==='true';
-const source=await readFile(new URL(`../app/[locale]/dashboard/workforce/${setup?'setup':'operations'}/page.tsx`,import.meta.url),'utf8');
+const schedules=process.env.CRESTVIEW_UI_SCHEDULES==='true';
+const source=await readFile(new URL(`../app/[locale]/dashboard/workforce/${schedules?'schedules':setup?'setup':'operations'}/page.tsx`,import.meta.url),'utf8');
 const compiled=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true,target:ts.ScriptTarget.ES2022}}).outputText;
 const exports={};
 const checklistSource=await readFile(new URL('../app/[locale]/dashboard/workforce/operations/checklist-management.tsx',import.meta.url),'utf8');
@@ -50,7 +52,7 @@ const mockRequire=(name)=>{
   if(name==='@/lib/workforce-analytics')return require('../lib/workforce-analytics.ts');
   if(name==='@/lib/workforce-actions')return require('../lib/workforce-actions.ts');
   if(name==='@/lib/supabase/server')return {isSupabaseConfigured:()=>true,createSupabaseServerClient:async()=>db};
-  if(name==='./actions'||name==='../operations/actions')return {workforceOperation:async()=>{}};
+  if(name==='./actions'||name==='../operations/actions')return {workforceOperation:async()=>{},saveSchedule:async()=>{}};
   if(name==='./checklist-management')return checklistExports;
   if(name==='./analytics')return analyticsExports;
   if(name==='@/components/platform-shell')return {PlatformShell:({children})=>React.createElement('main',{id:'main-content'},children),PageHeading:({title,body,action})=>React.createElement('header',null,React.createElement('h1',null,title),React.createElement('p',null,body),action)};
@@ -60,7 +62,7 @@ runInNewContext(checklistCompiled,{exports:checklistExports,require:mockRequire,
 runInNewContext(analyticsCompiled,{exports:analyticsExports,require:mockRequire,Date,Promise,console});
 runInNewContext(compiled,{exports,require:mockRequire,Date,Promise,console});
 const css=(await readFile(new URL('../app/globals.css',import.meta.url),'utf8'))+'\n'+await readFile(new URL('../app/[locale]/dashboard/workforce/operations/workforce-operations.css',import.meta.url),'utf8');
-const out=path.join(tmpdir(),setup?'crestview-workforce-setup-ui':'crestview-workforce-ui');await mkdir(out,{recursive:true});
+const out=path.join(tmpdir(),schedules?'crestview-workforce-schedules-ui':setup?'crestview-workforce-setup-ui':'crestview-workforce-ui');await mkdir(out,{recursive:true});
 const browser=await chromium.launch();
 try {
   for(const locale of ['en','es'])for(const width of [1440,390]) {

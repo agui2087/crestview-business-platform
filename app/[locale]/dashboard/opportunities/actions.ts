@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { getOpportunity } from "@/lib/demo-data";
+import { resolveOpportunity } from "@/lib/opportunity-resolver";
 import { isLocale } from "@/lib/i18n";
 import { normalizeBuyerFindingConfidence } from "@/lib/deal-intelligence";
 import { buildGuidedChecklist, type GuidanceProfile } from "@/lib/guided-acquisition";
@@ -11,22 +11,24 @@ import { buildGuidedChecklist, type GuidanceProfile } from "@/lib/guided-acquisi
 async function authenticatedRequest(formData: FormData) {
   const locale = String(formData.get("locale") ?? "en");
   const opportunityKey = String(formData.get("opportunity_key") ?? "");
-  if (!isLocale(locale) || !getOpportunity(opportunityKey)) redirect("/en/dashboard/opportunities");
+  if (!isLocale(locale)) redirect("/en/dashboard/opportunities");
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect(`/${locale}/sign-in`);
+  if (!await resolveOpportunity(opportunityKey,locale)) redirect(`/${locale}/dashboard/opportunities`);
   return { locale, opportunityKey, supabase, user };
 }
 
 export async function saveOpportunity(formData: FormData) {
   const { locale, opportunityKey, supabase, user } = await authenticatedRequest(formData);
-  await supabase.from("saved_opportunities").upsert({
+  const {error:saveError}=await supabase.from("saved_opportunities").upsert({
     user_id: user.id,
     opportunity_key: opportunityKey,
     stage: "saved",
     next_action: "Review the public listing and request missing information",
     updated_at: new Date().toISOString(),
   }, { onConflict: "user_id,opportunity_key", ignoreDuplicates: true });
+  if(saveError)throw new Error("The opportunity could not be saved. Please try again.");
   await supabase.from("deal_activities").insert({ user_id: user.id, opportunity_key: opportunityKey, activity_type: "saved", description: "Opportunity saved." });
   revalidatePath(`/${locale}/dashboard/opportunities/${opportunityKey}`);
   revalidatePath(`/${locale}/dashboard/pipeline`);
@@ -34,45 +36,62 @@ export async function saveOpportunity(formData: FormData) {
 
 export async function beginAcquisition(formData: FormData) {
   const { locale, opportunityKey, supabase, user } = await authenticatedRequest(formData);
-  await supabase.from("saved_opportunities").upsert({
+  const {data:existing,error:loadError}=await supabase.from("saved_opportunities").select("stage").eq("user_id",user.id).eq("opportunity_key",opportunityKey).maybeSingle();
+  if(loadError)throw new Error("The acquisition could not be loaded. Please try again.");
+  if(existing && existing.stage !== "saved")redirect(`/${locale}/dashboard/opportunities/${opportunityKey}#valuation`);
+  const {error:startError}=await supabase.from("saved_opportunities").upsert({
     user_id: user.id,
     opportunity_key: opportunityKey,
     stage: "screening",
     next_action: "Complete initial screening and confirm listing availability",
     updated_at: new Date().toISOString(),
-  }, { onConflict: "user_id,opportunity_key" });
+  }, { onConflict: "user_id,opportunity_key", ignoreDuplicates: true });
+  if(startError)throw new Error("The acquisition could not be started. Please try again.");
+  if(existing){
+    const {error:updateError}=await supabase.from("saved_opportunities").update({stage:"screening",next_action:"Complete initial screening and confirm listing availability"}).eq("user_id",user.id).eq("opportunity_key",opportunityKey).eq("stage","saved");
+    if(updateError)throw new Error("The acquisition could not be started. Please try again.");
+  }
   await supabase.from("deal_activities").insert({ user_id: user.id, opportunity_key: opportunityKey, activity_type: "stage", description: "Acquisition screening started." });
   revalidatePath(`/${locale}/dashboard/opportunities/${opportunityKey}`);
   revalidatePath(`/${locale}/dashboard/pipeline`);
-  redirect(`/${locale}/dashboard/pipeline`);
+  redirect(`/${locale}/dashboard/opportunities/${opportunityKey}#valuation`);
 }
 
-function safeJson(value: FormDataEntryValue | null, fallback: Record<string, unknown>) {
+function progressJson(value: FormDataEntryValue | null): Record<string,string> | null {
   try {
-    const parsed = JSON.parse(String(value ?? ""));
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : fallback;
+    if (typeof value !== "string" || value.length > 100000) return null;
+    const parsed = JSON.parse(value);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+    const entries = Object.entries(parsed);
+    if (entries.length > 300 || entries.some(([key,item]) => key.length > 120 || typeof item !== "string" || item.length > 20000)) return null;
+    return parsed;
   } catch {
-    return fallback;
+    return null;
   }
 }
 
 export async function saveAcquisitionWorkspace(formData: FormData) {
   const { locale, opportunityKey, supabase, user } = await authenticatedRequest(formData);
-  const currentStep = Math.max(0, Math.min(7, Number(formData.get("current_step")) || 0));
-  const checklistProgress = safeJson(formData.get("checklist_progress"), {});
-  const stepNotes = safeJson(formData.get("step_notes"), {});
-  const valuationInputs = safeJson(formData.get("valuation_inputs"), {});
-  const { error } = await supabase.from("saved_opportunities").upsert({
+  const currentStep = Number(formData.get("current_step"));
+  if(!Number.isInteger(currentStep) || currentStep < 0 || currentStep > 7)return {ok:false,message:locale === "es" ? "Paso no válido." : "Invalid checklist step."};
+  const checklistProgress = progressJson(formData.get("checklist_progress"));
+  const stepNotes = progressJson(formData.get("step_notes"));
+  const valuationInputs = progressJson(formData.get("valuation_inputs"));
+  if (!checklistProgress || !stepNotes || !valuationInputs) return {ok:false,message:locale === "es" ? "Revisa el contenido antes de guardar." : "Review the progress fields before saving."};
+  const {error:insertError}=await supabase.from("saved_opportunities").upsert({
+    user_id:user.id,opportunity_key:opportunityKey,stage:"screening",next_action:"Review the acquisition checklist",
+  },{onConflict:"user_id,opportunity_key",ignoreDuplicates:true});
+  if(insertError)return {ok:false,message:"Progress could not be saved."};
+  // Checklist navigation must never reopen completed deals or move closing backwards.
+  const { error } = await supabase.from("saved_opportunities").update({
     user_id: user.id,
     opportunity_key: opportunityKey,
-    stage: currentStep >= 5 ? "diligence" : currentStep >= 2 ? "evaluating" : "screening",
     current_step: currentStep,
     checklist_progress: checklistProgress,
     step_notes: stepNotes,
     valuation_inputs: valuationInputs,
-    next_action: currentStep === 7 ? "Confirm closing and transition obligations" : `Continue acquisition checklist at step ${currentStep + 1}`,
     updated_at: new Date().toISOString(),
-  }, { onConflict: "user_id,opportunity_key" });
+  }).eq("user_id",user.id).eq("opportunity_key",opportunityKey);
   if (error) return { ok: false, message: "Progress could not be saved." };
   await supabase.from("deal_activities").insert({
     user_id: user.id, opportunity_key: opportunityKey, activity_type: "progress",

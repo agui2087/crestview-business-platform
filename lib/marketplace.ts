@@ -127,7 +127,7 @@ export async function getMarketplaceListings() {
       .eq("status", "published")
       .gte("updated_at", freshnessCutoff.toISOString())
       .order("updated_at", { ascending: false });
-    if (error) return [];
+    if (error) throw new Error("Workspace records could not be loaded.");
     if (!data?.length) return [];
     return data.map((listing) => ({
       ...listing,
@@ -136,12 +136,13 @@ export async function getMarketplaceListings() {
         : Boolean((listing.listing_nda_templates as { auto_send?: boolean } | null)?.auto_send),
     })) as MarketplaceListing[];
   } catch {
-    return [];
+    throw new Error("Workspace records could not be loaded. Please try again.");
   }
 }
 
 export async function getMyListings(userId?: string) {
-  if (!userId || !isSupabaseConfigured()) return demoMarketplaceListings.slice(0, 1);
+  if (!isSupabaseConfigured()) return demoMarketplaceListings.slice(0, 1);
+  if (!userId) return [];
   try {
     const supabase = await createSupabaseServerClient();
     const { data, error } = await supabase
@@ -149,7 +150,7 @@ export async function getMyListings(userId?: string) {
       .select("id,broker_id,title,summary,industry,city,state_code,asking_price,annual_revenue,cash_flow,financing_available,public_highlights,status,updated_at,quality_score,listing_nda_templates(auto_send)")
       .eq("broker_id", userId)
       .order("updated_at", { ascending: false });
-    if (error) return [];
+    if (error) throw new Error("Workspace records could not be loaded.");
     if (!data?.length) return [];
     return data.map((listing) => ({
       ...listing,
@@ -158,12 +159,13 @@ export async function getMyListings(userId?: string) {
         : Boolean((listing.listing_nda_templates as { auto_send?: boolean } | null)?.auto_send),
     })) as MarketplaceListing[];
   } catch {
-    return [];
+    throw new Error("Workspace records could not be loaded. Please try again.");
   }
 }
 
 export async function getMyInquiries(userId?: string) {
-  if (!userId || !isSupabaseConfigured()) return demoInquiries;
+  if (!isSupabaseConfigured()) return demoInquiries;
+  if (!userId) return [];
   try {
     const supabase = await createSupabaseServerClient();
     const { data, error } = await supabase
@@ -171,11 +173,11 @@ export async function getMyInquiries(userId?: string) {
       .select("id,listing_id,buyer_id,broker_id,subject,initial_message,status,updated_at,requested_items,acquisition_experience,funding_readiness,financial_access_status,financial_request_message,financial_request_timeline,financial_request_capital,financial_requested_at,marketplace_listings(title,city,state_code)")
       .or(`buyer_id.eq.${userId},broker_id.eq.${userId}`)
       .order("updated_at", { ascending: false });
-    if (error) return [];
+    if (error) throw new Error("Workspace records could not be loaded.");
     if (!data?.length) return [];
     return data as unknown as DealInquiry[];
   } catch {
-    return [];
+    throw new Error("Workspace records could not be loaded. Please try again.");
   }
 }
 

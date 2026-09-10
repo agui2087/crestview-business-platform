@@ -53,13 +53,15 @@ async function getWorkspace(id: string, userId?: string): Promise<WorkspaceData>
   const supabase = await createSupabaseServerClient();
   const { data: inquiry } = await supabase.from("deal_inquiries").select("id,listing_id,buyer_id,broker_id,subject,initial_message,status,updated_at,requested_items,acquisition_experience,funding_readiness,financial_access_status,financial_request_message,financial_request_timeline,financial_request_capital,marketplace_listings(title,city,state_code,asking_price,annual_revenue,cash_flow)").eq("id", id).or(`buyer_id.eq.${userId},broker_id.eq.${userId}`).maybeSingle();
   if (!inquiry) notFound();
-  const [{ data: messages }, { data: nda }, { data: documents }, { data: requests }, { data: events }] = await Promise.all([
+  const results = await Promise.all([
     supabase.from("deal_messages").select("id,body,sender_id,created_at").eq("inquiry_id", id).order("created_at"),
     supabase.from("deal_ndas").select("status,document_name,template_body,storage_path,template_version,signed_at,signer_name").eq("inquiry_id", id).maybeSingle(),
     supabase.from("deal_room_documents").select("id,title,category,storage_path,original_filename,mime_type,file_size_bytes,external_url,access_level,permission_note,security_status,scan_provider,scan_completed_at,version,created_at").eq("inquiry_id", id).eq("is_active", true).order("created_at"),
     supabase.from("deal_document_requests").select("id,item_name,note,status,document_id,created_at,resolved_at").eq("inquiry_id", id).order("created_at"),
     supabase.from("deal_status_events").select("id,to_status,note,created_at").eq("inquiry_id", id).order("created_at"),
   ]);
+  if (results.some(result => result.error)) throw new Error("The complete deal workspace could not be loaded. Please try again.");
+  const [{ data: messages }, { data: nda }, { data: documents }, { data: requests }, { data: events }] = results;
   const listing = inquiry.marketplace_listings as unknown as { title: string; asking_price?: number | null; annual_revenue?: number | null; cash_flow?: number | null } | null;
   let ndaUrl: string | null = null;
   if (nda?.storage_path) {
@@ -94,6 +96,8 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
   const effectiveStatus = ndaSigned && workspace.inquiry.status === "nda_sent"
     ? "nda_signed"
     : workspace.inquiry.status;
+  const terminal = effectiveStatus === "closed" || effectiveStatus === "declined";
+  const canChangeStage = !workspace.isBuyer && !workspace.isDemo && allowedBrokerTransitions(effectiveStatus).length > 0;
   const currentStageIndex = Math.max(0, dealStages.findIndex(([key]) => key === effectiveStatus));
   const roomUnlocked = ndaSigned || ["nda_signed","document_review","meeting","offer","closed"].includes(effectiveStatus);
   const financialStatus = workspace.inquiry.financial_access_status ?? "not_requested";
@@ -118,6 +122,10 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
         <div className="workspace-back"><Link href={`/${locale}/dashboard/inbox`}>← Back to deal inbox</Link><span>Private workspace</span></div>
         <PageHeading eyebrow={workspace.isBuyer ? "Buyer workspace" : "Broker workspace"} title={workspace.title} body={workspace.isBuyer ? "Your guided path from first inquiry through diligence and closing." : "Review the buyer, share records securely, and move the deal forward from one place."} />
         {query.nda && <p className="notice">The NDA was {query.nda === "signed" ? "signed and the deal room is unlocked" : "sent successfully"}.</p>}
+        {query.error && !String(query.error).startsWith("financial_") && <p className="notice" role="alert">{query.error === "message_invalid" ? "Enter a message between 1 and 5,000 characters." : query.error === "message_failed" ? "Your message was not sent. Please try again." : query.error === "closing_confirmation" ? "Confirm that the closing occurred outside Crestview before marking this deal closed." : query.error === "nda_send" ? "The NDA could not be sent. An existing agreement will not be replaced; review its current status below." : "We could not confirm the requested change. Review the current status and try again. Your documents and signed agreements remain protected."}</p>}
+        {query.message === "sent" && <p className="notice" role="status">Your message was sent.</p>}
+        {query.stage === "updated" && <p className="notice" role="status">The shared deal stage was updated.</p>}
+        {terminal && <p className="data-notice"><strong>{effectiveStatus === "closed" ? "Reported closed" : "This inquiry was declined"}</strong><span>{effectiveStatus === "closed" ? "The broker marked this deal closed. Crestview records progress; it does not transfer ownership, process the purchase price, or confirm legal closing. Keep your final agreements and professional confirmations." : "No further purchase steps are expected unless the broker reopens screening. Existing records remain available according to their permissions."}</span></p>}
         {query.error && String(query.error).startsWith("financial_") && <p className="notice" role="alert">{query.error === "financial_conflict"
           ? "This deal changed or the form expired. Review its current status before submitting again."
           : query.error === "financial_forbidden"
@@ -127,11 +135,12 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
               : "We could not confirm this change. Refresh and check the current status before trying again."}</p>}
         {!query.error && query.financial && <p className="notice" role="status">{query.financial === "requested" ? "Your financial-information request was sent to the broker." : `Financial access was updated: ${String(query.financial).replaceAll("_", " ")}.`}</p>}
         {workspace.isDemo && <p className="data-notice"><strong>Demo workspace</strong><span>Explore the same secure workflow used for live deals.</span></p>}
+        {workspace.isBuyer && !workspace.isDemo && <section className="panel"><div className="panel__header"><h2>{locale === "es" ? "Tu lista completa de adquisición" : "Your complete acquisition checklist"}</h2></div><p>{locale === "es" ? "Evalúa este negocio desde la revisión inicial hasta financiamiento, diligencia, cierre y transición. Tu plan y notas son privados; no cambian el estado compartido del trato." : "Evaluate this business from initial screening through financing, diligence, closing, and transition. Your plan and notes are private; they do not change the shared deal stage."}</p><Link className="button button--primary" href={`/${locale}/dashboard/opportunities/deal-${id}#valuation`}>{locale === "es" ? "Abrir mi plan de adquisición" : "Open my acquisition plan"}</Link></section>}
         <nav className="deal-workspace-nav" aria-label="Deal workspace sections">
-          <a className="is-primary" href="#deal-next-step">Overview</a><a href="#deal-conversation">Messages &amp; NDA</a><a href="#deal-documents">Documents</a><a href="#deal-activity">Activity</a><a href="#deal-stage">Stage</a>
+          <a className="is-primary" href="#deal-next-step">Overview</a><a href="#deal-conversation">Messages &amp; NDA</a><a href="#deal-documents">Documents</a><a href="#deal-activity">Activity</a>{canChangeStage && <a href="#deal-stage">Stage</a>}
         </nav>
         <section className="deal-workspace-section" id="deal-next-step">
-        {!workspace.isBuyer && <section className="broker-next-step" aria-labelledby="broker-next-step-title">
+        {!workspace.isBuyer && !terminal && <section className="broker-next-step" aria-labelledby="broker-next-step-title">
           <div className="broker-next-step__copy">
             <span className="broker-next-step__eyebrow">Your next step</span>
             <h2 id="broker-next-step-title">{!workspace.nda
@@ -174,7 +183,7 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
         <div className="deal-overview-strip">
           <div><span>Current stage</span><strong>{dealStages[currentStageIndex]?.[1] ?? "Inquiry sent"}</strong></div>
           <div><span>Your role</span><strong>{workspace.isBuyer ? "Buyer" : "Broker / seller"}</strong></div>
-          <div><span>Next action</span><strong>{workspace.isBuyer
+          <div><span>Next action</span><strong>{terminal ? (effectiveStatus === "closed" ? "Review closing records and transition" : "No purchase action required") : workspace.isBuyer
             ? effectiveStatus === "nda_sent"
               ? "Sign the NDA"
               : roomUnlocked && financialStatus === "not_requested"
@@ -204,8 +213,9 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
         <div className="deal-room-grid">
           <section className="panel deal-thread">
             <div className="panel__header"><h2>Conversation</h2><span className="stage">{effectiveStatus.replaceAll("_", " ")}</span></div>
+            {workspace.inquiry.initial_message && !workspace.messages.some(message => message.body === workspace.inquiry.initial_message) && <article className={workspace.isBuyer ? "is-mine" : ""}><strong>{locale === "es" ? "Mensaje inicial del comprador" : "Buyer’s initial message"}</strong><p>{workspace.inquiry.initial_message}</p></article>}
             {workspace.messages.map((message) => <article className={message.sender_id === (userId ?? "demo-buyer") ? "is-mine" : ""} key={message.id}><strong>{message.sender_id === (userId ?? "demo-buyer") ? "You" : "Deal participant"}</strong><p>{message.body}</p><span>{new Date(message.created_at).toLocaleString()}</span></article>)}
-            {!workspace.isDemo && <form className="quick-reply" action={sendMessage}><input type="hidden" name="locale" value={locale} /><input type="hidden" name="inquiry_id" value={id} /><textarea name="body" placeholder="Write a secure message…" required /><button className="button button--primary" type="submit">Send</button></form>}
+            {!workspace.isDemo && <form className="quick-reply" action={sendMessage}><input type="hidden" name="locale" value={locale} /><input type="hidden" name="inquiry_id" value={id} /><label htmlFor="deal-message">Message to the other participant</label><textarea id="deal-message" name="body" placeholder="Write a secure message…" maxLength={5000} required /><button className="button button--primary" type="submit">Send</button></form>}
           </section>
           <aside className="panel nda-card">
             <div className="panel__header"><h2>Confidentiality agreement</h2><span className="stage">{workspace.nda?.status ?? "not sent"}</span></div>
@@ -213,9 +223,10 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
               <strong>{workspace.nda.document_name}</strong>
               <p>{workspace.nda.template_body ?? "The broker-provided agreement is stored securely with this deal."}</p>
               {workspace.ndaUrl && <a className="nda-document-link" href={workspace.ndaUrl} target="_blank" rel="noreferrer">Open the complete NDA PDF ↗</a>}
+              {workspace.nda.storage_path && !workspace.ndaUrl && <p role="alert">The complete agreement could not be opened. Refresh or contact the broker before signing.</p>}
               {workspace.nda.template_version && <small>Document version {workspace.nda.template_version}</small>}
               {workspace.nda.signed_at && <small>Signed by {workspace.nda.signer_name} on {new Date(workspace.nda.signed_at).toLocaleDateString()}</small>}
-              {workspace.isBuyer && workspace.nda.status === "sent" && !workspace.isDemo && <form action={signNda}>
+              {workspace.isBuyer && workspace.nda.status === "sent" && !workspace.isDemo && (!workspace.nda.storage_path || workspace.ndaUrl) && <form action={signNda}>
                 <input type="hidden" name="locale" value={locale} /><input type="hidden" name="inquiry_id" value={id} />
                 <label>Type your full legal name<input name="signer_name" required /></label>
                 <label className="signature-consent"><input type="checkbox" name="accepted" required /> I have reviewed and agree to sign this NDA electronically.</label>
@@ -313,9 +324,11 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
         </section>
         <div className="deal-bottom-grid">
           <details className="panel deal-secondary-panel" id="deal-activity"><summary><span><strong>Activity history</strong><small>{workspace.events.length} recorded update{workspace.events.length === 1 ? "" : "s"}</small></span><b>View</b></summary><div className="deal-timeline">{workspace.events.map((event) => <article key={event.id}><span>✓</span><div><strong>{event.to_status.replaceAll("_", " ")}</strong><p>{event.note ?? "Deal status updated."}</p><small>{new Date(event.created_at).toLocaleString()}</small></div></article>)}</div></details>
-          {!workspace.isBuyer && !workspace.isDemo && allowedBrokerTransitions(effectiveStatus).length > 0 && <section className="panel" id="deal-stage"><div className="panel__header"><h2>Move the deal forward</h2></div><p className="panel-empty">Keep the stage current so both participants know what happens next.</p><form className="status-control" action={advanceInquiry}>
+          {canChangeStage && <section className="panel" id="deal-stage"><div className="panel__header"><h2>Move the deal forward</h2></div><p className="panel-empty">Keep the stage current so both participants know what happens next. Closing takes place with your legal, lending, and settlement professionals, outside Crestview.</p><form className="status-control" action={advanceInquiry}>
             <input type="hidden" name="locale" value={locale} /><input type="hidden" name="inquiry_id" value={id} />
-            <select name="status">{allowedBrokerTransitions(effectiveStatus).map((key) => <option value={key} key={key}>{dealStages.find(([stage]) => stage === key)?.[1] ?? key.replaceAll("_", " ")}</option>)}</select>
+            <input type="hidden" name="expected_updated_at" value={workspace.inquiry.updated_at} />
+            <label>Next deal stage<select name="status">{allowedBrokerTransitions(effectiveStatus).map((key) => <option value={key} key={key}>{dealStages.find(([stage]) => stage === key)?.[1] ?? key.replaceAll("_", " ")}</option>)}</select></label>
+            {allowedBrokerTransitions(effectiveStatus).includes("closed") && <label><input type="checkbox" name="closing_confirmed" />Only when marking closed: I confirm the closing occurred outside Crestview and the parties have their closing records.</label>}
             <button className="button button--primary" type="submit">Update stage</button>
           </form></section>}
         </div>

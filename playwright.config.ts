@@ -29,6 +29,7 @@ export default defineConfig({
     timeout: 120_000,
     env: {
       ...process.env,
+      CRESTVIEW_E2E: "true",
       NEXT_PUBLIC_SUPABASE_URL: "",
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "",
       SUPABASE_SERVICE_ROLE_KEY: "",

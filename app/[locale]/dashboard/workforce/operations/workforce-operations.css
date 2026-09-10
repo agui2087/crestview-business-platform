@@ -1,0 +1,26 @@
+.wf-ops .panel { margin-block: 20px; padding: clamp(16px, 3vw, 28px); }
+.wf-ops .panel h2 { margin-bottom: 12px; }
+.wf-ops .panel p { margin-block: 10px; line-height: 1.6; }
+.wf-ops form { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin-block: 16px; }
+.wf-ops label { display: grid; gap: 6px; flex: 1 1 200px; min-width: 0; }
+.wf-ops input,.wf-ops select,.wf-ops textarea { width: 100%; min-width: 0; padding: 10px; border: 1px solid #87988e; border-radius: 8px; background: #fff; color: #172c24; font: inherit; box-sizing: border-box; }
+.wf-ops button { min-height: 44px; padding: 10px 16px; cursor: pointer; }
+.wf-ops button:not(.button) { border: 1px solid #194f3f; border-radius: 8px; background: #194f3f; color: #fff; font: inherit; font-weight: 600; }
+.wf-ops button:disabled { cursor: not-allowed; opacity: .65; }
+.wf-ops label:has(input[type="checkbox"]) { display: flex; align-items: flex-start; gap: 10px; min-height: 44px; cursor: pointer; }
+.wf-ops input[type="checkbox"] { width: 20px; height: 20px; flex: 0 0 20px; margin: 3px 0 0; padding: 0; accent-color: #194f3f; }
+.wf-ops details { border-top: 1px solid #d0dbd4; padding-block: 16px; }
+.wf-ops summary { cursor: pointer; font-weight: 600; padding-block: 8px; }
+.wf-ops .wf-item { padding-block: 16px; border-bottom: 1px solid #d0dbd4; }
+.wf-ops .wf-links { display: flex; flex-wrap: wrap; gap: 16px; }
+.wf-analytics-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,200px),1fr)); gap: 16px; }
+.wf-analytics-grid > div { padding: 16px; border: 1px solid #c9d4cd; border-radius: 12px; background: #f2f7f3; }
+.wf-analytics-grid dd { margin: 8px 0 0; font-size: 1.4rem; font-weight: 650; }
+.wf-ops .panel li, .wf-ops .panel p { overflow-wrap: anywhere; }
+.wf-calendar-scroll { max-width: 100%; overflow-x: auto; }
+.wf-calendar { width: 100%; min-width: 580px; table-layout: fixed; border-collapse: collapse; }
+.wf-calendar th,.wf-calendar td { padding: 8px; border: 1px solid #c9d4cd; text-align: left; vertical-align: top; }
+.wf-calendar td { height: 80px; }
+.wf-calendar ul { padding: 0; list-style: none; font-size: .8rem; }
+.wf-ops :is(a,button,input,select,textarea,summary):focus-visible { outline: 3px solid #526822; outline-offset: 3px; }
+@media(max-width:600px) { .wf-ops form { flex-direction: column; align-items: stretch; } .wf-ops label { flex-basis: auto; } }

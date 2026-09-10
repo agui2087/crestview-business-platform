@@ -7,7 +7,7 @@ import { LenderReadinessPackage } from "@/components/lender-readiness-package";
 import { PlatformShell } from "@/components/platform-shell";
 import { opportunities } from "@/lib/demo-data";
 import { resolveOpportunity } from "@/lib/opportunity-resolver";
-import { inquiryIdFromOpportunity } from "@/lib/deal-opportunity";
+import { acquisitionReadiness, inquiryIdFromOpportunity } from "@/lib/deal-opportunity";
 import { isLocale } from "@/lib/i18n";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { calculateBuyerFit, calculateDealScore, type BuyerFitPreferences } from "@/lib/deal-score";
@@ -56,14 +56,15 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
     const supabase = await createSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      const { data } = await supabase
+      const { data, error: workspaceError } = await supabase
         .from("saved_opportunities")
         .select("stage, current_step, checklist_progress, step_notes, valuation_inputs")
         .eq("user_id", user.id)
         .eq("opportunity_key", opportunity.id)
         .maybeSingle();
+      if (workspaceError) throw new Error("Your saved acquisition plan could not be loaded. Please refresh before making changes.");
       workspace = data ?? null;
-      const [{ data: diligenceData }, { data: interactionData }, { data: activityData }, { data: noteData }, { data: listData }, { data: profileData }, { data: evidenceData }, { data: professionalData }, { data: transitionData }, { data: sbaData }, { data: findingData }, { data: entitlementData }, { data: buyerData }, { data: buyerFinanceData }] = await Promise.all([
+      const planResults = await Promise.all([
         supabase.from("diligence_items").select("id,category,title,status,due_date,reason,guidance_source,source_url,risk_level,assigned_role").eq("user_id", user.id).eq("opportunity_key", opportunity.id).order("category"),
         supabase.from("broker_interactions").select("id,interaction_type,summary,contact_name,occurred_at").eq("user_id", user.id).eq("opportunity_key", opportunity.id).order("occurred_at", { ascending: false }).limit(10),
         supabase.from("deal_activities").select("id,description,created_at").eq("user_id", user.id).eq("opportunity_key", opportunity.id).order("created_at", { ascending: false }).limit(12),
@@ -79,6 +80,8 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
         supabase.from("buyer_preferences").select("industries,locations,maximum_price,minimum_cash_flow,seller_financing_preferred,desired_owner_income").eq("user_id", user.id).maybeSingle(),
         supabase.from("buyer_financial_profiles").select("available_cash,buyer_injection_percent,illustrative_interest_rate").eq("user_id", user.id).maybeSingle(),
       ]);
+      if (planResults.some(result => result.error)) throw new Error("Part of your acquisition plan could not be loaded. Please refresh before making changes.");
+      const [{ data: diligenceData }, { data: interactionData }, { data: activityData }, { data: noteData }, { data: listData }, { data: profileData }, { data: evidenceData }, { data: professionalData }, { data: transitionData }, { data: sbaData }, { data: findingData }, { data: entitlementData }, { data: buyerData }, { data: buyerFinanceData }] = planResults;
       diligence = diligenceData ?? [];
       guidanceProfile = profileData ?? null;
       evidence = evidenceData ?? [];
@@ -98,7 +101,9 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
   }
   const buyerFit = calculateBuyerFit(opportunity, buyerPreferences);
   const financialFit = financialFitForDeal(opportunity.priceValue, opportunity.cashFlowValue, buyerFinancialProfile?.available_cash ? { availableCash: buyerFinancialProfile.available_cash, desiredOwnerIncome: buyerDesiredIncome, injectionPercent: buyerFinancialProfile.buyer_injection_percent, interestRate: buyerFinancialProfile.illustrative_interest_rate } : null);
-  const dealReadiness = workspace ? Math.min(100, Math.round((((workspace.current_step ?? 1) - 1) / 6) * 70 + (diligence.length ? diligence.filter((item) => item.status === "verified").length / diligence.length * 30 : 0))) : 0;
+  // Visiting a later screen is not evidence of readiness. Count only explicitly
+  // completed stages and verified diligence, never the current tab index.
+  const dealReadiness = acquisitionReadiness(workspace?.checklist_progress ?? null, diligence);
   const recommendations = [
     ...(buyerFit?.factors.filter((factor) => factor.status !== "match").slice(0, 2).map((factor) => factor.detail) ?? []),
     ...financialFit.reasons.slice(0, 2),
@@ -138,7 +143,7 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
           <div className="passport-overview-grid">
             <div><span>{es ? "Múltiplos calculados" : "Calculated multiples"}</span><strong>{priceToCashFlow ? `${priceToCashFlow.toFixed(2)}× SDE` : "Not available"}</strong><small>{priceToRevenue ? `${priceToRevenue.toFixed(2)}× revenue` : "Revenue multiple unavailable"} · Crestview calculation</small></div>
             <div><span>{es ? "Financiamiento del vendedor" : "Seller financing"}</span><strong>{sellerFinancing ? (es ? "Mencionado" : "Mentioned") : (es ? "No confirmado" : "Not confirmed")}</strong><small>{sellerFinancing ? "Listing-reported; confirm terms." : "Ask the broker before assuming availability."}</small></div>
-            <div><span>{es ? "Acceso seguro" : "Secure access"}</span><strong>{workspace ? (es ? "Proceso iniciado" : "Workspace started") : (es ? "Aún no solicitado" : "Not requested yet")}</strong><small>{es ? "NDA y finanzas se rastrean por separado." : "NDA and financial access are tracked separately."}</small></div>
+            <div><span>{es ? "Acceso seguro" : "Secure access"}</span><strong>{inquiryId ? <Link href={`/${locale}/dashboard/deals/${inquiryId}`}>{es ? "Ver estado en el trato" : "View status in deal room"}</Link> : (es ? "Confirmar con el corredor" : "Confirm with the broker")}</strong><small>{es ? "Este plan privado no concede acceso a documentos." : "This private plan does not grant document access."}</small></div>
             <div className="is-next"><span>{es ? "Próxima acción" : "Best next action"}</span><strong>{workspace ? (es ? "Completar el plan guiado" : "Complete the guided plan") : (es ? "Guardar e iniciar evaluación" : "Save and begin evaluation")}</strong><small>{opportunity.missing.length} {es ? "elementos importantes faltantes" : "important missing items"}</small></div>
           </div>
         </section>
@@ -155,14 +160,14 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
           </div>
         </article>
         <section className="listing-quality">
-          <div><span>Listing freshness</span><strong>Recently checked</strong><p>Last reviewed {opportunity.lastChecked}. Confirm availability with the source.</p></div>
+          <div><span>Listing freshness</span><strong>Confirm current availability</strong><p>{inquiryId ? "Deal record updated" : "Source last checked"} {opportunity.lastChecked}. This is not independent verification of the business.</p></div>
           <div><span>Data completeness</span><strong>{Math.round(([opportunity.priceValue, opportunity.revenueValue, opportunity.cashFlowValue, opportunity.ebitdaValue, opportunity.brokerEmail ?? opportunity.brokerPhone].filter(Boolean).length / 5) * 100)}%</strong><p>{opportunity.missing.length} important information requests identified.</p></div>
-          <div><span>Duplicate review</span><strong>No duplicate detected</strong><p>Compared by source and listing identifier in the current Crestview catalog.</p></div>
+          <div><span>Listing identity</span><strong>Source-linked record</strong><p>Confirm the business identity and whether other brokers represent the same opportunity.</p></div>
         </section>
         <section className="deal-score-suite" aria-label={es ? "Cuatro puntajes explicables" : "Four explainable deal scores"}>
           <article><span>{es ? "CALIDAD DEL ANUNCIO" : "LISTING QUALITY"}</span><strong>{dealScore.score}</strong><small>{dealScore.confidence} confidence · public data</small></article>
           <article><span>{es ? "AJUSTE DEL COMPRADOR" : "BUYER FIT"}</span><strong>{buyerFit?.score ?? "—"}</strong><small>{buyerFit ? `${buyerFit.matched} criteria match` : "Complete your buyer profile"}</small></article>
-          <article><span>{es ? "PREPARACIÓN DEL TRATO" : "DEAL READINESS"}</span><strong>{dealReadiness}</strong><small>{workspace ? "Workspace and diligence progress" : "Begin acquisition to track"}</small></article>
+          <article><span>{es ? "PREPARACIÓN DEL TRATO" : "DEAL READINESS"}</span><strong>{dealReadiness}</strong><small>{workspace ? "70% completed stages + 30% verified diligence; not approval to buy" : "Begin acquisition to track"}</small></article>
           <article className={`is-${financialFit.status}`}><span>{es ? "AJUSTE FINANCIERO" : "FINANCIAL FIT"}</span><strong>{financialFit.score ?? "—"}</strong><small>{financialFit.score === null ? "Save private assumptions" : "Crestview estimate; lender review required"}</small></article>
         </section>
         <section className="score-card">

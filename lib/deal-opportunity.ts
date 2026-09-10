@@ -1,5 +1,12 @@
 import type {Opportunity} from "./demo-data";
 
+export function acquisitionReadiness(progress: Record<string, string> | null, diligence: Array<{status:string}>) {
+  if (!progress) return 0;
+  const completed = Array.from({length:8}, (_, index) => progress[String(index)] === "complete").filter(Boolean).length;
+  const verified = diligence.filter(item => item.status === "verified").length;
+  return Math.round(completed / 8 * 70 + (diligence.length ? verified / diligence.length * 30 : 0));
+}
+
 export function inquiryIdFromOpportunity(key:string) {
   return /^deal-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(key) ? key.slice(5) : null;
 }

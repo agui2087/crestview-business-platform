@@ -3,7 +3,17 @@ import assert from "node:assert/strict";
 import {readFile} from "node:fs/promises";
 import {runInNewContext} from "node:vm";
 import ts from "typescript";
-import {dealOpportunity,inquiryIdFromOpportunity} from "./deal-opportunity.ts";
+import {acquisitionReadiness,dealOpportunity,inquiryIdFromOpportunity} from "./deal-opportunity.ts";
+
+test("readiness counts explicit completion, never navigation or skipped stages",()=>{
+  assert.equal(acquisitionReadiness(null,[]),0);
+  assert.equal(acquisitionReadiness({},[]),0);
+  assert.equal(acquisitionReadiness({"7":"skipped","999":"complete"},[]),0);
+  const progress=Object.fromEntries(Array.from({length:8},(_,i)=>[String(i),"complete"]));
+  assert.equal(acquisitionReadiness(progress,[]),70);
+  assert.equal(acquisitionReadiness(progress,[{status:"verified"},{status:"requested"}]),85);
+  assert.equal(acquisitionReadiness(progress,[{status:"verified"}]),100);
+});
 
 test("real listing plans preserve missing figures rather than inventing data",()=>{
   const id="00000000-0000-4000-8000-000000000001";

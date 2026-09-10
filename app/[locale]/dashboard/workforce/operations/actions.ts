@@ -31,6 +31,9 @@ export async function workforceOperation(form: FormData) {
     });
     if (operation === "decide") result = await db.rpc("workforce_decide_request", { p_id:get("id"),p_status:get("status"),p_reason:get("reason") });
     if (operation === "task") result = await db.rpc("workforce_assign_task", { p_employee:get("employee"),p_category:get("category"),p_title:get("title"),p_assignee:get("assignee"),p_due:get("due") });
+    if (operation === "reschedule") result = await db.rpc("workforce_reschedule_task", { p_id:get("id"),p_version:Number(get("version")),p_assignee:get("assignee"),p_due:get("due"),p_reason:get("reason") });
+    if (operation === "template") result = await db.rpc("workforce_save_template", { p_owner:owner,p_id:get("id")||null,p_version:Number(get("version")),p_title:get("title"),p_category:get("category"),p_items:get("items").split(/\r?\n/).map(line=>line.trim()).filter(Boolean),p_archived:get("archived")==="true" });
+    if (operation === "assign_template") result = await db.rpc("workforce_assign_template", { p_employee:get("employee"),p_template:get("id"),p_version:Number(get("version")),p_due:get("due"),p_assignee:get("assignee") });
     if (operation === "checklist") result = await db.rpc("workforce_start_checklist", { p_employee:get("employee"),p_category:get("category"),p_assignee:get("assignee"),p_due:get("due") });
     if (operation === "requirement") result = await db.rpc("workforce_add_requirement", { p_owner:owner,p_position:get("position"),p_title:get("title"),p_days:get("days")?Number(get("days")):null });
     if (operation === "assign_requirement") result = await db.rpc("workforce_assign_requirement", { p_employee:get("employee"),p_requirement:get("requirement"),p_assignee:get("assignee"),p_due:get("due") });

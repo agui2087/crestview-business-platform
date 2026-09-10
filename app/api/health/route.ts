@@ -13,7 +13,8 @@ export async function GET() {
   try {
     const { error } = await createSupabaseAdminClient()
       .from("account_profiles")
-      .select("id", { head: true, count: "exact" })
+      .select("id", { head: true })
+      .limit(1)
       .abortSignal(AbortSignal.timeout(2500));
     if (error) throw error;
     database = "ok";

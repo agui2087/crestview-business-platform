@@ -79,16 +79,26 @@ jobs:
           test -n "$RESTORE_SUPABASE_URL"
           test -n "$RESTORE_SUPABASE_SERVICE_ROLE_KEY"
           test "$NEXT_PUBLIC_SUPABASE_URL" != "$RESTORE_SUPABASE_URL"
+      - name: Verify and decrypt the saved artifact bytes
+        run: |
+          sha256sum --check SHA256SUMS
+          mkdir --mode=700 work/decrypted-restore
+          openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in crestview-database.dump.enc -out work/decrypted-restore/database.dump -pass env:CRESTVIEW_BACKUP_PASSPHRASE
+          openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in crestview-storage.tar.gz.enc -out work/decrypted-restore/storage.tar.gz -pass env:CRESTVIEW_BACKUP_PASSPHRASE
+          cmp crestview-database.dump work/decrypted-restore/database.dump
+          cmp crestview-storage.tar.gz work/decrypted-restore/storage.tar.gz
+          tar -xzf work/decrypted-restore/storage.tar.gz -C work/decrypted-restore
+          node scripts/verify-storage-backup.mjs work/decrypted-restore/storage-backup
       - name: Restore database into isolated PostgreSQL
         run: |
           psql postgresql://restore_operator@127.0.0.1:5432/crestview_restore --set ON_ERROR_STOP=1 --command 'create schema if not exists extensions; create extension if not exists pgcrypto with schema extensions; create extension if not exists "uuid-ossp" with schema extensions;'
-          pg_restore --dbname=postgresql://restore_operator@127.0.0.1:5432/crestview_restore --no-owner --no-acl --exit-on-error crestview-database.dump
+          pg_restore --dbname=postgresql://restore_operator@127.0.0.1:5432/crestview_restore --no-owner --no-acl --exit-on-error work/decrypted-restore/database.dump
       - name: Verify critical restored records and schema
         run: |
-          psql postgresql://restore_operator@127.0.0.1:5432/crestview_restore --set ON_ERROR_STOP=1 --command "select to_regclass('public.profiles'), to_regclass('public.marketplace_listings'), to_regclass('public.deal_inquiries'), to_regclass('public.vault_documents'), to_regclass('public.billing_entitlements'), to_regclass('public.stripe_webhook_events');"
+          psql postgresql://restore_operator@127.0.0.1:5432/crestview_restore --set ON_ERROR_STOP=1 --file scripts/assert-restored-schema.sql
           psql postgresql://restore_operator@127.0.0.1:5432/crestview_restore --set ON_ERROR_STOP=1 --command "select (select count(*) from public.profiles) as profiles, (select count(*) from public.marketplace_listings) as listings, (select count(*) from public.vault_documents) as vault_documents;"
       - name: Restore and verify private objects in isolated Supabase
-        run: node scripts/restore-storage.mjs work/storage-backup
+        run: node scripts/restore-storage.mjs work/decrypted-restore/storage-backup
       - name: Remove plaintext backup material
         if: always()
-        run: rm -rf crestview-database.dump crestview-storage.tar.gz work/storage-backup
+        run: rm -rf crestview-database.dump crestview-storage.tar.gz work/storage-backup work/decrypted-restore

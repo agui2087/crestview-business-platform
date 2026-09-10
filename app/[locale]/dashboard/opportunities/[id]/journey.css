@@ -2,3 +2,5 @@
 .acquisition-detail-page .detail-card--missing p,
 .acquisition-detail-page .detail-card--missing li,
 .acquisition-detail-page .check-card label:has(input:checked) { color: #536159; }
+.acquisition-detail-page .financing-resource-grid small,
+.acquisition-detail-page .financing-disclaimer { color: #536159; }

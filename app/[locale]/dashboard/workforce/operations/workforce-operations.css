@@ -5,6 +5,10 @@
 .wf-ops label { display: grid; gap: 6px; flex: 1 1 200px; min-width: 0; }
 .wf-ops input,.wf-ops select,.wf-ops textarea { width: 100%; min-width: 0; padding: 10px; border: 1px solid #87988e; border-radius: 8px; background: #fff; color: #172c24; font: inherit; box-sizing: border-box; }
 .wf-ops button { min-height: 44px; padding: 10px 16px; cursor: pointer; }
+.wf-ops button:not(.button) { border: 1px solid #194f3f; border-radius: 8px; background: #194f3f; color: #fff; font: inherit; font-weight: 600; }
+.wf-ops button:disabled { cursor: not-allowed; opacity: .65; }
+.wf-ops label:has(input[type="checkbox"]) { display: flex; align-items: flex-start; gap: 10px; min-height: 44px; cursor: pointer; }
+.wf-ops input[type="checkbox"] { width: 20px; height: 20px; flex: 0 0 20px; margin: 3px 0 0; padding: 0; accent-color: #194f3f; }
 .wf-ops details { border-top: 1px solid #d0dbd4; padding-block: 16px; }
 .wf-ops summary { cursor: pointer; font-weight: 600; padding-block: 8px; }
 .wf-ops .wf-item { padding-block: 16px; border-bottom: 1px solid #d0dbd4; }

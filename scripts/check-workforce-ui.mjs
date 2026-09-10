@@ -15,6 +15,8 @@ import assert from 'node:assert/strict';
 const require=createRequire(import.meta.url);
 const owner='00000000-0000-4000-8000-000000000001', worker='00000000-0000-4000-8000-000000000002', employee='00000000-0000-4000-8000-000000000003';
 const fixture={
+  vault_documents:[{id:'document',original_name:'Reviewed certificate.pdf'}],
+  workforce_training_evidence:[{id:'evidence',original_name:'Reviewed certificate.pdf',shared_by:owner,shared_at:'2026-09-01',revoked_at:null,revoke_reason:null}],
   workforce_payroll_imports:[{id:'batch',reference:'Reviewed source batch',created_at:'2026-09-01T12:00:00Z',voided_at:null}],
   workforce_payroll_history:[{id:1,action:'IMPORT',reason:'Reviewed analytical import',created_at:'2026-09-01T12:00:00Z'}],
   workforce_leave_policies:[{id:'policy',employee_id:employee,leave_type:'Custom leave',starts_on:'2026-01-01',ends_on:'2026-12-31',accrual_minutes:600,balance_cap_minutes:6000,version:1,review_reference:'Reviewed fixture'}],
@@ -32,7 +34,7 @@ const fixture={
   employee_records:[{id:'record',employee_id:employee,title:'Safety certificate',expires_on:'2026-01-01',record_type:'certification'}],
   workforce_requirements:[{id:'requirement',position:'Operator',title:'Safety induction',renewal_days:365}],
 };
-const db={auth:{getUser:async()=>({data:{user:{id:owner}}})},rpc:async(name)=>({data:name==='workforce_payroll_totals'?[{currency:'USD',period_start:'2026-08-01',period_end:'2026-08-31',employees:1,gross_minor:100001,employer_cost_minor:120001,paid_hours_hundredths:16000}]:name==='workforce_leave_balance'?[{configured:true,minutes:480,entry_count:1}]:'owner',error:null}),from(table){
+const db={auth:{getUser:async()=>({data:{user:{id:owner}}})},rpc:async(name)=>({data:name==='workforce_training_evidence_available'?true:name==='workforce_payroll_totals'?[{currency:'USD',period_start:'2026-08-01',period_end:'2026-08-31',employees:1,gross_minor:100001,employer_cost_minor:120001,paid_hours_hundredths:16000}]:name==='workforce_leave_balance'?[{configured:true,minutes:480,entry_count:1}]:'owner',error:null}),from(table){
   const result={data:fixture[table]??[],error:null};
   const chain=new Proxy({}, {get:(_,key)=>key==='then'?Promise.resolve(result).then.bind(Promise.resolve(result)):key==='maybeSingle'?()=>Promise.resolve({...result,data:Array.isArray(result.data)?result.data[0]:result.data}):()=>chain});return chain;
 }};
@@ -40,7 +42,8 @@ const setup=process.env.CRESTVIEW_UI_SETUP==='true';
 const schedules=process.env.CRESTVIEW_UI_SCHEDULES==='true';
 const leave=process.env.CRESTVIEW_UI_LEAVE==='true';
 const payroll=process.env.CRESTVIEW_UI_PAYROLL==='true';
-const source=await readFile(new URL(`../app/[locale]/dashboard/workforce/${payroll?'payroll':leave?'leave':schedules?'schedules':setup?'setup':'operations'}/page.tsx`,import.meta.url),'utf8');
+const evidence=process.env.CRESTVIEW_UI_EVIDENCE==='true';
+const source=await readFile(new URL(`../app/[locale]/dashboard/workforce/${evidence?'evidence':payroll?'payroll':leave?'leave':schedules?'schedules':setup?'setup':'operations'}/page.tsx`,import.meta.url),'utf8');
 const compiled=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true,target:ts.ScriptTarget.ES2022}}).outputText;
 const exports={};
 const checklistSource=await readFile(new URL('../app/[locale]/dashboard/workforce/operations/checklist-management.tsx',import.meta.url),'utf8');
@@ -62,7 +65,8 @@ const mockRequire=(name)=>{
   if(name==='@/lib/workforce-actions')return require('../lib/workforce-actions.ts');
   if(name==='@/lib/workforce-payroll')return require('../lib/workforce-payroll.ts');
   if(name==='@/lib/supabase/server')return {isSupabaseConfigured:()=>true,createSupabaseServerClient:async()=>db};
-  if(name==='./actions'||name==='../operations/actions')return {workforceOperation:async()=>{},saveSchedule:async()=>{},leaveOperation:async()=>{},importPayroll:async()=>({error:''}),voidPayroll:async()=>{}};
+  if(name==='@/lib/supabase/admin')return {createSupabaseAdminClient:()=>db};
+  if(name==='./actions'||name==='../operations/actions')return {workforceOperation:async()=>{},saveSchedule:async()=>{},leaveOperation:async()=>{},importPayroll:async()=>({error:''}),voidPayroll:async()=>{},evidenceOperation:async()=>{}};
   if(name==='./import-form')return payrollExports;
   if(name==='./checklist-management')return checklistExports;
   if(name==='./analytics')return analyticsExports;
@@ -74,13 +78,13 @@ runInNewContext(analyticsCompiled,{exports:analyticsExports,require:mockRequire,
 runInNewContext(payrollCompiled,{exports:payrollExports,require:mockRequire,Date,Promise,console});
 runInNewContext(compiled,{exports,require:mockRequire,Date,Promise,console});
 const css=(await readFile(new URL('../app/globals.css',import.meta.url),'utf8'))+'\n'+await readFile(new URL('../app/[locale]/dashboard/workforce/operations/workforce-operations.css',import.meta.url),'utf8');
-const out=path.join(tmpdir(),payroll?'crestview-workforce-payroll-ui':leave?'crestview-workforce-leave-ui':schedules?'crestview-workforce-schedules-ui':setup?'crestview-workforce-setup-ui':'crestview-workforce-ui');await mkdir(out,{recursive:true});
+const out=path.join(tmpdir(),evidence?'crestview-workforce-evidence-ui':payroll?'crestview-workforce-payroll-ui':leave?'crestview-workforce-leave-ui':schedules?'crestview-workforce-schedules-ui':setup?'crestview-workforce-setup-ui':'crestview-workforce-ui');await mkdir(out,{recursive:true});
 const browser=await chromium.launch();
 try {
   for(const locale of ['en','es'])for(const width of [1440,390]) {
     const context=await browser.newContext({viewport:{width,height:900}});
     const page=await context.newPage();
-    const view=await exports.default({params:Promise.resolve({locale}),searchParams:Promise.resolve(payroll?{batch:'batch'}:leave?{policy:'policy'}:{})});
+    const view=await exports.default({params:Promise.resolve({locale}),searchParams:Promise.resolve(evidence?{task:'task'}:payroll?{batch:'batch'}:leave?{policy:'policy'}:{})});
     await page.setContent(`<!doctype html><html lang="${locale}"><head><title>Workforce UI test</title><style>${css}</style></head><body>${renderToStaticMarkup(view)}</body></html>`);
     await page.locator('details').evaluateAll(nodes=>nodes.forEach(n=>n.open=true));
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`${locale} ${width}: horizontal overflow`);

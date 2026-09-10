@@ -41,12 +41,14 @@ const db={auth:{getUser:async()=>({data:{user:{id:owner}}})},rpc:async(name)=>({
 const setup=process.env.CRESTVIEW_UI_SETUP==='true';
 const schedules=process.env.CRESTVIEW_UI_SCHEDULES==='true';
 const leave=process.env.CRESTVIEW_UI_LEAVE==='true';
+const accrual=process.env.CRESTVIEW_UI_ACCRUAL==='true';
+if(accrual){fixture.workforce_leave_policies[0].ends_on='2200-12-31';fixture.workforce_accrual_rules=[{version:1,enabled:true,amount_minutes:600,next_on:'2026-10-01',review_reference:'Synthetic review'}];fixture.workforce_accrual_runs=[];fixture.workforce_accrual_history=[];}
 const payroll=process.env.CRESTVIEW_UI_PAYROLL==='true';
 if(payroll){const previous=db.rpc;db.rpc=async(name)=>name==='workforce_payroll_periods'?{data:[{currency:'USD',period_start:'2026-08-01',period_end:'2026-08-31',employees:5,imports:3,gross_minor:100001,employer_cost_minor:120001,paid_hours_hundredths:16000,cost_per_paid_hour:7.5,total_periods:2},{currency:'EUR',period_start:'2026-07-01',period_end:'2026-07-31',employees:1,imports:1,gross_minor:10000,employer_cost_minor:12000,paid_hours_hundredths:0,cost_per_paid_hour:null,total_periods:2}],error:null}:previous(name);}
 const evidence=process.env.CRESTVIEW_UI_EVIDENCE==='true';
 const reminders=process.env.CRESTVIEW_UI_REMINDERS==='true';
 if(reminders){const previous=db.rpc;db.rpc=async(name)=>name==='workforce_reminders'?{data:[{source_id:'task',kind:'upcoming_task',title:'Safety induction',employee_id:employee,employee_name:'Example Employee',due_on:'2026-09-10',business_today:'2026-09-10',business_timezone:'America/Los_Angeles',total_count:1}],error:null}:previous(name);}
-const source=await readFile(new URL(`../app/[locale]/dashboard/workforce/${reminders?'reminders':evidence?'evidence':payroll?'payroll':leave?'leave':schedules?'schedules':setup?'setup':'operations'}/page.tsx`,import.meta.url),'utf8');
+const source=await readFile(new URL(`../app/[locale]/dashboard/workforce/${accrual?'leave/accrual':reminders?'reminders':evidence?'evidence':payroll?'payroll':leave?'leave':schedules?'schedules':setup?'setup':'operations'}/page.tsx`,import.meta.url),'utf8');
 const compiled=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true,target:ts.ScriptTarget.ES2022}}).outputText;
 const exports={};
 const checklistSource=await readFile(new URL('../app/[locale]/dashboard/workforce/operations/checklist-management.tsx',import.meta.url),'utf8');
@@ -67,11 +69,12 @@ const mockRequire=(name)=>{
   if(name==='@/lib/workforce-analytics')return require('../lib/workforce-analytics.ts');
   if(name==='@/lib/workforce-readiness')return require('../lib/workforce-readiness.ts');
   if(name==='@/lib/workforce-leave-display')return require('../lib/workforce-leave-display.ts');
+  if(name==='@/lib/workforce-leave')return require('../lib/workforce-leave.ts');
   if(name==='@/lib/workforce-actions')return require('../lib/workforce-actions.ts');
   if(name==='@/lib/workforce-payroll')return require('../lib/workforce-payroll.ts');
   if(name==='@/lib/supabase/server')return {isSupabaseConfigured:()=>true,createSupabaseServerClient:async()=>db};
   if(name==='@/lib/supabase/admin')return {createSupabaseAdminClient:()=>db};
-  if(name==='./actions'||name==='../operations/actions')return {workforceOperation:async()=>{},saveSchedule:async()=>{},leaveOperation:async()=>{},importPayroll:async()=>({error:''}),voidPayroll:async()=>{},evidenceOperation:async()=>{}};
+  if(name==='./actions'||name==='../operations/actions')return {workforceOperation:async()=>{},saveSchedule:async()=>{},saveAccrual:async()=>{},leaveOperation:async()=>{},importPayroll:async()=>({error:''}),voidPayroll:async()=>{},evidenceOperation:async()=>{}};
   if(name==='./import-form')return payrollExports;
   if(name==='./checklist-management')return checklistExports;
   if(name==='./analytics')return analyticsExports;
@@ -83,13 +86,13 @@ runInNewContext(analyticsCompiled,{exports:analyticsExports,require:mockRequire,
 runInNewContext(payrollCompiled,{exports:payrollExports,require:mockRequire,Date,Promise,console});
 runInNewContext(compiled,{exports,require:mockRequire,Date,Promise,console});
 const css=(await readFile(new URL('../app/globals.css',import.meta.url),'utf8'))+'\n'+await readFile(new URL('../app/[locale]/dashboard/workforce/operations/workforce-operations.css',import.meta.url),'utf8');
-const out=path.join(tmpdir(),reminders?'crestview-workforce-reminders-ui':evidence?'crestview-workforce-evidence-ui':payroll?'crestview-workforce-payroll-ui':leave?'crestview-workforce-leave-ui':schedules?'crestview-workforce-schedules-ui':setup?'crestview-workforce-setup-ui':'crestview-workforce-ui');await mkdir(out,{recursive:true});
+const out=path.join(tmpdir(),accrual?'crestview-workforce-accrual-ui':reminders?'crestview-workforce-reminders-ui':evidence?'crestview-workforce-evidence-ui':payroll?'crestview-workforce-payroll-ui':leave?'crestview-workforce-leave-ui':schedules?'crestview-workforce-schedules-ui':setup?'crestview-workforce-setup-ui':'crestview-workforce-ui');await mkdir(out,{recursive:true});
 const browser=await chromium.launch();
 try {
   for(const locale of ['en','es'])for(const width of [1440,390]) {
     const context=await browser.newContext({viewport:{width,height:900}});
     const page=await context.newPage();
-    const view=await exports.default({params:Promise.resolve({locale}),searchParams:Promise.resolve(evidence?{task:'task'}:payroll?{batch:'batch'}:leave?{policy:'policy'}:{})});
+    const view=await exports.default({params:Promise.resolve({locale}),searchParams:Promise.resolve(accrual?{policy:'policy',amount:'600'}:evidence?{task:'task'}:payroll?{batch:'batch'}:leave?{policy:'policy'}:{})});
     await page.setContent(`<!doctype html><html lang="${locale}"><head><title>Workforce UI test</title><style>${css}</style></head><body>${renderToStaticMarkup(view)}</body></html>`);
     await page.locator('details').evaluateAll(nodes=>nodes.forEach(n=>n.open=true));
     if(leave) {

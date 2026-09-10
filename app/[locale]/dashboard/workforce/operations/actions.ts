@@ -12,11 +12,15 @@ export async function workforceOperation(form: FormData) {
   const { data: { user } } = await db.auth.getUser();
   if (!user) redirect(`/${locale}/sign-in`);
   const owner = get("owner") || user.id;
-  const path = `/${locale}/dashboard/workforce/operations`;
+  const setup = ["business","location","department"].includes(get("operation"));
+  const path = `/${locale}/dashboard/workforce/${setup?"setup":"operations"}`;
   let result: { error: unknown; data?: unknown } = { error: true };
   const operation = get("operation");
   const validDates = ["start", "end", "due", "start_date"].every(key => validDate(get(key)));
   if (validDates) {
+    if (operation === "business") result = await db.rpc("workforce_save_business", {p_owner:owner,p_version:Number(get("version")),p_name:get("name"),p_timezone:get("timezone")});
+    if (operation === "location") result = await db.rpc("workforce_save_location", {p_owner:owner,p_id:get("id")||null,p_version:Number(get("version")),p_name:get("name"),p_country:get("country"),p_region:get("region"),p_timezone:get("timezone"),p_archived:get("archived")==="true"});
+    if (operation === "department") result = await db.rpc("workforce_save_department", {p_owner:owner,p_id:get("id")||null,p_version:Number(get("version")),p_name:get("name"),p_archived:get("archived")==="true"});
     if (operation === "create" && get("full_name").length > 0 && get("full_name").length <= 200 && (!get("email") || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(get("email")))) result = await db.from("employees").insert({ user_id:owner,full_name:get("full_name"),email:get("email")||null,position:get("position")||null,department:get("department")||null,preferred_locale:locale });
     if (operation === "invite") result = await db.rpc("workforce_invite", { p_owner: owner, p_email: get("email"), p_role: get("role"), p_employee: get("employee") || null });
     if (operation === "accept" || operation === "revoke") result = await db.rpc("workforce_membership_decision", { p_id: get("id"), p_accept: operation === "accept" });

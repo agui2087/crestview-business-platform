@@ -1,3 +1,4 @@
+import { SiteIcon } from "@/components/site-icon";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -117,7 +118,14 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
         <div className="workspace-back"><Link href={`/${locale}/dashboard/inbox`}>← Back to deal inbox</Link><span>Private workspace</span></div>
         <PageHeading eyebrow={workspace.isBuyer ? "Buyer workspace" : "Broker workspace"} title={workspace.title} body={workspace.isBuyer ? "Your guided path from first inquiry through diligence and closing." : "Review the buyer, share records securely, and move the deal forward from one place."} />
         {query.nda && <p className="notice">The NDA was {query.nda === "signed" ? "signed and the deal room is unlocked" : "sent successfully"}.</p>}
-        {query.financial && <p className="notice">{query.financial === "requested" ? "Your financial-information request was sent to the broker." : `Financial access was updated: ${String(query.financial).replaceAll("_", " ")}.`}</p>}
+        {query.error && String(query.error).startsWith("financial_") && <p className="notice" role="alert">{query.error === "financial_conflict"
+          ? "This deal changed or the form expired. Review its current status before submitting again."
+          : query.error === "financial_forbidden"
+            ? "This change is not permitted. Financial access requires the correct deal participant and a signed NDA."
+            : query.error === "financial_invalid"
+              ? "Check your request details: include a note of 20–3,000 characters, your timeline, and funding readiness."
+              : "We could not confirm this change. Refresh and check the current status before trying again."}</p>}
+        {!query.error && query.financial && <p className="notice" role="status">{query.financial === "requested" ? "Your financial-information request was sent to the broker." : `Financial access was updated: ${String(query.financial).replaceAll("_", " ")}.`}</p>}
         {workspace.isDemo && <p className="data-notice"><strong>Demo workspace</strong><span>Explore the same secure workflow used for live deals.</span></p>}
         <nav className="deal-workspace-nav" aria-label="Deal workspace sections">
           <a className="is-primary" href="#deal-next-step">Overview</a><a href="#deal-conversation">Messages &amp; NDA</a><a href="#deal-documents">Documents</a><a href="#deal-activity">Activity</a><a href="#deal-stage">Stage</a>
@@ -152,6 +160,7 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
             </div>
             {workspace.inquiry.financial_request_message && <blockquote>{workspace.inquiry.financial_request_message}</blockquote>}
             {!workspace.isDemo && <form action={decideFinancialAccess}>
+              <input type="hidden" name="expected_updated_at" value={workspace.inquiry.updated_at} />
               <input type="hidden" name="locale" value={locale} /><input type="hidden" name="inquiry_id" value={id} />
               <button name="decision" value="more_information" className="button button--light" type="submit">Ask a question</button>
               <button name="decision" value="declined" className="button button--light" type="submit">Decline</button>
@@ -224,7 +233,8 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
         </section>
         {roomUnlocked && <section className="panel financial-access-panel">
           <div className="panel__header"><div><span className="source-label">Step 2</span><h2>Request business records</h2></div><span className={`stage financial-${financialStatus}`}>{financialStatus.replaceAll("_", " ")}</span></div>
-          {workspace.isBuyer && financialStatus === "not_requested" && !workspace.isDemo && <form action={requestFinancialAccess}>
+          {workspace.isBuyer && ["not_requested", "more_information", "declined"].includes(financialStatus) && !workspace.isDemo && <form action={requestFinancialAccess}>
+            <input type="hidden" name="expected_updated_at" value={workspace.inquiry.updated_at} />
             <input type="hidden" name="locale" value={locale} /><input type="hidden" name="inquiry_id" value={id} />
             <p>Choose what you need for an initial review. The broker can approve, ask a question, or decline.</p>
             <fieldset><legend>What would you like to review?</legend>
@@ -285,7 +295,7 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
         </section>}
         <section className={`panel secure-room ${roomUnlocked || workspace.isDemo ? "is-unlocked" : "is-locked"}`}>
           <div className="panel__header"><div><span className="source-label">Permission-controlled documents</span><h2>Secure deal room</h2></div><span className="stage">{roomUnlocked ? financialApproved ? "Financial access approved" : "NDA access only" : "NDA required"}</span></div>
-          {!roomUnlocked && !workspace.isDemo && <div className="room-lock"><span>🔒</span><h3>Sign the NDA to unlock documents</h3><p>Only approved participants can access confidential materials. Every upload and status change remains attached to this deal.</p></div>}
+          {!roomUnlocked && !workspace.isDemo && <div className="room-lock"><span><SiteIcon name="lock" /></span><h3>Sign the NDA to unlock documents</h3><p>Only approved participants can access confidential materials. Every upload and status change remains attached to this deal.</p></div>}
           {(roomUnlocked || workspace.isDemo) && <div className="document-folders">{documentGroups.map((group) => group.documents.length ? <section key={group.category}><header><strong>{group.category}</strong><span>{group.documents.length} received</span></header><div className="room-documents">{group.documents.map((document) => {
             const scanStatus = document.security_status ?? "basic_validated";
             const scanLabel = scanStatus === "malware_scanned" ? "Managed security scan passed" : scanStatus === "basic_validated" ? "File safety checked" : scanStatus === "blocked" ? "Blocked" : "Security check in progress";

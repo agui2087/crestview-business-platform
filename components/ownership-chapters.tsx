@@ -1,5 +1,6 @@
 "use client";
 
+import { SiteIcon } from "@/components/site-icon";
 import { useEffect, useRef } from "react";
 import Link from "next/link";
 import styles from "./ownership-chapters.module.css";
@@ -63,7 +64,7 @@ export function OwnershipChapters({ locale }: { locale: string }) {
           <h2 id="evaluate-title">{es ? "El potencial merece" : "Big potential."}<br/><em>{es ? "una mirada más profunda." : "A closer look."}</em></h2>
           <p>{es ? "Una buena primera impresión es solo el comienzo. Organiza los documentos, revisa los números y descubre las preguntas que importan antes de dar el siguiente paso." : "A good first impression is just the beginning. Bring the documents together, examine the numbers, and uncover the questions that matter before your next move."}</p>
           <div className={styles.steps}><span>{es ? "Documentos" : "Documents"}</span><i/><span>{es ? "Diligencia" : "Diligence"}</span><i/><span>{es ? "Claridad" : "Clarity"}</span></div>
-          <Link href={`/${locale}/guides/business-due-diligence-checklist`}>{es ? "Explora la diligencia" : "Explore the diligence checklist"} <span aria-hidden="true">↗</span></Link>
+          <Link href={`/${locale}/guides/business-due-diligence-checklist`}>{es ? "Explora la diligencia" : "Explore the diligence checklist"} <span aria-hidden="true"><SiteIcon name="external" /></span></Link>
         </div>
       </div>
     </section>
@@ -73,7 +74,7 @@ export function OwnershipChapters({ locale }: { locale: string }) {
           <p className={styles.eyebrow}>03 / {es ? "TU SIGUIENTE CAPÍTULO" : "MAKE YOUR NEXT CHAPTER"}</p>
           <h2 id="own-title">{es ? "No es solo una compra." : "More than a purchase."}<br/><em>{es ? "Un nuevo comienzo." : "A new beginning."}</em></h2>
           <p>{es ? "De la primera pregunta al plan de adquisición. Conecta cada paso con el futuro que quieres construir, sin perder de vista lo que falta por resolver." : "From the first question to your acquisition plan. Connect each step to the future you want to build, without losing sight of what still needs to be resolved."}</p>
-          <Link href={`/${locale}/how-it-works`}>{es ? "Traza tu camino" : "See your path to ownership"} <span aria-hidden="true">↗</span></Link>
+          <Link href={`/${locale}/how-it-works`}>{es ? "Traza tu camino" : "See your path to ownership"} <span aria-hidden="true"><SiteIcon name="external" /></span></Link>
         </div>
         <div className={styles.illustration} aria-hidden="true">
           <svg viewBox="0 0 680 640" focusable="false">

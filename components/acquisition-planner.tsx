@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import { useCrestviewUser } from "@/components/user-provider";
 import type { Opportunity } from "@/lib/demo-data";
 import { financingResourcesFor } from "@/lib/financing-resources";
@@ -320,6 +320,7 @@ export function AcquisitionPlanner({
   const [stepNotes, setStepNotes] = useState<Record<string, string>>(initialWorkspace?.step_notes ?? {});
   const [saveMessage, setSaveMessage] = useState("");
   const [isSaving, startSaving] = useTransition();
+  const saveQueue = useRef<Promise<unknown>>(Promise.resolve());
   const [copied, setCopied] = useState(false);
   const [selectedRequestItems, setSelectedRequestItems] = useState<string[]>(() => [...opportunity.missing]);
 
@@ -357,18 +358,29 @@ export function AcquisitionPlanner({
     formData.set("checklist_progress", JSON.stringify(nextStatuses));
     formData.set("step_notes", JSON.stringify(stepNotes));
     formData.set("valuation_inputs", JSON.stringify({ price, sde, ebitda, debtService, downPayment, interestRate, loanYears, buyerSalary, workingCapital }));
-    startSaving(async () => {
-      const result = await saveAcquisitionWorkspace(formData);
-      setSaveMessage(result.message);
+    // Preserve request order when a buyer checks several items quickly. A later
+    // full snapshot must not be overwritten by an older, slower save.
+    const task=saveQueue.current.catch(()=>undefined).then(async()=>{
+      try {
+        const result=await saveAcquisitionWorkspace(formData);
+        setSaveMessage(result.ok ? (es ? "Progreso guardado." : "Progress saved.") : (es ? "No se guardó el progreso. Vuelve a intentarlo antes de salir." : "Progress was not saved. Retry before leaving this page."));
+        return result.ok;
+      } catch {
+        setSaveMessage(es ? "No se guardó el progreso. Vuelve a intentarlo antes de salir." : "Progress was not saved. Retry before leaving this page.");
+        return false;
+      }
     });
+    saveQueue.current=task;
+    startSaving(async()=>{await task;});
+    return task;
   }
 
   function advance(status: "complete" | "skipped") {
     const nextStatuses = { ...stepStatuses, [String(current)]: status };
     const nextCurrent = Math.min(stages.length - 1, current + 1);
-    setStepStatuses(nextStatuses);
-    setCurrent(nextCurrent);
-    persist(nextCurrent, nextStatuses);
+    void persist(nextCurrent,nextStatuses).then(saved=>{
+      if(saved){setStepStatuses(nextStatuses);setCurrent(nextCurrent);}
+    });
   }
 
   function itemKey(step: number, item: number) {
@@ -468,7 +480,7 @@ export function AcquisitionPlanner({
         <p>{es ? "Lista de adquisición" : "Acquisition checklist"}</p>
         <div className="checklist-overall-progress"><strong>{overallProgress}%</strong><span>{es ? "progreso total" : "overall progress"}</span><i><b style={{ width: `${overallProgress}%` }} /></i></div>
         {stages.map(([title], index) => (
-          <button className={index === current ? "is-current" : stepStatuses[String(index)] === "complete" ? "is-complete" : stepStatuses[String(index)] === "skipped" ? "is-skipped" : ""} onClick={() => setCurrent(index)} key={title}>
+          <button aria-current={index === current ? "step" : undefined} className={index === current ? "is-current" : stepStatuses[String(index)] === "complete" ? "is-complete" : stepStatuses[String(index)] === "skipped" ? "is-skipped" : ""} onClick={() => setCurrent(index)} key={title}>
             <span>{stepStatuses[String(index)] === "complete" ? "✓" : stepStatuses[String(index)] === "skipped" ? "!" : index + 1}</span>{title}
           </button>
         ))}
@@ -489,7 +501,7 @@ export function AcquisitionPlanner({
           </label>)}
         </div>}
 
-        {current === 1 && <div className="workflow-connection"><div><span>Simple two-step request</span><strong>Sign the NDA first, then ask for records</strong><p>Crestview listings deliver the broker’s NDA automatically. The broker only needs to review your financial-record request.</p></div><a href={`/${locale}/dashboard/marketplace`}>Go to marketplace →</a></div>}
+        {current === 1 && <div className="workflow-connection"><div><span>{es ? "Conecta con el corredor" : "Connect with the broker"}</span><strong>{es ? "Firma el NDA y solicita documentos" : "Sign the NDA first, then ask for records"}</strong><p>{es ? "Los mensajes, acuerdos y permisos se gestionan en el espacio compartido. Marcar esta lista no concede acceso a documentos." : "Messages, agreements, and access permissions are managed in the shared deal room. Checking this list does not grant document access."}</p></div><a href={opportunity.id.startsWith("deal-") ? opportunity.sourceUrl : `/${locale}/dashboard/marketplace`}>{es ? "Abrir espacio del corredor" : "Open broker workspace"}</a></div>}
         {current === 1 && <details className="request-builder"><summary>Need to contact a broker outside Crestview?</summary><div className="request-grid"><div className="check-card"><div className="check-card__heading"><h3>Choose what to request</h3><span>{selectedRequestItems.length} selected</span></div>{requestItems.map((item) => <label key={item}><input type="checkbox" checked={selectedRequestItems.includes(item)} onChange={() => toggleRequestItem(item)} />{item}</label>)}</div><div className="outreach-card"><span>Message draft</span><pre aria-live="polite">{brokerRequest}</pre><div className="outreach-actions"><button type="button" onClick={copyBrokerRequest}>{copied ? "Copied ✓" : "Copy message"}</button>{opportunity.brokerEmail && <a href={`mailto:${opportunity.brokerEmail}?subject=${encodeURIComponent(`Inquiry about listing ${opportunity.sourceId}`)}&body=${encodeURIComponent(brokerRequest)}`}>Open email</a>}</div></div></div></details>}
 
         {current === 2 && <div className="valuation-area">
@@ -537,7 +549,7 @@ export function AcquisitionPlanner({
           <p className="financing-disclaimer">{es ? "Crestview muestra fuentes oficiales y recursos regionales, pero no garantiza aprobación ni recomienda un prestamista específico. Compara términos y confirma todos los requisitos directamente." : "Crestview shows official sources and regional resources, but does not guarantee approval or recommend a specific lender. Compare terms and confirm every requirement directly."}</p>
         </section>}
 
-        {atLastStep && <div className="completion-card"><span>✓</span><h3>Purchase complete</h3><p>Use this stage only after your professional advisors confirm the transaction has closed. Record transition obligations, working-capital adjustments, escrow dates, and post-closing commitments.</p></div>}
+        {atLastStep && <div className="completion-card"><h3>{es ? "Revisión del cierre y transición" : "Closing review and transition"}</h3><p>{es ? "Abrir o completar esta lista no confirma una compra. Confirma el cierre con tus asesores, prestamista y agente de cierre. Crestview no transfiere el precio de compra ni presta servicios de depósito en garantía." : "Opening or completing this checklist does not confirm a purchase. Confirm closing with your advisors, lender, and closing agent. Crestview does not transfer the purchase price or provide escrow services."}</p><a className="button button--light" href={`/${locale}/dashboard/workforce/setup`}>{es ? "Preparar la operación después del cierre" : "Prepare post-close business operations"}</a></div>}
 
         <div className="information-use-card">
           <span>{es ? "Cómo usar esta información" : "How to use what you learn"}</span>

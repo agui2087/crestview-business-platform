@@ -8,6 +8,8 @@ import { SupabaseAuth } from "@/components/supabase-auth";
 import { chatGPTSignInHref, getChatGPTUser, isStandaloneRequest } from "@/app/chatgpt-auth";
 import { getDictionary, isLocale } from "@/lib/i18n";
 import { isSupabaseConfigured } from "@/lib/supabase/server";
+import { isLocalAuthenticationAllowed } from "@/lib/auth-environment";
+import { authReturnPath } from "@/lib/auth-return-path";
 
 export const metadata: Metadata = {
   title: "Sign in",
@@ -21,6 +23,8 @@ export default async function SignInPage({
   const { locale } = await params;
   const query = await searchParams;
   if (!isLocale(locale)) notFound();
+  const es = locale === "es";
+  const returnTo = authReturnPath(query.return_to, locale);
   const { auth } = getDictionary(locale);
   const user = await getChatGPTUser();
   const standalone = await isStandaloneRequest();
@@ -40,15 +44,17 @@ export default async function SignInPage({
         <div className="auth-card">
           <h1 id="sign-in-title">{auth.title}</h1>
           <p className="auth-card__intro">{auth.body}</p>
-          <div className="notice">{standalone ? "Create or sign in to your Crestview account to continue." : "Secure account access is ready."}</div>
+          <div className="notice">{es ? "Crea tu cuenta de Crestview o inicia sesión para continuar." : "Create or sign in to your Crestview account to continue."}</div>
           {standalone && !user && isSupabaseConfigured() ? (
-            <SupabaseAuth locale={locale} error={typeof query.error === "string" ? query.error : undefined} message={typeof query.message === "string" ? query.message : undefined} />
+            <SupabaseAuth locale={locale} returnTo={returnTo} error={typeof query.error === "string" ? query.error : undefined} message={typeof query.message === "string" ? query.message : undefined} />
+          ) : standalone && !user && isLocalAuthenticationAllowed() ? (
+            <LocalAuth returnTo={returnTo} />
           ) : standalone && !user ? (
-            <LocalAuth returnTo={`/${locale}/dashboard`} />
+            <p role="alert">{es ? "El acceso seguro no está disponible temporalmente. Inténtalo de nuevo más tarde." : "Secure sign-in is temporarily unavailable. Please try again later."}</p>
           ) : user ? (
             <div className="signed-in-choice">
-              <p>Signed in as <strong>{user.email}</strong></p>
-              <Link className="button button--primary auth-submit" href={`/${locale}/dashboard`}>Continue to your dashboard</Link>
+              <p>{es ? "Sesión iniciada como" : "Signed in as"} <strong>{user.email}</strong></p>
+              <Link className="button button--primary auth-submit" href={returnTo}>{es ? "Continuar a tu espacio de trabajo" : "Continue to your workspace"}</Link>
             </div>
           ) : (
             <a className="button button--primary auth-submit auth-provider" href={signInHref}>Continue securely with ChatGPT</a>

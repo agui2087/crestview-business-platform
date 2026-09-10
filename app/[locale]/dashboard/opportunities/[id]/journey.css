@@ -1,0 +1,4 @@
+.acquisition-detail-page { --muted: #536159; }
+.acquisition-detail-page .detail-card--missing p,
+.acquisition-detail-page .detail-card--missing li,
+.acquisition-detail-page .check-card label:has(input:checked) { color: #536159; }

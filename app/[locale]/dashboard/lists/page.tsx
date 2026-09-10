@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeading, PlatformShell } from "@/components/platform-shell";
-import { getOpportunity } from "@/lib/demo-data";
+import { resolveOpportunities } from "@/lib/opportunity-resolver";
 import { isLocale } from "@/lib/i18n";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { createOpportunityList } from "../opportunities/actions";
@@ -30,6 +30,7 @@ export default async function ListsPage({ params }: { params: Promise<{ locale: 
     }
   }
   const es = locale === "es";
+  const resolved=await resolveOpportunities(lists.flatMap(list=>list.opportunity_list_items.map(item=>item.opportunity_key)),locale);
   return <PlatformShell locale={locale} active="lists"><div className="dashboard-content">
     <PageHeading eyebrow={es ? "Organización" : "Research organization"} title={es ? "Listas guardadas" : "Saved lists"} body={es ? "Agrupa oportunidades por estrategia, mercado o prioridad." : "Group opportunities by strategy, market, or priority."} />
     <form className="task-create list-create" action={createOpportunityList}>
@@ -43,7 +44,7 @@ export default async function ListsPage({ params }: { params: Promise<{ locale: 
         <div className="panel__header"><div><span>{list.opportunity_list_items.length} {es ? "oportunidades" : "opportunities"}</span><h2>{list.name}</h2></div></div>
         {list.description && <p>{list.description}</p>}
         {list.opportunity_list_items.map(({ opportunity_key }) => {
-          const item = getOpportunity(opportunity_key);
+          const item = resolved.get(opportunity_key);
           return item ? <Link className="saved-list-item" href={`/${locale}/dashboard/opportunities/${item.id}`} key={item.id}><strong>{item.title}</strong><span>{item.location} · {item.price}</span></Link> : null;
         })}
         {!list.opportunity_list_items.length && <p className="muted">{es ? "Agrega negocios desde una página de oportunidad." : "Add businesses from an opportunity page."}</p>}

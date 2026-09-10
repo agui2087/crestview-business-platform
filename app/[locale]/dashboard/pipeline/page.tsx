@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeading, PlatformShell } from "@/components/platform-shell";
-import { getOpportunity } from "@/lib/demo-data";
+import { resolveOpportunities } from "@/lib/opportunity-resolver";
 import { isLocale } from "@/lib/i18n";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { updateDealStage } from "./actions";
@@ -49,6 +49,7 @@ export default async function PipelinePage({ params }: { params: Promise<{ local
     }
   }
 
+  const resolved=await resolveOpportunities([...deals,...archived].map(item=>item.opportunity_key),locale);
   return (
     <PlatformShell locale={locale} active="pipeline">
       <div className="dashboard-content">
@@ -68,7 +69,7 @@ export default async function PipelinePage({ params }: { params: Promise<{ local
                 <section className="pipeline-column" key={column.key}>
                   <header><strong>{column.title}</strong><span>{columnDeals.length}</span></header>
                   {columnDeals.map((deal) => {
-                    const opportunity = getOpportunity(deal.opportunity_key);
+                    const opportunity = resolved.get(deal.opportunity_key);
                     if (!opportunity) return null;
                     return (
                       <article key={deal.id}>
@@ -96,7 +97,7 @@ export default async function PipelinePage({ params }: { params: Promise<{ local
         <section className="panel archive-panel">
           <div className="panel__header"><h2>{locale === "es" ? "Archivo de negocios" : "Deal archive"}</h2><span>{archived.length}</span></div>
           {archived.map((deal) => {
-            const item = getOpportunity(deal.opportunity_key);
+            const item = resolved.get(deal.opportunity_key);
             return item ? <Link className="saved-list-item" href={`/${locale}/dashboard/opportunities/${item.id}`} key={deal.id}><strong>{item.title}</strong><span>{deal.stage} · {item.location} · {item.price}</span></Link> : null;
           })}
           {!archived.length && <p className="muted">{locale === "es" ? "Los negocios completados o descartados aparecerán aquí." : "Completed and passed deals will appear here."}</p>}

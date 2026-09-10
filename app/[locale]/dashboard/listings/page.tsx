@@ -3,6 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeading, PlatformShell } from "@/components/platform-shell";
 import { FormattedMoneyInput } from "@/components/formatted-money-input";
+import { ListingDraftEditor } from "@/components/listing-draft-editor";
+import "./listings.css";
 import { getCrestviewUser } from "@/lib/current-user";
 import { formatMoney, getMyListings } from "@/lib/marketplace";
 import { isLocale } from "@/lib/i18n";
@@ -48,6 +50,8 @@ export default async function ListingsPage({ params, searchParams }: PageProps<"
           action={<Link className="button button--primary" href={`/${locale}/dashboard/listings?new=1#new-listing`}>+ Add a listing</Link>}
         />
         {query.created && <p className="notice">Your listing was saved successfully.</p>}
+        {query.updated && <p className="notice" role="status">{locale === "es" ? "Cambios guardados." : "Your listing changes were saved."}</p>}
+        {query.nda_saved && <p className="notice" role="status">{locale === "es" ? "NDA guardado. Ahora puedes publicar el borrador con un plan activo." : "NDA saved. You can now publish the draft with an active broker plan."}</p>}
         {query.confirmed && <p className="notice">Availability confirmed. Buyers can continue finding this listing for another 30 days.</p>}
         {query.duplicate && <p className="auth-error">Possible duplicate detected. Your listing was saved, but please compare it with your existing listings and pause or remove any duplicate.</p>}
         {query.error === "limit" && <p className="auth-error">You have reached the limit of 100 active listings. Pause, sell, or withdraw one before publishing another.</p>}
@@ -139,6 +143,7 @@ export default async function ListingsPage({ params, searchParams }: PageProps<"
                 <button type="submit">Confirm availability</button>
               </form>}
               {listing.id.startsWith("demo-") && <span className="stage">Example listing</span>}
+              {!listing.id.startsWith("demo-") && listing.status === "draft" && <ListingDraftEditor listing={listing} locale={locale}/>}
             </article>
           ))}
         </div>

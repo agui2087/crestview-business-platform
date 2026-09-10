@@ -42,6 +42,7 @@ const setup=process.env.CRESTVIEW_UI_SETUP==='true';
 const schedules=process.env.CRESTVIEW_UI_SCHEDULES==='true';
 const leave=process.env.CRESTVIEW_UI_LEAVE==='true';
 const payroll=process.env.CRESTVIEW_UI_PAYROLL==='true';
+if(payroll){const previous=db.rpc;db.rpc=async(name)=>name==='workforce_payroll_periods'?{data:[{currency:'USD',period_start:'2026-08-01',period_end:'2026-08-31',employees:5,imports:3,gross_minor:100001,employer_cost_minor:120001,paid_hours_hundredths:16000,cost_per_paid_hour:7.5,total_periods:2},{currency:'EUR',period_start:'2026-07-01',period_end:'2026-07-31',employees:1,imports:1,gross_minor:10000,employer_cost_minor:12000,paid_hours_hundredths:0,cost_per_paid_hour:null,total_periods:2}],error:null}:previous(name);}
 const evidence=process.env.CRESTVIEW_UI_EVIDENCE==='true';
 const reminders=process.env.CRESTVIEW_UI_REMINDERS==='true';
 if(reminders){const previous=db.rpc;db.rpc=async(name)=>name==='workforce_reminders'?{data:[{source_id:'task',kind:'upcoming_task',title:'Safety induction',employee_id:employee,employee_name:'Example Employee',due_on:'2026-09-10',business_today:'2026-09-10',business_timezone:'America/Los_Angeles',total_count:1}],error:null}:previous(name);}

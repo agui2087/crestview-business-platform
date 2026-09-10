@@ -65,6 +65,7 @@ const mockRequire=(name)=>{
   if(name==='@/lib/i18n')return {isLocale:x=>['en','es'].includes(x)};
   if(name==='@/lib/workforce-calendar')return require('../lib/workforce-calendar.ts');
   if(name==='@/lib/workforce-analytics')return require('../lib/workforce-analytics.ts');
+  if(name==='@/lib/workforce-readiness')return require('../lib/workforce-readiness.ts');
   if(name==='@/lib/workforce-actions')return require('../lib/workforce-actions.ts');
   if(name==='@/lib/workforce-payroll')return require('../lib/workforce-payroll.ts');
   if(name==='@/lib/supabase/server')return {isSupabaseConfigured:()=>true,createSupabaseServerClient:async()=>db};
@@ -90,6 +91,7 @@ try {
     const view=await exports.default({params:Promise.resolve({locale}),searchParams:Promise.resolve(evidence?{task:'task'}:payroll?{batch:'batch'}:leave?{policy:'policy'}:{})});
     await page.setContent(`<!doctype html><html lang="${locale}"><head><title>Workforce UI test</title><style>${css}</style></head><body>${renderToStaticMarkup(view)}</body></html>`);
     await page.locator('details').evaluateAll(nodes=>nodes.forEach(n=>n.open=true));
+    if(setup)for(const id of ['business-identity','work-locations','departments','employee-assignments'])assert.equal(await page.locator(`[id="${id}"]`).count(),1,`setup destination ${id}`);
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`${locale} ${width}: horizontal overflow`);
     const results=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();
     assert.deepEqual(results.violations.map(v=>({id:v.id,targets:v.nodes.map(n=>n.target)})),[],`${locale} ${width}: accessibility`);

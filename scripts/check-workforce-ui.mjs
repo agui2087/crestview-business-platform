@@ -43,7 +43,9 @@ const schedules=process.env.CRESTVIEW_UI_SCHEDULES==='true';
 const leave=process.env.CRESTVIEW_UI_LEAVE==='true';
 const payroll=process.env.CRESTVIEW_UI_PAYROLL==='true';
 const evidence=process.env.CRESTVIEW_UI_EVIDENCE==='true';
-const source=await readFile(new URL(`../app/[locale]/dashboard/workforce/${evidence?'evidence':payroll?'payroll':leave?'leave':schedules?'schedules':setup?'setup':'operations'}/page.tsx`,import.meta.url),'utf8');
+const reminders=process.env.CRESTVIEW_UI_REMINDERS==='true';
+if(reminders){const previous=db.rpc;db.rpc=async(name)=>name==='workforce_reminders'?{data:[{source_id:'task',kind:'upcoming_task',title:'Safety induction',employee_id:employee,employee_name:'Example Employee',due_on:'2026-09-10',business_today:'2026-09-10',business_timezone:'America/Los_Angeles',total_count:1}],error:null}:previous(name);}
+const source=await readFile(new URL(`../app/[locale]/dashboard/workforce/${reminders?'reminders':evidence?'evidence':payroll?'payroll':leave?'leave':schedules?'schedules':setup?'setup':'operations'}/page.tsx`,import.meta.url),'utf8');
 const compiled=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true,target:ts.ScriptTarget.ES2022}}).outputText;
 const exports={};
 const checklistSource=await readFile(new URL('../app/[locale]/dashboard/workforce/operations/checklist-management.tsx',import.meta.url),'utf8');
@@ -78,7 +80,7 @@ runInNewContext(analyticsCompiled,{exports:analyticsExports,require:mockRequire,
 runInNewContext(payrollCompiled,{exports:payrollExports,require:mockRequire,Date,Promise,console});
 runInNewContext(compiled,{exports,require:mockRequire,Date,Promise,console});
 const css=(await readFile(new URL('../app/globals.css',import.meta.url),'utf8'))+'\n'+await readFile(new URL('../app/[locale]/dashboard/workforce/operations/workforce-operations.css',import.meta.url),'utf8');
-const out=path.join(tmpdir(),evidence?'crestview-workforce-evidence-ui':payroll?'crestview-workforce-payroll-ui':leave?'crestview-workforce-leave-ui':schedules?'crestview-workforce-schedules-ui':setup?'crestview-workforce-setup-ui':'crestview-workforce-ui');await mkdir(out,{recursive:true});
+const out=path.join(tmpdir(),reminders?'crestview-workforce-reminders-ui':evidence?'crestview-workforce-evidence-ui':payroll?'crestview-workforce-payroll-ui':leave?'crestview-workforce-leave-ui':schedules?'crestview-workforce-schedules-ui':setup?'crestview-workforce-setup-ui':'crestview-workforce-ui');await mkdir(out,{recursive:true});
 const browser=await chromium.launch();
 try {
   for(const locale of ['en','es'])for(const width of [1440,390]) {

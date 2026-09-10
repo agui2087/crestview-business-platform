@@ -4,6 +4,18 @@ This work extends the existing owner-scoped Workforce data model. An owner accou
 
 ## Eight workstreams
 
+### Later releases (supersede the early remaining-scope notes below)
+
+Through PR45, production includes per-business setup and employee placement, effective-dated planned schedules, reviewed leave policies/manual ledger with request-linked debits, reviewed payroll-analysis imports with audited voids, and explicit revision-bound training-evidence links. These do not imply automated legal entitlements, payroll processing, email delivery or complete multi-role browser acceptance.
+
+The reminder follow-up adds a current in-app queue for personal assigned deadlines, permitted reviews, verification and certification expiry. It refreshes on navigation/reload, uses the configured business time zone (explicit UTC fallback), and displays the full matching count even when only 100 rows are shown. It is not an email/SMS/push service or a scheduled delivery job.
+
+### End-to-end environment gap
+
+The existing Playwright configuration explicitly disables Supabase and uses local acquisition authentication. New Workforce routes require Supabase, so that suite cannot establish hosted multi-role Workforce correctness. The development machine currently has neither Docker nor the Supabase CLI available. Isolated PostgreSQL permission tests, mocked-storage route tests and rendered accessibility tests remain valuable but are not a substitute for real browser/server/database integration.
+
+Before declaring end-to-end completion, provide an isolated Supabase test stack (or verified staging configuration) with synthetic owner, HR, assigned/unassigned manager, employee and outsider accounts. Run browser mutations for assignments, leave approvals/debits, payroll imports/voids, evidence sharing/revocation and permission changes. Keep production credentials and real employee records out of the test runner. No test-only authentication bypass should ship in the application.
+
 1. Permissions: explicit owner/HR/manager/employee access, accepted invitations, scoped manager assignments, revocation, database authorization tests.
 2. Employee lifecycle: edit profiles, archive rather than delete, change history, concurrency protection.
 3. Time off: dates/type/reason, designated approver, decisions, in-app status, coverage view. Accrual/pay calculations require company policies and are excluded until configured and reviewed.

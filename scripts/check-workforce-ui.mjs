@@ -48,6 +48,7 @@ const mockRequire=(name)=>{
   if(name==='@/lib/i18n')return {isLocale:x=>['en','es'].includes(x)};
   if(name==='@/lib/workforce-calendar')return require('../lib/workforce-calendar.ts');
   if(name==='@/lib/workforce-analytics')return require('../lib/workforce-analytics.ts');
+  if(name==='@/lib/workforce-actions')return require('../lib/workforce-actions.ts');
   if(name==='@/lib/supabase/server')return {isSupabaseConfigured:()=>true,createSupabaseServerClient:async()=>db};
   if(name==='./actions'||name==='../operations/actions')return {workforceOperation:async()=>{}};
   if(name==='./checklist-management')return checklistExports;

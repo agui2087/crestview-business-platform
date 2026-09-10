@@ -5,6 +5,7 @@ import {runInNewContext} from 'node:vm';
 import {PGlite} from '@electric-sql/pglite';
 import ts from 'typescript';
 import {validDate} from './workforce.ts';
+import {parsePayrollCsv} from './workforce-payroll.ts';
 
 // Real application FormData handlers and database migrations. Only Next navigation,
 // session transport and the Supabase query transport are replaced. Not browser E2E.
@@ -19,7 +20,7 @@ test('Workforce forms preserve session role isolation through actual database mu
   const transport={auth:{getUser:async()=>({data:{user:session?{id:session}:null}})},rpc:async(name:string,args:Record<string,unknown>)=>{
     assert.match(name,/^workforce_[a-z_]+$/);
     const keys=Object.keys(args);keys.forEach(k=>assert.match(k,/^p_[a-z_]+$/));
-    try {const r=await db.query<{value:unknown}>(`select public.${name}(${keys.map((k,i)=>`${k} => $${i+1}`).join(',')}) as value`,Object.values(args));return {data:r.rows[0]?.value,error:null};}
+    try {const r=await db.query<{value:unknown}>(`select public.${name}(${keys.map((k,i)=>`${k} => $${i+1}`).join(',')}) as value`,keys.map(k=>k==='p_rows'?JSON.stringify(args[k]):args[k]));return {data:r.rows[0]?.value,error:null};}
     catch(error){return {data:null,error};}
   }};
   const load=async(path:string,name:string)=>{
@@ -31,6 +32,7 @@ test('Workforce forms preserve session role isolation through actual database mu
       if(id==='next/cache')return {revalidatePath:(path:string)=>invalidated.push(path)};
       if(id==='@/lib/i18n')return {isLocale:(s:string)=>['en','es'].includes(s)};
       if(id==='@/lib/workforce')return {validDate};
+      if(id==='@/lib/workforce-payroll')return {parsePayrollCsv};
       if(id==='@/lib/supabase/server')return {createSupabaseServerClient:async()=>transport};
       throw new Error(`Unexpected import ${id}`);
     }});
@@ -42,12 +44,18 @@ test('Workforce forms preserve session role isolation through actual database mu
   };
   const one=async(sql:string,values:unknown[]=[]) => (await db.query<Record<string,unknown>>(sql,values)).rows[0];
   try {
-    await db.exec(`create role authenticated;create role anon;create schema auth;create table auth.users(id uuid primary key,email text);create table public.profiles(id uuid primary key);
+    await db.exec(`create role authenticated;create role anon;create schema auth;create table auth.users(id uuid primary key,email text);create table public.profiles(id uuid primary key);create schema storage;create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
       create function auth.uid() returns uuid language sql as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;grant usage on schema auth to authenticated;`);
     for(let i=0;i<ids.length;i++)await db.query('insert into auth.users values($1,$2)',[ids[i],`form-${i}@example.test`]);
-    for(const migration of ['0008_workforce_and_organizations','0029_workforce_record_integrity','0030_workforce_operations','0031_workforce_checklist_management','0035_workforce_leave_ledger','0040_workforce_leave_carryover'])await db.exec(await readFile(new URL(`../supabase/migrations/${migration}.sql`,import.meta.url),'utf8'));
+    for(const migration of ['0008_workforce_and_organizations','0018_private_document_vault','0021_vault_uuid_ownership','0029_workforce_record_integrity','0030_workforce_operations','0031_workforce_checklist_management','0035_workforce_leave_ledger','0037_workforce_payroll_analysis','0040_workforce_leave_carryover'])await db.exec(await readFile(new URL(`../supabase/migrations/${migration}.sql`,import.meta.url),'utf8'));
+    await db.exec('alter table vault_documents add column security_status text,add column scan_sha256 text');
+    await db.exec(await readFile(new URL('../supabase/migrations/0038_workforce_training_evidence.sql',import.meta.url),'utf8'));
     const operation=await load('../app/[locale]/dashboard/workforce/operations/actions.ts','workforceOperation');
     const leave=await load('../app/[locale]/dashboard/workforce/leave/actions.ts','leaveOperation');
+    const evidence=await load('../app/[locale]/dashboard/workforce/evidence/actions.ts','evidenceOperation');
+    const importAction=await load('../app/[locale]/dashboard/workforce/payroll/actions.ts','importPayroll');
+    const importPayroll=(form:FormData)=>(importAction as unknown as (previous:{error:string},form:FormData)=>Promise<{error:string}>)({error:''},form);
+    const voidPayroll=await load('../app/[locale]/dashboard/workforce/payroll/actions.ts','voidPayroll');
     await as(owner);
     const e=String((await one("insert into employees(user_id,full_name) values($1,'Isolated form employee') returning id",[owner])).id);
     let employeeMembership='';
@@ -94,12 +102,51 @@ test('Workforce forms preserve session role isolation through actual database mu
       assert.equal((await one('select count(*)::int n from workforce_leave_transfers')).n,1);
       assert.equal((await one('select minutes from workforce_leave_balance($1,current_date)',[source])).minutes,240);
     });
+    await t.test('payroll form revalidates source data, scope, review and whole-batch corrections',async()=>{
+      const form=new FormData();Object.entries({locale:'en',owner,reference:'form-payroll',csv:`employee_id,period_start,period_end,currency,gross_pay,employer_cost,paid_hours,source_reference\n${e},2020-01-01,2020-01-31,USD,100.01,120.01,8.00,synthetic`}).forEach(([k,v])=>form.set(k,v));
+      await as(owner);assert.match((await importPayroll(form)).error,/review/i);
+      form.set('reviewed','yes');
+      for(const actor of [employee,manager,unassigned,outsider]){await as(actor);assert.match((await importPayroll(form)).error,/denied/i);}
+      await as(hr);await assert.rejects(importPayroll(form),(e:unknown)=>e instanceof Navigation&&e.location.endsWith('notice=saved'));
+      await assert.rejects(importPayroll(form),(e:unknown)=>e instanceof Navigation&&e.location.endsWith('notice=saved'));
+      const batch=String((await one('select id from workforce_payroll_imports')).id);
+      assert.equal((await one('select count(*)::int n from workforce_payroll_rows')).n,1);
+      form.set('reference','duplicate-period');assert.match((await importPayroll(form)).error,/Not saved/);
+      const csv=String(form.get('csv'));form.set('csv','bank_account\nforbidden');assert.match((await importPayroll(form)).error,/Invalid CSV/);form.set('csv',csv);
+      const correction=new FormData();Object.entries({locale:'en',owner,batch,reason:'Reviewed source correction'}).forEach(([k,v])=>correction.set(k,v));
+      await assert.rejects(voidPayroll(correction),(e:unknown)=>e instanceof Navigation&&e.location.endsWith('notice=failed'));
+      correction.set('confirmed','yes');await as(manager);await assert.rejects(voidPayroll(correction),(e:unknown)=>e instanceof Navigation&&e.location.endsWith('notice=failed'));
+      await as(hr);await assert.rejects(voidPayroll(correction),(e:unknown)=>e instanceof Navigation&&e.location.endsWith('notice=voided'));
+      assert.ok((await one('select voided_at from workforce_payroll_imports where id=$1',[batch])).voided_at);
+      assert.equal((await one('select count(*)::int n from workforce_payroll_rows')).n,1);
+      await assert.rejects(importPayroll(form),(e:unknown)=>e instanceof Navigation&&e.location.endsWith('notice=saved'));
+      assert.equal((await one('select count(*)::int n from workforce_payroll_rows where voided_at is null')).n,1);
+    });
+    await t.test('evidence form requires explicit review, own screened revision and authorized revocation',async()=>{
+      await as(manager);await run(operation,{operation:'task',employee:e,category:'training',title:'Evidence form task',assignee:employee,due:'2020-02-01'},true);
+      const task=String((await one("select id from workforce_tasks where title='Evidence form task'")).id);
+      await db.exec('reset role');
+      const document=String((await one("insert into vault_documents(id,owner_key,owner_id,storage_key,original_name,content_type,size_bytes,security_status,scan_sha256) values(gen_random_uuid(),'uuid-owned',$1,'isolated/form.pdf','synthetic.pdf','application/pdf',10,'blocked',repeat('a',64)) returning id",[employee])).id);
+      const share={operation:'share',task,document,version:'1'};
+      await as(employee);await run(evidence,share,false);await run(evidence,{...share,confirmed:'yes'},false);
+      await db.exec('reset role');await db.query("update vault_documents set security_status='malware_scanned' where id=$1",[document]);
+      for(const actor of [owner,outsider,unassigned]){await as(actor);await run(evidence,{...share,confirmed:'yes'},false);}
+      await as(employee);await run(evidence,{...share,version:'99',confirmed:'yes'},false);
+      await run(evidence,{...share,confirmed:'yes'},true);await run(evidence,{...share,confirmed:'yes'},true);
+      const id=String((await one('select id from workforce_training_evidence')).id);assert.equal((await one('select count(*)::int n from workforce_training_evidence')).n,1);
+      await as(outsider);await run(evidence,{operation:'revoke',task,evidence:id,reason:'Unauthorized',confirmed:'yes'},false);
+      await as(hr);await run(evidence,{operation:'revoke',task,evidence:id,reason:'Review withdrawn',confirmed:'yes'},true);
+      assert.equal((await one('select workforce_training_evidence_available($1) ok',[id])).ok,false);
+    });
     await t.test('revoked member and signed-out form calls cannot mutate',async()=>{
       await as(owner);await run(operation,{operation:'revoke',id:employeeMembership},true);
       await as(employee);await run(operation,{operation:'leave',employee:e,title:'No access',start:'2020-01-07',end:'2020-01-07',leave_type:'Custom'},false);
       await as(null);const f=new FormData();f.set('operation','invite');f.set('owner',owner);
       await assert.rejects(operation(f),(e:unknown)=>e instanceof Navigation&&e.location==='/en/sign-in');
       await assert.rejects(leave(f),(e:unknown)=>e instanceof Navigation&&e.location==='/en/sign-in');
+      await assert.rejects(evidence(f),(e:unknown)=>e instanceof Navigation&&e.location==='/en/sign-in');
+      await assert.rejects(importPayroll(f),(e:unknown)=>e instanceof Navigation&&e.location==='/en/sign-in');
+      await assert.rejects(voidPayroll(f),(e:unknown)=>e instanceof Navigation&&e.location==='/en/sign-in');
       assert.ok(invalidated.includes('/en/dashboard/workforce/operations'));assert.ok(invalidated.includes('/en/dashboard/workforce/leave'));
     });
   } finally {await db.close();}

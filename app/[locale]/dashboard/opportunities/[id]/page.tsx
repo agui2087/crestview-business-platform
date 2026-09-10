@@ -126,12 +126,12 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
             <form action={beginAcquisition}>
               <input type="hidden" name="locale" value={locale} />
               <input type="hidden" name="opportunity_key" value={opportunity.id} />
-              <button className="button button--primary" type="submit">{workspace && workspace.stage !== "saved" ? (es ? "Abrir en el proceso" : "Open in pipeline") : (es ? "Iniciar adquisición" : "Begin acquisition")}</button>
+              <button className="button button--primary" type="submit">{workspace && workspace.stage !== "saved" ? (es ? "Continuar adquisición" : "Continue acquisition") : (es ? "Iniciar adquisición" : "Begin acquisition")}</button>
             </form>
             <a className="button button--light" href={opportunity.sourceUrl} target="_blank" rel="noreferrer">{es ? "Ver anuncio original ↗" : "View source listing ↗"}</a>
           </div>
         </div>
-        <div className="source-warning">{es ? "Información proporcionada por el vendedor o corredor. Crestview no ha verificado el anuncio. Última revisión" : "Seller or broker reported information. Crestview has not independently verified the listing. Last checked"} {opportunity.lastChecked}. <strong>{es ? "Los cálculos de Crestview se muestran por separado." : "Crestview calculations are labeled separately."}</strong></div>
+        <div className="source-warning">{es ? "Información proporcionada por el vendedor o corredor. Crestview no ha verificado el anuncio." : "Seller or broker reported information. Crestview has not independently verified the listing."} {inquiryId ? (es ? "Registro del trato actualizado:" : "Deal record updated:") : (es ? "Fuente revisada:" : "Source last checked:")} {opportunity.lastChecked}. <strong>{es ? "Los cálculos de Crestview se muestran por separado." : "Crestview calculations are labeled separately."}</strong></div>
         <nav className="deal-workspace-nav" aria-label="Deal workspace sections">
           <a href="#summary">{es ? "Resumen" : "Summary"}</a><a href="#valuation">{es ? "Plan de adquisición" : "Acquisition plan"}</a><a href="#guided-plan">{es ? "Espacio guiado" : "Guided workspace"}</a><a href="#diligence">{es ? "Diligencia" : "Diligence"}</a><a href="#broker">{es ? "Actividad del corredor" : "Broker activity"}</a><a href="#notes">{es ? "Notas privadas" : "Private notes"}</a>
         </nav>

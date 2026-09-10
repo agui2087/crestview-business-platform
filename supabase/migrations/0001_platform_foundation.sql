@@ -39,11 +39,18 @@ create table public.opportunities (
 );
 
 create table public.saved_opportunities (
-  organization_id uuid not null references public.organizations(id) on delete cascade,
-  opportunity_id uuid not null references public.opportunities(id) on delete cascade,
+  -- Fresh-install shape used by 0004 and the current application. Existing
+  -- installations must not rerun this foundation migration to change old data.
+  id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
-  saved_at timestamptz not null default now(),
-  primary key (organization_id, opportunity_id, user_id)
+  opportunity_key text not null,
+  stage text not null default 'saved'
+    check (stage in ('saved','screening','evaluating','diligence','negotiation','closing','complete','passed')),
+  next_action text,
+  notes text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (user_id, opportunity_key)
 );
 
 create table public.listing_alerts (

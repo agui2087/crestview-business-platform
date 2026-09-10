@@ -1,0 +1,8 @@
+.employee-record-create label { display: grid; gap: 6px; min-width: 0; font-size: .75rem; }
+.employee-record-create label input,
+.employee-record-create label select { width: 100%; min-width: 0; box-sizing: border-box; }
+.employee-records > div > form { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; }
+.employee-records > div > strong { overflow-wrap: anywhere; }
+.employee-records button { min-height: 44px; }
+.csv-import label { display: grid; gap: 6px; min-width: 0; }
+.csv-import input[type="file"] { max-width: 100%; }

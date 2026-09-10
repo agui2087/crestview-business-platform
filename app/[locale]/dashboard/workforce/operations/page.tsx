@@ -64,6 +64,7 @@ export default async function WorkforceOperations({params,searchParams}:{params:
     {role&&<>
       {admin&&<Link className="button button--light" href={`/${locale}/dashboard/workforce/setup?owner=${owner}`}>{t("Business setup","Configuración de la empresa")}</Link>}
       <Link className="button button--light" href={`/${locale}/dashboard/workforce/schedules?owner=${owner}`}>{t("Work schedules","Horarios de trabajo")}</Link>
+      {admin&&<Link className="button button--light" href={`/${locale}/dashboard/workforce/payroll?owner=${owner}`}>{t("Payroll analytics","Análisis de nómina")}</Link>}
       <Link className="button button--light" href={`/${locale}/dashboard/workforce/leave?owner=${owner}`}>{t("Leave ledger","Registro de ausencias")}</Link>
       {managing&&<section className="panel" aria-labelledby="wf-next-heading"><h2 id="wf-next-heading">{t("Needs your attention","Necesita tu atención")}</h2>
         <p>{t("Review requests, unblock overdue work and verify completed tasks. This queue uses only the records available to your account; it does not replace HR or payroll review.","Revisa solicitudes, resuelve tareas vencidas y verifica tareas completadas. La cola utiliza solo registros disponibles para tu cuenta; no reemplaza revisión de RR. HH. o nómina.")}</p>

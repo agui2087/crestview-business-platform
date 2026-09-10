@@ -6,7 +6,7 @@ import { getCrestviewUser } from "@/lib/current-user";
 import { getMyInquiries } from "@/lib/marketplace";
 import { isLocale } from "@/lib/i18n";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
-import { advanceInquiry, markNotificationRead, sendMessage } from "../marketplace/actions";
+import { markNotificationRead, sendMessage } from "../marketplace/actions";
 
 export const metadata: Metadata = { title: "Deal inbox" };
 
@@ -112,14 +112,10 @@ export default async function InboxPage({ params, searchParams }: PageProps<"/[l
             {featured && !featured.id.startsWith("demo-") && <>
               <form className="quick-reply" action={sendMessage}>
                 <input type="hidden" name="locale" value={locale} /><input type="hidden" name="inquiry_id" value={featured.id} />
-                <textarea name="body" placeholder="Write a secure message…" required />
+                <label htmlFor="inbox-message">Message to the other participant</label><textarea id="inbox-message" name="body" placeholder="Write a secure message…" maxLength={5000} required />
                 <button className="button button--primary" type="submit">Send message</button>
               </form>
-              {isBroker && <form className="status-control" action={advanceInquiry}>
-                <input type="hidden" name="locale" value={locale} /><input type="hidden" name="inquiry_id" value={featured.id} />
-                <select name="status"><option value="screening">Begin screening</option><option value="approved">Approve buyer</option><option value="declined">Decline request</option></select>
-                <button className="button button--light" type="submit">Update status</button>
-              </form>}
+              {isBroker && <p className="panel-empty">{locale === "es" ? "Revisa el estado actual y las opciones disponibles en el espacio seguro antes de cambiar la etapa." : "Review the current stage and available next steps in the secure workspace before changing the deal status."}</p>}
             </>}
           </section>
         </div>

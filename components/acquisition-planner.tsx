@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useCrestviewUser } from "@/components/user-provider";
 import type { Opportunity } from "@/lib/demo-data";
 import { financingResourcesFor } from "@/lib/financing-resources";
@@ -308,6 +308,22 @@ export function AcquisitionPlanner({
   const [current, setCurrent] = useState(initialWorkspace?.current_step ?? 0);
   const [stepStatuses, setStepStatuses] = useState<Record<string, string>>(initialWorkspace?.checklist_progress ?? {});
   const [skipOpen, setSkipOpen] = useState(false);
+  const skipDialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    if (!skipOpen || !skipDialog.current) return;
+    const dialog = skipDialog.current;
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    dialog.showModal();
+    const keepFocus = (event: KeyboardEvent) => {
+      if (event.key !== "Tab") return;
+      const buttons = Array.from(dialog.querySelectorAll<HTMLButtonElement>("button:not(:disabled)"));
+      const first = buttons[0], last = buttons[buttons.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    };
+    dialog.addEventListener("keydown", keepFocus);
+    return () => { dialog.removeEventListener("keydown", keepFocus); dialog.close(); previous?.focus(); };
+  }, [skipOpen]);
   const [price, setPrice] = useState(initialWorkspace?.valuation_inputs.price ?? opportunity.priceValue?.toString() ?? "");
   const [sde, setSde] = useState(initialWorkspace?.valuation_inputs.sde ?? opportunity.cashFlowValue?.toString() ?? "");
   const [ebitda, setEbitda] = useState(initialWorkspace?.valuation_inputs.ebitda ?? opportunity.ebitdaValue?.toString() ?? "");
@@ -593,7 +609,7 @@ export function AcquisitionPlanner({
         </div>
       </div>
 
-      {skipOpen && <div className="modal-backdrop" role="presentation"><div className="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="skip-title"><span>!</span><h2 id="skip-title">Are you sure you want to skip this step?</h2><p>Missing work can create financial, legal, or operational risk. Crestview will mark this step as skipped so you can return later.</p><div><button className="button button--light" onClick={() => setSkipOpen(false)}>Keep working</button><button className="button button--primary" onClick={() => { setSkipOpen(false); advance("skipped"); }}>Skip and continue</button></div></div></div>}
+      {skipOpen && <dialog ref={skipDialog} className="confirm-modal acquisition-skip-dialog" aria-labelledby="skip-title" onCancel={() => setSkipOpen(false)}><span aria-hidden="true">!</span><h2 id="skip-title">{es ? "¿Quieres dejar este paso para después?" : "Are you sure you want to skip this step?"}</h2><p>{es ? "El trabajo pendiente puede crear riesgos financieros, legales u operativos. El paso quedará marcado para que vuelvas después." : "Missing work can create financial, legal, or operational risk. Crestview will mark this step as skipped so you can return later."}</p><div><button autoFocus className="button button--light" onClick={() => setSkipOpen(false)}>{es ? "Seguir trabajando" : "Keep working"}</button><button className="button button--primary" disabled={isSaving} onClick={() => { setSkipOpen(false); advance("skipped"); }}>{es ? "Omitir y continuar" : "Skip and continue"}</button></div></dialog>}
     </section>
   );
 }

@@ -12,6 +12,15 @@ for (const locale of ["en","es"]) {
     if(await start.count())await start.click();
     const stages=page.locator('.acquisition-steps button');
     await expect(stages).toHaveCount(8);
+    await page.locator('.skip-link').click();
+    const dialog=page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole('button').first()).toBeFocused();
+    await page.keyboard.press('Shift+Tab');
+    await expect(dialog.getByRole('button').last()).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(dialog).toHaveCount(0);
+    await expect(page.locator('.skip-link')).toBeFocused();
     for(let stage=0;stage<8;stage++){
       await stages.nth(stage).click();
       await expect(stages.nth(stage)).toHaveAttribute('aria-current','step');

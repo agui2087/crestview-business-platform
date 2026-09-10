@@ -246,8 +246,8 @@ export default async function PricingPage({
         )}
         {typeof query.billing_error === "string" && (
           <div className="billing-status billing-status--error" role="alert">
-            <strong>{es ? "No se pudo abrir la facturación" : "Billing could not be opened"}</strong>
-            <span>{es ? "Vuelve a intentarlo o inicia sesión antes de seleccionar un plan." : "Please try again or sign in before selecting a plan."}</span>
+            <strong>{query.billing_error === "broker_plan_required" ? (es ? "Necesitas acceso para publicar" : "Publishing access is required") : (es ? "No se pudo abrir la facturación" : "Billing could not be opened")}</strong>
+            <span>{query.billing_error === "broker_plan_required" ? (es ? "Tu borrador sigue guardado. Activa el Plan para Corredores o usa tu código de acceso y vuelve a Mis anuncios para publicarlo." : "Your draft is still saved. Activate the Broker Plan or redeem your access code, then return to My listings to publish it.") : (es ? "Vuelve a intentarlo o inicia sesión antes de seleccionar un plan." : "Please try again or sign in before selecting a plan.")}</span>
           </div>
         )}
         {query.broker_code === "success" && (

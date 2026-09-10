@@ -53,13 +53,15 @@ async function getWorkspace(id: string, userId?: string): Promise<WorkspaceData>
   const supabase = await createSupabaseServerClient();
   const { data: inquiry } = await supabase.from("deal_inquiries").select("id,listing_id,buyer_id,broker_id,subject,initial_message,status,updated_at,requested_items,acquisition_experience,funding_readiness,financial_access_status,financial_request_message,financial_request_timeline,financial_request_capital,marketplace_listings(title,city,state_code,asking_price,annual_revenue,cash_flow)").eq("id", id).or(`buyer_id.eq.${userId},broker_id.eq.${userId}`).maybeSingle();
   if (!inquiry) notFound();
-  const [{ data: messages }, { data: nda }, { data: documents }, { data: requests }, { data: events }] = await Promise.all([
+  const results = await Promise.all([
     supabase.from("deal_messages").select("id,body,sender_id,created_at").eq("inquiry_id", id).order("created_at"),
     supabase.from("deal_ndas").select("status,document_name,template_body,storage_path,template_version,signed_at,signer_name").eq("inquiry_id", id).maybeSingle(),
     supabase.from("deal_room_documents").select("id,title,category,storage_path,original_filename,mime_type,file_size_bytes,external_url,access_level,permission_note,security_status,scan_provider,scan_completed_at,version,created_at").eq("inquiry_id", id).eq("is_active", true).order("created_at"),
     supabase.from("deal_document_requests").select("id,item_name,note,status,document_id,created_at,resolved_at").eq("inquiry_id", id).order("created_at"),
     supabase.from("deal_status_events").select("id,to_status,note,created_at").eq("inquiry_id", id).order("created_at"),
   ]);
+  if (results.some(result => result.error)) throw new Error("The complete deal workspace could not be loaded. Please try again.");
+  const [{ data: messages }, { data: nda }, { data: documents }, { data: requests }, { data: events }] = results;
   const listing = inquiry.marketplace_listings as unknown as { title: string; asking_price?: number | null; annual_revenue?: number | null; cash_flow?: number | null } | null;
   let ndaUrl: string | null = null;
   if (nda?.storage_path) {
@@ -211,6 +213,7 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
         <div className="deal-room-grid">
           <section className="panel deal-thread">
             <div className="panel__header"><h2>Conversation</h2><span className="stage">{effectiveStatus.replaceAll("_", " ")}</span></div>
+            {workspace.inquiry.initial_message && !workspace.messages.some(message => message.body === workspace.inquiry.initial_message) && <article className={workspace.isBuyer ? "is-mine" : ""}><strong>{locale === "es" ? "Mensaje inicial del comprador" : "Buyer’s initial message"}</strong><p>{workspace.inquiry.initial_message}</p></article>}
             {workspace.messages.map((message) => <article className={message.sender_id === (userId ?? "demo-buyer") ? "is-mine" : ""} key={message.id}><strong>{message.sender_id === (userId ?? "demo-buyer") ? "You" : "Deal participant"}</strong><p>{message.body}</p><span>{new Date(message.created_at).toLocaleString()}</span></article>)}
             {!workspace.isDemo && <form className="quick-reply" action={sendMessage}><input type="hidden" name="locale" value={locale} /><input type="hidden" name="inquiry_id" value={id} /><label htmlFor="deal-message">Message to the other participant</label><textarea id="deal-message" name="body" placeholder="Write a secure message…" maxLength={5000} required /><button className="button button--primary" type="submit">Send</button></form>}
           </section>
@@ -220,9 +223,10 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
               <strong>{workspace.nda.document_name}</strong>
               <p>{workspace.nda.template_body ?? "The broker-provided agreement is stored securely with this deal."}</p>
               {workspace.ndaUrl && <a className="nda-document-link" href={workspace.ndaUrl} target="_blank" rel="noreferrer">Open the complete NDA PDF ↗</a>}
+              {workspace.nda.storage_path && !workspace.ndaUrl && <p role="alert">The complete agreement could not be opened. Refresh or contact the broker before signing.</p>}
               {workspace.nda.template_version && <small>Document version {workspace.nda.template_version}</small>}
               {workspace.nda.signed_at && <small>Signed by {workspace.nda.signer_name} on {new Date(workspace.nda.signed_at).toLocaleDateString()}</small>}
-              {workspace.isBuyer && workspace.nda.status === "sent" && !workspace.isDemo && <form action={signNda}>
+              {workspace.isBuyer && workspace.nda.status === "sent" && !workspace.isDemo && (!workspace.nda.storage_path || workspace.ndaUrl) && <form action={signNda}>
                 <input type="hidden" name="locale" value={locale} /><input type="hidden" name="inquiry_id" value={id} />
                 <label>Type your full legal name<input name="signer_name" required /></label>
                 <label className="signature-consent"><input type="checkbox" name="accepted" required /> I have reviewed and agree to sign this NDA electronically.</label>

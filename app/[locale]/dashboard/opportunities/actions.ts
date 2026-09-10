@@ -57,12 +57,16 @@ export async function beginAcquisition(formData: FormData) {
   redirect(`/${locale}/dashboard/opportunities/${opportunityKey}#valuation`);
 }
 
-function safeJson(value: FormDataEntryValue | null, fallback: Record<string, unknown>) {
+function progressJson(value: FormDataEntryValue | null): Record<string,string> | null {
   try {
-    const parsed = JSON.parse(String(value ?? ""));
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : fallback;
+    if (typeof value !== "string" || value.length > 100000) return null;
+    const parsed = JSON.parse(value);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+    const entries = Object.entries(parsed);
+    if (entries.length > 300 || entries.some(([key,item]) => key.length > 120 || typeof item !== "string" || item.length > 20000)) return null;
+    return parsed;
   } catch {
-    return fallback;
+    return null;
   }
 }
 
@@ -70,9 +74,10 @@ export async function saveAcquisitionWorkspace(formData: FormData) {
   const { locale, opportunityKey, supabase, user } = await authenticatedRequest(formData);
   const currentStep = Number(formData.get("current_step"));
   if(!Number.isInteger(currentStep) || currentStep < 0 || currentStep > 7)return {ok:false,message:locale === "es" ? "Paso no válido." : "Invalid checklist step."};
-  const checklistProgress = safeJson(formData.get("checklist_progress"), {});
-  const stepNotes = safeJson(formData.get("step_notes"), {});
-  const valuationInputs = safeJson(formData.get("valuation_inputs"), {});
+  const checklistProgress = progressJson(formData.get("checklist_progress"));
+  const stepNotes = progressJson(formData.get("step_notes"));
+  const valuationInputs = progressJson(formData.get("valuation_inputs"));
+  if (!checklistProgress || !stepNotes || !valuationInputs) return {ok:false,message:locale === "es" ? "Revisa el contenido antes de guardar." : "Review the progress fields before saving."};
   const {error:insertError}=await supabase.from("saved_opportunities").upsert({
     user_id:user.id,opportunity_key:opportunityKey,stage:"screening",next_action:"Review the acquisition checklist",
   },{onConflict:"user_id,opportunity_key",ignoreDuplicates:true});

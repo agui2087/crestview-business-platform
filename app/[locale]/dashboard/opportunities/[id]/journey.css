@@ -4,3 +4,5 @@
 .acquisition-detail-page .check-card label:has(input:checked) { color: #536159; }
 .acquisition-detail-page .financing-resource-grid small,
 .acquisition-detail-page .financing-disclaimer { color: #536159; }
+.acquisition-skip-dialog { margin: auto; border: 1px solid #dce4de; max-width: calc(100vw - 32px); }
+.acquisition-skip-dialog::backdrop { background: rgb(12 31 23 / .55); }

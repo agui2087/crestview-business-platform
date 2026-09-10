@@ -1,5 +1,6 @@
 "use client";
 
+import { SiteIcon } from "@/components/site-icon";
 import { useEffect, useRef } from "react";
 import Link from "next/link";
 import styles from "./ownership-scene.module.css";
@@ -64,10 +65,10 @@ export function OwnershipScene({ locale }: { locale: string }) {
         <h1 id="ownership-title">{es ? "Un negocio." : "A business."}<br /><em>{es ? "Un futuro tuyo." : "A future of your own."}</em></h1>
         <p className={styles.description}>{es ? "Detrás de cada negocio hay algo que vale la pena construir. Encuentra tu oportunidad y da el siguiente paso con claridad." : "Behind every business is something worth building. Find your opportunity. See its potential. Make your next move with clarity."}</p>
         <div className={styles.actions}>
-          <Link href={`/${locale}/listings`}>{es ? "Explorar negocios" : "Explore businesses"} <span aria-hidden="true">↗</span></Link>
-          <Link href={`/${locale}/how-it-works`}>{es ? "Cómo funciona" : "How it works"} <span aria-hidden="true">→</span></Link>
+          <Link href={`/${locale}/listings`}>{es ? "Explorar negocios" : "Explore businesses"} <span aria-hidden="true"><SiteIcon name="external" /></span></Link>
+          <Link href={`/${locale}/how-it-works`}>{es ? "Cómo funciona" : "How it works"} <span aria-hidden="true"><SiteIcon name="arrow" /></span></Link>
         </div>
-        <p className={styles.scrollHint}><span aria-hidden="true">↓</span> {es ? "Una oportunidad empieza a tomar forma" : "Watch an opportunity take shape"}</p>
+        <p className={styles.scrollHint}><span aria-hidden="true"><SiteIcon name="scroll" /></span> {es ? "Una oportunidad empieza a tomar forma" : "Watch an opportunity take shape"}</p>
       </div>
       <div className={styles.art} aria-hidden="true">
         <div className={styles.orbit} />

@@ -1,5 +1,6 @@
 "use client";
 
+import { SiteIcon } from "@/components/site-icon";
 import { usePathname } from "next/navigation";
 import type { Locale } from "@/lib/i18n";
 
@@ -27,7 +28,7 @@ export function LocaleSwitcher({
       lang={nextLocale}
       aria-label={locale === "en" ? "Cambiar todo a español" : "Switch everything to English"}
     >
-      <span aria-hidden="true">◎</span>
+      <span aria-hidden="true"><SiteIcon name="globe" /></span>
       {compact ? (nextLocale === "es" ? "ES" : "EN") : (nextLocale === "es" ? "Español" : "English")}
     </a>
   );

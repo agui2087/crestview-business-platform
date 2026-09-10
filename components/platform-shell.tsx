@@ -1,3 +1,4 @@
+import { SiteIcon } from "@/components/site-icon";
 import Link from "next/link";
 import { Brand } from "@/components/brand";
 import { UserProvider } from "@/components/user-provider";
@@ -8,21 +9,21 @@ import { getCrestviewUser } from "@/lib/current-user";
 import type { Locale } from "@/lib/i18n";
 
 const navItems = [
-  ["overview", "Overview", "Resumen", "⌂"],
-  ["marketplace", "Marketplace", "Mercado", "⌕"],
-  ["listings", "My listings", "Mis anuncios", "▤"],
-  ["inbox", "Deal inbox", "Bandeja de negocios", "↔"],
-  ["opportunities", "Browse listings", "Explorar anuncios", "◎"],
-  ["lists", "Saved lists", "Listas guardadas", "♡"],
-  ["pipeline", "Pipeline", "Proceso", "◇"],
-  ["tasks", "Tasks", "Tareas", "✓"],
-  ["reports", "Reports", "Informes", "↗"],
-  ["documents", "Documents", "Documentos", "▣"],
-  ["feedback", "Pilot feedback", "Comentarios del piloto", "✦"],
-  ["workforce", "Workforce", "Personal", "♙"],
-  ["real-estate", "Real estate beta", "Bienes raíces beta", "⌂"],
-  ["plans", "Plans & billing", "Planes y facturación", "$"],
-  ["settings", "Settings", "Configuración", "⚙"],
+  ["overview", "Overview", "Resumen", "home"],
+  ["marketplace", "Marketplace", "Mercado", "search"],
+  ["listings", "My listings", "Mis anuncios", "list"],
+  ["inbox", "Deal inbox", "Bandeja de negocios", "inbox"],
+  ["opportunities", "Browse listings", "Explorar anuncios", "search"],
+  ["lists", "Saved lists", "Listas guardadas", "heart"],
+  ["pipeline", "Pipeline", "Proceso", "pipeline"],
+  ["tasks", "Tasks", "Tareas", "check"],
+  ["reports", "Reports", "Informes", "chart"],
+  ["documents", "Documents", "Documentos", "document"],
+  ["feedback", "Pilot feedback", "Comentarios del piloto", "message"],
+  ["workforce", "Workforce", "Personal", "people"],
+  ["real-estate", "Real estate beta", "Bienes raíces beta", "home"],
+  ["plans", "Plans & billing", "Planes y facturación", "card"],
+  ["settings", "Settings", "Configuración", "settings"],
 ] as const;
 
 const navGroups = [
@@ -80,7 +81,7 @@ export async function PlatformShell({
           <details className="mobile-nav">
             <summary aria-label={locale === "es" ? "Abrir navegación del panel" : "Open dashboard navigation"}>
               <span>{locale === "es" ? "Menú" : "Menu"}</span>
-              <span className="mobile-nav__icon" aria-hidden="true">☰</span>
+              <span className="mobile-nav__icon" aria-hidden="true"><SiteIcon name="menu" /></span>
             </summary>
             <nav aria-label="Mobile dashboard navigation">
               {navItems.filter(([slug]) => visible(slug)).map(([slug, english, spanish, icon]) => (
@@ -90,7 +91,7 @@ export async function PlatformShell({
                   key={slug}
                   aria-current={slug === active ? "page" : undefined}
                 >
-                  <span className="nav-icon" aria-hidden="true">{icon}</span>
+                  <span className="nav-icon" aria-hidden="true"><SiteIcon name={icon} /></span>
                   {locale === "es" ? spanish : english}
                 </Link>
               ))}
@@ -105,7 +106,7 @@ export async function PlatformShell({
                 const item = navItems.find(([candidate]) => candidate === slug)!;
                 return (
                   <Link className={slug === active ? "is-active" : ""} href={navHref(locale, slug)} key={slug} aria-current={slug === active ? "page" : undefined}>
-                    <span className="nav-icon" aria-hidden="true">{item[3]}</span>
+                    <span className="nav-icon" aria-hidden="true"><SiteIcon name={item[3]} /></span>
                     {locale === "es" ? item[2] : item[1]}
                   </Link>
                 );
@@ -114,8 +115,8 @@ export async function PlatformShell({
           ))}
         </nav>
         {isBuyer && <Link className="listing-alert" href={`/${locale}/dashboard/settings#listing-alerts`}>
-          <span className="listing-alert__icon" aria-hidden="true">◎</span>
-          <span><strong>{locale === "es" ? "Alertas de anuncios" : "Listing alerts"}</strong><small>{locale === "es" ? "Configurar preferencias" : "Set preferences"} →</small></span>
+          <span className="listing-alert__icon" aria-hidden="true"><SiteIcon name="search" /></span>
+          <span><strong>{locale === "es" ? "Alertas de anuncios" : "Listing alerts"}</strong><small>{locale === "es" ? "Configurar preferencias" : "Set preferences"} <SiteIcon name="arrow" /></small></span>
         </Link>}
       </aside>
       <section className="dashboard-main">
@@ -125,12 +126,12 @@ export async function PlatformShell({
             {"organizationName" in user ? user.organizationName : "Crestview Holdings"}
           </div>
           <div className="user-chip">
-            <Link className="notification-link" href={`/${locale}/dashboard/inbox#notifications`} aria-label={locale === "es" ? "Notificaciones" : "Notifications"}>○</Link>
+            <Link className="notification-link" href={`/${locale}/dashboard/inbox#notifications`} aria-label={locale === "es" ? "Notificaciones" : "Notifications"}><SiteIcon name="bell" /></Link>
             <details className="account-menu">
               <summary aria-label={locale === "es" ? "Abrir menú de cuenta" : "Open account menu"}>
                 <span title={user.displayName}>{initials}</span>
                 <strong>{user.displayName}</strong>
-                <i aria-hidden="true">⌄</i>
+                <i aria-hidden="true"><SiteIcon name="down" /></i>
               </summary>
               <div>
                 <small>{user.email}</small>

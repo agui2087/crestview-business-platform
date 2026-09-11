@@ -104,6 +104,9 @@ async function processPaidCheckout(event: Stripe.Event, session: Stripe.Checkout
 }
 
 async function processSubscription(event: Stripe.Event, subscription: Stripe.Subscription) {
+  // A signed webhook can still contain an old snapshot. Re-read Stripe's
+  // current object; the database also guards ordering, identity and terminality.
+  subscription = await getStripe().subscriptions.retrieve(subscription.id);
   const item = subscription.items.data[0];
   const priceId = item?.price.id ?? null;
   const productCode = priceId ? getProductCodeForPrice(priceId) : undefined;
@@ -115,27 +118,21 @@ async function processSubscription(event: Stripe.Event, subscription: Stripe.Sub
     !productCode ||
     !userId ||
     !customerId ||
+    subscription.items.has_more || subscription.items.data.length !== 1 ||
     productDefinitions[productCode].mode !== "subscription" ||
     subscription.metadata.product_code !== productCode
   ) {
     throw new Error("Subscription metadata did not match the server allowlist.");
   }
 
-  const entitlementActive = ["active", "trialing", "past_due"].includes(subscription.status);
-  await applyBillingEvent(event, {
-    userId,
-    customerId,
-    subscriptionId: subscription.id,
-    productCode,
-    priceId,
-    status: subscription.status,
-    quantity: item.quantity ?? 1,
-    currentPeriodEnd: unixTimeToIso(item.current_period_end),
-    cancelAtPeriodEnd: subscription.cancel_at_period_end,
-    entitlementActive,
-    entitlementOperation: "set",
-    entitlementExpiresAt: entitlementActive ? unixTimeToIso(item.current_period_end) : null,
+  const { error } = await createSupabaseAdminClient().rpc("apply_stripe_subscription_event", {
+    p_event_id: event.id, p_event_type: event.type, p_event_created: event.created,
+    p_user_id: userId, p_customer_id: customerId, p_subscription_id: subscription.id,
+    p_product_code: productCode, p_price_id: priceId, p_status: subscription.status,
+    p_quantity: item.quantity ?? 1, p_current_period_end: unixTimeToIso(item.current_period_end),
+    p_cancel_at_period_end: subscription.cancel_at_period_end,
   });
+  if (error) throw error;
 }
 
 export async function POST(request: Request) {

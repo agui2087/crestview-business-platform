@@ -357,6 +357,7 @@ export function AcquisitionPlanner({
   const [stepNotes, setStepNotes] = useState<Record<string, string>>(initialWorkspace?.step_notes ?? {});
   const [saveMessage, setSaveMessage] = useState("");
   const [isSaving, startSaving] = useTransition();
+  const [isAdvancing, setIsAdvancing] = useState(false);
   const saveQueue = useRef<Promise<unknown>>(Promise.resolve());
   const [copied, setCopied] = useState(false);
   const [selectedRequestItems, setSelectedRequestItems] = useState<string[]>(() => [...opportunity.missing]);
@@ -414,13 +415,14 @@ export function AcquisitionPlanner({
   }
 
   function advance(status: "complete" | "skipped") {
-    if (isSaving || (status === "complete" && !canReviewAcquisitionStep(checklistItems, stepStatuses, current))) return;
+    if (isSaving || isAdvancing || (status === "complete" && !canReviewAcquisitionStep(checklistItems, stepStatuses, current))) return;
+    setIsAdvancing(true);
     const nextStatuses = { ...stepStatuses, [String(current)]: status };
     const nextRequired = acquisitionProgress(checklistItems, nextStatuses).nextStep;
     const nextCurrent = status === "skipped" ? Math.min(stages.length - 1, current + 1) : nextRequired < 0 ? stages.length - 1 : nextRequired;
     void persist(nextCurrent,nextStatuses).then(saved=>{
       if(saved){setStepStatuses(nextStatuses);selectStage(nextCurrent);}
-    });
+    }).finally(() => setIsAdvancing(false));
   }
 
   function itemKey(step: number, item: number) {
@@ -546,7 +548,7 @@ export function AcquisitionPlanner({
             <span>{completedChecklistItems}/{currentChecklist.length} {es ? "completados" : "completed"}</span>
           </div>
           {currentChecklist.map((item, index) => <label key={item}>
-            <input type="checkbox" disabled={isSaving} checked={stepStatuses[itemKey(current, index)] === "complete"} onChange={() => toggleChecklistItem(index)} />
+            <input type="checkbox" disabled={isAdvancing} checked={stepStatuses[itemKey(current, index)] === "complete"} onChange={() => toggleChecklistItem(index)} />
             {item}
           </label>)}
         </div>}
@@ -629,9 +631,9 @@ export function AcquisitionPlanner({
         <div className="decision-gate">
           <div><span>{es ? "Decisión de esta etapa" : "Stage decision"}</span><strong>{es ? "¿Qué debes hacer ahora?" : "What should happen next?"}</strong><p>{es ? "Registra una decisión clara. Puedes cambiarla después." : "Record a clear decision. You can change it later."}</p></div>
           <div>
-            <button disabled={isSaving} aria-pressed={currentDecision === "continue"} className={currentDecision === "continue" ? "is-selected" : ""} type="button" onClick={() => recordDecision("continue")}>{atLastStep ? (es ? "Revisión terminada" : "Review finished") : (es ? "Listo para continuar" : "Ready for next step")}</button>
-            <button disabled={isSaving} aria-pressed={currentDecision === "pause"} className={currentDecision === "pause" ? "is-selected" : ""} type="button" onClick={() => recordDecision("pause")}>{es ? "Necesito más tiempo" : "I need more time"}</button>
-            <button disabled={isSaving} aria-pressed={currentDecision === "pass"} className={currentDecision === "pass" ? "is-selected" : ""} type="button" onClick={() => recordDecision("pass")}>{es ? "No es adecuado" : "Not a fit"}</button>
+            <button disabled={isAdvancing} aria-pressed={currentDecision === "continue"} className={currentDecision === "continue" ? "is-selected" : ""} type="button" onClick={() => recordDecision("continue")}>{atLastStep ? (es ? "Revisión terminada" : "Review finished") : (es ? "Listo para continuar" : "Ready for next step")}</button>
+            <button disabled={isAdvancing} aria-pressed={currentDecision === "pause"} className={currentDecision === "pause" ? "is-selected" : ""} type="button" onClick={() => recordDecision("pause")}>{es ? "Necesito más tiempo" : "I need more time"}</button>
+            <button disabled={isAdvancing} aria-pressed={currentDecision === "pass"} className={currentDecision === "pass" ? "is-selected" : ""} type="button" onClick={() => recordDecision("pass")}>{es ? "No es adecuado" : "Not a fit"}</button>
           </div>
         </div>
         {saveMessage && <p className="workspace-save-message" aria-live="polite">{saveMessage}</p>}
@@ -640,7 +642,7 @@ export function AcquisitionPlanner({
           <button className="button button--light" disabled={current === 0} onClick={() => selectStage(Math.max(0, current - 1))}>{es ? "Atrás" : "Back"}</button>
           <button className="button button--light" disabled={isSaving} onClick={() => persist()}>{isSaving ? (es ? "Guardando…" : "Saving…") : (es ? "Guardar progreso" : "Save progress")}</button>
           {!atLastStep && <button className="skip-link" onClick={() => setSkipOpen(true)}>{es ? "Hacer después" : "Do this later"}</button>}
-          <button className="button button--primary" disabled={isSaving || !canReviewAcquisitionStep(checklistItems, stepStatuses, current) || (atLastStep && currentReviewComplete)} onClick={() => advance("complete")}>{atLastStep ? (currentReviewComplete ? (es ? "Lista revisada" : "Checklist reviewed") : (es ? "Finalizar revisión de la lista" : "Finish checklist review")) : (es ? "Guardar y continuar" : "Save and continue")}</button>
+          <button className="button button--primary" disabled={isSaving || isAdvancing || !canReviewAcquisitionStep(checklistItems, stepStatuses, current) || (atLastStep && currentReviewComplete)} onClick={() => advance("complete")}>{atLastStep ? (draftProgress.finished ? (es ? "Lista revisada" : "Checklist reviewed") : (es ? "Finalizar revisión de la lista" : "Finish checklist review")) : (es ? "Guardar y continuar" : "Save and continue")}</button>
         </div>
         {completedChecklistItems !== currentChecklist.length && <p className="advisor-note">{es ? "Completa los elementos y registra tu decisión para finalizar esta etapa. Puedes guardar o volver después." : "Complete the items and record your decision to finish this stage. You can save or return later."}</p>}
       </div>

@@ -12,6 +12,7 @@ import {
 } from "@/lib/stripe/config";
 import { hasValidOrigin, redirectToSignIn, stripeReturnUrl } from "@/lib/stripe/request";
 import { getStripe } from "@/lib/stripe/server";
+import { isCheckoutProductAvailable } from "@/lib/billing-availability";
 import { createRequestId, logOperationalEvent, reportOperationalEvent } from "@/lib/observability";
 
 export const runtime = "nodejs";
@@ -31,6 +32,9 @@ export async function POST(request: Request) {
   if (!isProductCode(productCodeValue)) {
     return NextResponse.redirect(stripeReturnUrl(request, locale, { billing_error: "product" }), 303);
   }
+  if (!isCheckoutProductAvailable(productCodeValue)) {
+    return NextResponse.redirect(stripeReturnUrl(request, locale, { billing_error: "not_available" }), 303);
+  }
 
   try {
     const supabase = await createSupabaseServerClient();
@@ -44,11 +48,24 @@ export async function POST(request: Request) {
     const admin = createSupabaseAdminClient();
     const stripe = getStripe();
 
-    const { data: billingCustomer } = await admin
+    const { data: billingCustomer, error: customerReadError } = await admin
       .from("billing_customers")
       .select("stripe_customer_id")
       .eq("user_id", user.id)
       .maybeSingle();
+    if (customerReadError) throw customerReadError;
+
+    if (definition.mode === "subscription") {
+      const { data: subscriptions, error: subscriptionReadError } = await admin
+        .from("billing_subscriptions")
+        .select("stripe_subscription_id")
+        .eq("user_id", user.id).eq("product_code", productCode)
+        .in("status", ["active", "trialing", "past_due", "unpaid", "paused", "incomplete"]);
+      if (subscriptionReadError) throw subscriptionReadError;
+      if (subscriptions?.length) {
+        return NextResponse.redirect(stripeReturnUrl(request, locale, { billing_error: "existing_subscription" }), 303);
+      }
+    }
 
     let stripeCustomerId = billingCustomer?.stripe_customer_id ?? null;
     if (!stripeCustomerId) {

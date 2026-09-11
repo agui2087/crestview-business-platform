@@ -212,7 +212,7 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
           locale={locale} title={opportunity.title} location={opportunity.location} industry={opportunity.industry}
           askingPrice={opportunity.price} revenue={opportunity.revenue} cashFlow={opportunity.cashFlow}
           missing={opportunity.missing} buyerContribution={sba?.buyer_injection} sellerNote={sba?.seller_note}
-          workingCapital={sba?.working_capital} hasPro={hasPro}
+          workingCapital={sba?.working_capital} hasPro={hasPro} records={checklistDocuments.map(document=>document.title)}
         />}
         <section className="notes-lists-grid" id="notes">
           <article className="operations-card">

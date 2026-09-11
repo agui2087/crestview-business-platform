@@ -244,6 +244,9 @@ export async function addDocumentFinding(formData: FormData) {
   const metricName = String(formData.get("metric_name") ?? "").trim();
   const reportedValue = String(formData.get("reported_value") ?? "").trim();
   const normalizedRaw = String(formData.get("normalized_value") ?? "").trim();
+  const sourceUrl=String(formData.get('source_url')??'').trim();
+  if(sourceUrl){const url=new URL(sourceUrl);if(!['https:','http:'].includes(url.protocol)||url.username||url.password)throw new Error('Use a valid HTTP or HTTPS source link without credentials.');}
+  if(sourceDocument.length>300 || metricName.length>200 || reportedValue.length>1000 || (normalizedRaw && !Number.isFinite(Number(normalizedRaw))))throw new Error('Check the finding fields.');
   if (sourceDocument && metricName && reportedValue) {
     await supabase.from("deal_document_findings").insert({
       user_id: user.id,
@@ -254,11 +257,11 @@ export async function addDocumentFinding(formData: FormData) {
       reported_value: reportedValue,
       normalized_value: normalizedRaw ? Number(normalizedRaw) : null,
       period_label: String(formData.get("period_label") ?? "").trim() || null,
-      source_url: String(formData.get("source_url") ?? "").trim() || null,
+      source_url: sourceUrl || null,
       confidence: normalizeBuyerFindingConfidence(String(formData.get("confidence") ?? "document_supported")),
       review_status: "unreviewed",
       notes: String(formData.get("notes") ?? "").trim() || null,
-    });
+    }).throwOnError();
     await supabase.from("deal_activities").insert({
       user_id: user.id,
       opportunity_key: opportunityKey,
@@ -266,6 +269,17 @@ export async function addDocumentFinding(formData: FormData) {
       description: `A document-backed ${metricName} finding was recorded from ${sourceDocument}.`,
     });
   }
+  revalidatePath(`/${locale}/dashboard/opportunities/${opportunityKey}`);
+}
+
+export async function reviewDocumentFinding(formData: FormData) {
+  const {locale,opportunityKey,supabase,user}=await authenticatedRequest(formData);
+  if(!await hasActiveProEntitlement(supabase,user.id))redirect(`/${locale}/pricing#buyer-pricing`);
+  const status=String(formData.get('review_status')??'');
+  if(!['unreviewed','reviewed','conflict'].includes(status))throw new Error('Choose a review status.');
+  const {data}=await supabase.from('deal_document_findings').update({review_status:status,updated_at:new Date().toISOString()}).eq('id',String(formData.get('finding_id')??'')).eq('user_id',user.id).eq('opportunity_key',opportunityKey).select('id').throwOnError();
+  if(!data?.length)throw new Error('Finding not found in your workspace.');
+  await supabase.from('deal_activities').insert({user_id:user.id,opportunity_key:opportunityKey,activity_type:'document_finding',description:`Buyer recorded finding review: ${status}. This is not independent verification.`}).throwOnError();
   revalidatePath(`/${locale}/dashboard/opportunities/${opportunityKey}`);
 }
 

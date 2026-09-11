@@ -100,10 +100,10 @@ export default async function PricingPage({
       cadence: "/mes",
       productCode: "crestview_pro",
       action: "Elegir Pro",
-      description: "Ayuda avanzada para entender contratos, documentos financieros y el lenguaje de M&A.",
+      description: "Organiza y compara hallazgos financieros para revisar con tus asesores. No incluye extracción automática de documentos.",
       badge: "Ayuda avanzada",
       featured: true,
-      features: ["Todo lo incluido en Gratis", "Calculadora Excel de diligencia financiera", "Inteligencia documental con fuentes", "Alertas por discrepancias entre documentos", "Explicaciones avanzadas de riesgos", "Comparaciones financieras avanzadas", "Estados de revisión controlados para hallazgos"],
+      features: ["Todo lo incluido en Gratis", "Calculadora Excel de diligencia financiera", "Hallazgos ingresados con referencias a fuentes", "Alertas de discrepancias en valores ingresados", "Estados de revisión del comprador", "Resumen para prestamista con inventario de documentos (texto)", "Informe de decisión descargable (texto)"],
     },
   ] : [
     {
@@ -112,7 +112,7 @@ export default async function PricingPage({
       cadence: "/forever",
       description: "Complete resources for moving from discovery through closing without paying for the essential process.",
       badge: "For everyone",
-      features: ["Search, filter, and save opportunities", "Deal command center and next steps", "Deal-specific acquisition checklist", "Basic verified listing passport", "Valuation calculators", "Tasks, evidence, and progress tracking"],
+      features: ["Search, filter, and save opportunities", "Deal command center and next steps", "Deal-specific acquisition checklist", "Basic listing evidence passport", "Valuation calculators", "Tasks, evidence, and progress tracking"],
     },
     {
       name: "Crestview Pro",
@@ -120,10 +120,10 @@ export default async function PricingPage({
       cadence: "/month",
       productCode: "crestview_pro",
       action: "Choose Pro",
-      description: "Advanced help understanding contracts, financial documents, and high-level M&A language.",
+      description: "Organize and compare financial findings to review with your advisors. Automatic document extraction is not included.",
       badge: "Advanced guidance",
       featured: true,
-      features: ["Everything included in Free", "Excel financial due-diligence calculator", "Source-linked document intelligence", "Cross-document discrepancy alerts", "Detailed match explanations", "Lender package generation", "Advanced valuation scenarios", "Exportable decision reports"],
+      features: ["Everything included in Free", "Excel financial due-diligence calculator", "Entered findings with source references", "Discrepancy alerts for entered values", "Buyer-recorded review states", "Lender summary with document inventory (text)", "Downloadable decision report (text)"],
     },
   ];
 
@@ -146,7 +146,7 @@ export default async function PricingPage({
       description: "Para corredores que necesitan administrar varias publicaciones y consultas.",
       badge: "Para profesionales",
       featured: true,
-      features: ["Varias publicaciones activas", "Perfil profesional", "Bandeja de clientes potenciales", "Análisis de publicaciones", "Solicitudes de documentos y NDA"],
+      features: ["Hasta 100 publicaciones activas", "Cuenta de corredor y administración de publicaciones", "Bandeja de clientes potenciales", "Confirmación de disponibilidad cada 30 días", "Alertas de posibles duplicados", "Solicitudes de documentos y NDA"],
     },
     {
       name: "Visibilidad mejorada",
@@ -165,7 +165,7 @@ export default async function PricingPage({
       action: "Obtener máxima visibilidad",
       description: "La promoción más fuerte en búsquedas, categorías y ubicaciones relevantes.",
       badge: "Mayor alcance",
-      features: ["Ubicación prioritaria", "Parte superior de búsquedas apropiadas", "Promoción por categoría y ubicación", "Estadísticas avanzadas de promoción"],
+      features: ["Ubicación prioritaria", "Prioridad en resultados relevantes por categoría y ubicación", "Totales de vistas e interacciones de miembros participantes", "Desglose diario de promoción"],
     },
   ] : [
     {
@@ -186,7 +186,7 @@ export default async function PricingPage({
       description: "For brokers who need to manage multiple listings and buyer inquiries.",
       badge: "For professionals",
       featured: true,
-      features: ["Up to 100 active listings", "Professional broker profile", "Buyer lead inbox", "30-day availability confirmations", "Duplicate-listing alerts", "Document and NDA requests"],
+      features: ["Up to 100 active listings", "Broker account and listing management", "Buyer lead inbox", "30-day availability confirmations", "Duplicate-listing alerts", "Document and NDA requests"],
     },
     {
       name: "Enhanced Visibility",
@@ -205,7 +205,7 @@ export default async function PricingPage({
       action: "Get highest visibility",
       description: "The strongest promotion across relevant searches, categories, and locations.",
       badge: "Maximum reach",
-      features: ["Priority placement", "Top of appropriate searches", "Category and location promotion", "Advanced promotion analytics"],
+      features: ["Priority placement", "Priority in relevant category and location results", "Opt-in member view and engagement totals", "Daily promotion breakdown"],
     },
   ];
 

@@ -6,6 +6,7 @@ import { LocaleSwitcher } from "@/components/locale-switcher";
 import { chatGPTSignOutPath, getChatGPTUser } from "@/app/chatgpt-auth";
 import { isLocale } from "@/lib/i18n";
 import { localizedPublicMetadata } from "@/lib/seo";
+import { isCheckoutProductAvailable } from "@/lib/billing-availability";
 
 export async function generateMetadata({ params }: PageProps<"/[locale]/pricing">): Promise<Metadata> {
   const { locale } = await params;
@@ -46,7 +47,12 @@ function PlanCard({
         <strong>{plan.price}</strong>
         {plan.cadence && <span>{plan.cadence}</span>}
       </div>
-      {plan.productCode ? (
+      {plan.productCode && !isCheckoutProductAvailable(plan.productCode) ? (
+        <div>
+          <button className="button button--light" type="button" disabled>{locale === "es" ? "Aún no disponible" : "Not yet available"}</button>
+          <p>{locale === "es" ? "Funciones previstas. Las compras están pausadas mientras verificamos la entrega. No se cobrará este producto." : "Planned features. Purchases are paused while delivery is verified. This product cannot be charged."}</p>
+        </div>
+      ) : plan.productCode ? (
         <form className="pricing-checkout-form" action="/api/stripe/checkout" method="post">
           <input type="hidden" name="locale" value={locale} />
           <input type="hidden" name="product_code" value={plan.productCode} />
@@ -219,10 +225,6 @@ export default async function PricingPage({
         <LocaleSwitcher locale={locale} />
         {user ? <>
           <Link className="button button--light" href={`/${locale}/dashboard`}>{es ? "Panel" : "Dashboard"}</Link>
-          <form action="/api/stripe/portal" method="post">
-            <input type="hidden" name="locale" value={locale} />
-            <button className="button button--light" type="submit">{es ? "Administrar facturación" : "Manage billing"}</button>
-          </form>
           <a className="header-signout" href={user.source === "chatgpt" ? chatGPTSignOutPath(`/${locale}`) : `/api/local-auth/signout?return_to=/${locale}`}>
             {es ? "Salir" : "Sign out"}
           </a>
@@ -232,24 +234,30 @@ export default async function PricingPage({
 
     <main className="pricing-page">
       <section className="pricing-hero shell">
+        {user && <form action="/api/stripe/portal" method="post">
+          <input type="hidden" name="locale" value={locale} />
+          <button className="button button--light" type="submit">{es ? "Administrar facturación" : "Manage billing"}</button>
+        </form>}
         {query.checkout === "success" && (
           <div className="billing-status billing-status--success" role="status">
-            <strong>{es ? "Pago recibido" : "Payment received"}</strong>
-            <span>{es ? "Stripe está confirmando el pago. Tu acceso se activará mediante la confirmación segura del servidor." : "Stripe is confirming the payment. Your access will activate through secure server confirmation."}</span>
+            <strong>{es ? "Regresaste de la página de pago" : "You returned from checkout"}</strong>
+            <span>{es ? "Este mensaje no confirma un pago. Tu acceso se activa solo después de la confirmación segura del servidor. Revisa Administrar facturación para ver el estado." : "This message does not confirm payment. Access activates only after secure server confirmation. Check Manage billing for your payment and subscription status."}</span>
           </div>
         )}
         {query.checkout === "canceled" && (
           <div className="billing-status" role="status">
             <strong>{es ? "Pago cancelado" : "Checkout canceled"}</strong>
-            <span>{es ? "No se realizó ningún cargo. Puedes elegir un plan cuando estés listo." : "No charge was made. You can choose a plan whenever you are ready."}</span>
+            <span>{es ? "No confirmamos un pago desde esta página. Si enviaste un pago, revisa Administrar facturación antes de volver a intentarlo." : "This page does not confirm a payment. If you submitted one, check Manage billing before trying again."}</span>
           </div>
         )}
-        {typeof query.billing_error === "string" && (
+        {typeof query.billing_error === "string" && !["not_available", "existing_subscription"].includes(query.billing_error) && (
           <div className="billing-status billing-status--error" role="alert">
             <strong>{query.billing_error === "broker_plan_required" ? (es ? "Necesitas acceso para publicar" : "Publishing access is required") : (es ? "No se pudo abrir la facturación" : "Billing could not be opened")}</strong>
             <span>{query.billing_error === "broker_plan_required" ? (es ? "Tu borrador sigue guardado. Activa el Plan para Corredores o usa tu código de acceso y vuelve a Mis anuncios para publicarlo." : "Your draft is still saved. Activate the Broker Plan or redeem your access code, then return to My listings to publish it.") : (es ? "Vuelve a intentarlo o inicia sesión antes de seleccionar un plan." : "Please try again or sign in before selecting a plan.")}</span>
           </div>
         )}
+        {query.billing_error === "not_available" && <p role="alert">{es ? "Este producto todavía no está disponible para comprar. No se abrió una página de pago." : "This product is not available for purchase yet. No checkout was opened."}</p>}
+        {query.billing_error === "existing_subscription" && <p role="alert">{es ? "Ya tienes una suscripción para este producto. Usa Administrar facturación para actualizarla o resolver un pago pendiente." : "You already have a subscription for this product. Use Manage billing to update it or resolve an outstanding payment."}</p>}
         {query.broker_code === "success" && (
           <div className="billing-status billing-status--success" role="status">
             <strong>{es ? "Acceso para corredor activado" : "Broker access activated"}</strong>

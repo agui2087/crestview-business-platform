@@ -105,11 +105,12 @@ export async function saveAcquisitionWorkspace(formData: FormData) {
 export async function addDiligenceItem(formData: FormData) {
   const { locale, opportunityKey, supabase, user } = await authenticatedRequest(formData);
   const title = String(formData.get("title") ?? "").trim();
-  if (title) await supabase.from("diligence_items").upsert({
+  if (!title || title.length > 300) throw new Error("Enter a checklist title of up to 300 characters.");
+  await supabase.from("diligence_items").upsert({
     user_id: user.id, opportunity_key: opportunityKey,
     category: String(formData.get("category") ?? "Financial"), title,
     due_date: String(formData.get("due_date") ?? "") || null,
-  }, { onConflict: "user_id,opportunity_key,category,title" });
+  }, { onConflict: "user_id,opportunity_key,category,title", ignoreDuplicates: true }).throwOnError();
   await supabase.from("deal_activities").insert({ user_id: user.id, opportunity_key: opportunityKey, activity_type: "diligence", description: `Diligence item added: ${title}` });
   revalidatePath(`/${locale}/dashboard/opportunities/${opportunityKey}`);
 }
@@ -133,15 +134,18 @@ export async function addDiligenceTemplate(formData: FormData) {
         : [["Compliance", "Identify required permits and regulatory obligations"]];
   await supabase.from("diligence_items").upsert(
     [...shared, ...specialized].map(([category, title]) => ({ user_id: user.id, opportunity_key: opportunityKey, category, title })),
-    { onConflict: "user_id,opportunity_key,category,title" },
-  );
+    { onConflict: "user_id,opportunity_key,category,title", ignoreDuplicates: true },
+  ).throwOnError();
   revalidatePath(`/${locale}/dashboard/opportunities/${opportunityKey}`);
 }
 
 export async function updateDiligenceItem(formData: FormData) {
   const { locale, opportunityKey, supabase, user } = await authenticatedRequest(formData);
-  await supabase.from("diligence_items").update({ status: String(formData.get("status")), updated_at: new Date().toISOString() })
-    .eq("id", String(formData.get("id"))).eq("user_id", user.id);
+  const status=String(formData.get("status"));
+  if (!["open","requested","received","verified","flagged","not_applicable"].includes(status)) throw new Error("Invalid checklist status.");
+  const {data}=await supabase.from("diligence_items").update({ status, updated_at: new Date().toISOString() })
+    .eq("id", String(formData.get("id"))).eq("user_id", user.id).eq("opportunity_key",opportunityKey).select("id").maybeSingle().throwOnError();
+  if(!data)throw new Error("This checklist item is no longer available in this deal.");
   revalidatePath(`/${locale}/dashboard/opportunities/${opportunityKey}`);
 }
 
@@ -164,13 +168,13 @@ export async function generateGuidedPlan(formData: FormData) {
   await supabase.from("deal_guidance_profiles").upsert({
     user_id: user.id, opportunity_key: opportunityKey, ...profile,
     generated_at: new Date().toISOString(), updated_at: new Date().toISOString(),
-  }, { onConflict: "user_id,opportunity_key" });
+  }, { onConflict: "user_id,opportunity_key" }).throwOnError();
   await supabase.from("diligence_items").upsert(
     buildGuidedChecklist(profile).map((item) => ({
       user_id: user.id, opportunity_key: opportunityKey, ...item, is_dynamic: true,
     })),
-    { onConflict: "user_id,opportunity_key,category,title" },
-  );
+    { onConflict: "user_id,opportunity_key,category,title", ignoreDuplicates: true },
+  ).throwOnError();
   const transition = [
     ["before_close", "Closing", "Confirm funds flow, signatures, insurance, licenses, and access handoff"],
     ["day_1", "People", "Introduce ownership, confirm payroll, and communicate the first-week plan"],
@@ -181,8 +185,8 @@ export async function generateGuidedPlan(formData: FormData) {
   ];
   await supabase.from("transition_items").upsert(
     transition.map(([horizon, category, title]) => ({ user_id: user.id, opportunity_key: opportunityKey, horizon, category, title, owner: "Buyer" })),
-    { onConflict: "user_id,opportunity_key,horizon,title" },
-  );
+    { onConflict: "user_id,opportunity_key,horizon,title", ignoreDuplicates: true },
+  ).throwOnError();
   await supabase.from("deal_activities").insert({
     user_id: user.id, opportunity_key: opportunityKey, activity_type: "guided_plan",
     description: "A deal-specific acquisition plan was generated.",
@@ -196,13 +200,19 @@ export async function addDiligenceEvidence(formData: FormData) {
   const label = String(formData.get("label") ?? "").trim();
   const sourceUrl = String(formData.get("source_url") ?? "").trim();
   const evidenceType = String(formData.get("evidence_type") ?? "document");
-  const { data: item } = await supabase.from("diligence_items").select("id").eq("id", itemId).eq("user_id", user.id).maybeSingle();
+  if (sourceUrl) {
+    let parsed:URL;try {parsed=new URL(sourceUrl);}catch{throw new Error("Enter a valid evidence URL.");}
+    if(!["https:","http:"].includes(parsed.protocol)||parsed.username||parsed.password)throw new Error("Use an HTTP or HTTPS evidence link without credentials.");
+  }
+  if(!label || label.length>300)throw new Error("Enter an evidence label of up to 300 characters.");
+  const { data: item } = await supabase.from("diligence_items").select("id").eq("id", itemId).eq("user_id", user.id).eq("opportunity_key",opportunityKey).maybeSingle().throwOnError();
+  if(!item)throw new Error("Choose a checklist item from this deal.");
   if (item && label) {
     await supabase.from("diligence_evidence").insert({
       user_id: user.id, opportunity_key: opportunityKey, diligence_item_id: item.id,
       label, evidence_type: evidenceType, source_url: sourceUrl || null,
-    });
-    await supabase.from("diligence_items").update({ status: "received", updated_at: new Date().toISOString() }).eq("id", item.id).eq("user_id", user.id);
+    }).throwOnError();
+    await supabase.from("diligence_items").update({ status: "received", updated_at: new Date().toISOString() }).eq("id", item.id).eq("user_id", user.id).eq("opportunity_key",opportunityKey).in("status",["open","requested"]).throwOnError();
   }
   revalidatePath(`/${locale}/dashboard/opportunities/${opportunityKey}`);
 }
@@ -262,7 +272,7 @@ export async function saveSbaReadiness(formData: FormData) {
     term_years: Math.max(1, Math.min(25, number("term_years", 10))),
     lender_status: String(formData.get("lender_status") ?? "not_started"),
     updated_at: new Date().toISOString(),
-  }, { onConflict: "user_id,opportunity_key" });
+  }, { onConflict: "user_id,opportunity_key" }).throwOnError();
   revalidatePath(`/${locale}/dashboard/opportunities/${opportunityKey}`);
 }
 
@@ -277,18 +287,19 @@ export async function addDealProfessional(formData: FormData) {
       organization: String(formData.get("organization") ?? "").trim() || null,
       responsibility: String(formData.get("responsibility") ?? "").trim() || null,
       status: "active", updated_at: new Date().toISOString(),
-    }, { onConflict: "user_id,opportunity_key,role,display_name" });
+    }, { onConflict: "user_id,opportunity_key,role,display_name" }).throwOnError();
   }
   revalidatePath(`/${locale}/dashboard/opportunities/${opportunityKey}`);
 }
 
 export async function updateTransitionItem(formData: FormData) {
   const { locale, opportunityKey, supabase, user } = await authenticatedRequest(formData);
-  await supabase.from("transition_items").update({
+  const {data}=await supabase.from("transition_items").update({
     status: String(formData.get("status") ?? "open"),
     owner: String(formData.get("owner") ?? "").trim() || null,
     updated_at: new Date().toISOString(),
-  }).eq("id", String(formData.get("id") ?? "")).eq("user_id", user.id);
+  }).eq("id", String(formData.get("id") ?? "")).eq("user_id", user.id).eq("opportunity_key",opportunityKey).select("id").maybeSingle().throwOnError();
+  if(!data)throw new Error("This transition task is no longer available in this deal.");
   revalidatePath(`/${locale}/dashboard/opportunities/${opportunityKey}`);
 }
 

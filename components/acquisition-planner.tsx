@@ -5,6 +5,7 @@ import { useCrestviewUser } from "@/components/user-provider";
 import type { Opportunity } from "@/lib/demo-data";
 import { financingResourcesFor } from "@/lib/financing-resources";
 import { saveAcquisitionWorkspace } from "@/app/[locale]/dashboard/opportunities/actions";
+import { acquisitionProgress, canReviewAcquisitionStep } from "@/lib/acquisition-progress";
 
 const stagesEn = [
   ["Quick fit check", "Confirm this business fits your goals before spending more time or money."],
@@ -305,8 +306,28 @@ export function AcquisitionPlanner({
   const useInformation = es ? useInformationEs : useInformationEn;
   const user = useCrestviewUser();
   const [started, setStarted] = useState(Boolean(initialWorkspace && initialWorkspace.stage !== "saved"));
-  const [current, setCurrent] = useState(initialWorkspace?.current_step ?? 0);
+  const [current, setCurrent] = useState(() => {
+    const next = acquisitionProgress(checklistItems, initialWorkspace?.checklist_progress ?? {}).nextStep;
+    return next < 0 ? stages.length - 1 : next;
+  });
   const [stepStatuses, setStepStatuses] = useState<Record<string, string>>(initialWorkspace?.checklist_progress ?? {});
+  const [savedStatuses, setSavedStatuses] = useState<Record<string, string>>(initialWorkspace?.checklist_progress ?? {});
+  const stageHeading = useRef<HTMLHeadingElement>(null);
+  const focusStage = useRef(false);
+  useEffect(() => {
+    if (focusStage.current) {
+      stageHeading.current?.focus();
+      focusStage.current = false;
+    }
+  }, [current, started]);
+  function selectStage(step: number) {
+    if (step === current) {
+      stageHeading.current?.focus();
+      return;
+    }
+    focusStage.current = true;
+    setCurrent(step);
+  }
   const [skipOpen, setSkipOpen] = useState(false);
   const skipDialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -379,6 +400,7 @@ export function AcquisitionPlanner({
     const task=saveQueue.current.catch(()=>undefined).then(async()=>{
       try {
         const result=await saveAcquisitionWorkspace(formData);
+        if (result.ok) setSavedStatuses(nextStatuses);
         setSaveMessage(result.ok ? (es ? "Progreso guardado." : "Progress saved.") : (es ? "No se guardó el progreso. Vuelve a intentarlo antes de salir." : "Progress was not saved. Retry before leaving this page."));
         return result.ok;
       } catch {
@@ -392,10 +414,12 @@ export function AcquisitionPlanner({
   }
 
   function advance(status: "complete" | "skipped") {
+    if (isSaving || (status === "complete" && !canReviewAcquisitionStep(checklistItems, stepStatuses, current))) return;
     const nextStatuses = { ...stepStatuses, [String(current)]: status };
-    const nextCurrent = Math.min(stages.length - 1, current + 1);
+    const nextRequired = acquisitionProgress(checklistItems, nextStatuses).nextStep;
+    const nextCurrent = status === "skipped" ? Math.min(stages.length - 1, current + 1) : nextRequired < 0 ? stages.length - 1 : nextRequired;
     void persist(nextCurrent,nextStatuses).then(saved=>{
-      if(saved){setStepStatuses(nextStatuses);setCurrent(nextCurrent);}
+      if(saved){setStepStatuses(nextStatuses);selectStage(nextCurrent);}
     });
   }
 
@@ -423,8 +447,8 @@ export function AcquisitionPlanner({
   if (!started) {
     return (
       <section className="begin-panel">
-        <div><span>{es ? "Espacio de adquisición" : "Acquisition workspace"}</span><h2>{es ? "¿Listo para evaluar esta oportunidad?" : "Ready to evaluate this opportunity?"}</h2><p>{es ? "Inicia una lista guiada desde la evaluación hasta el cierre. Avanza a tu ritmo y marca información faltante." : "Start a guided checklist from screening through closing. You can move at your own pace and flag missing information for the seller or broker."}</p></div>
-        <button className="button button--primary" onClick={() => setStarted(true)}>{es ? "Iniciar adquisición" : "Begin acquisition"}</button>
+        <div><span>{es ? "Tu lista de compra" : "Your buying checklist"}</span><h2>{es ? "Ocho pasos, una tarea a la vez." : "Eight steps, one task at a time."}</h2><p>{es ? "Desde la primera evaluación hasta los primeros 90 días. Completa las tareas, registra tu decisión y guarda para avanzar. Tu progreso guardado te espera cuando regreses." : "From your first fit check through the first 90 days. Complete the tasks, record your decision, and save to move forward. Your saved progress will be here when you return."}</p><ol className="acquisition-start-roadmap">{stages.map(([title]) => <li key={title}>{title}</li>)}</ol></div>
+        <button className="button button--primary" onClick={() => { focusStage.current = true; setStarted(true); }}>{es ? "Abrir lista de compra" : "Open buying checklist"}</button>
       </section>
     );
   }
@@ -462,10 +486,10 @@ export function AcquisitionPlanner({
   const atLastStep = current === stages.length - 1;
   const currentChecklist = checklistItems[current];
   const completedChecklistItems = currentChecklist.filter((_, index) => stepStatuses[itemKey(current, index)] === "complete").length;
-  const allChecklistItems = checklistItems.reduce((total, items) => total + items.length, 0);
-  const allCompletedItems = checklistItems.reduce((total, items, step) =>
-    total + items.filter((_, index) => stepStatuses[itemKey(step, index)] === "complete").length, 0);
-  const overallProgress = allChecklistItems ? Math.round((allCompletedItems / allChecklistItems) * 100) : 0;
+  const progress = acquisitionProgress(checklistItems, savedStatuses);
+  const draftProgress = acquisitionProgress(checklistItems, stepStatuses);
+  const earlierStepPending = draftProgress.nextStep >= 0 && current > draftProgress.nextStep;
+  const currentReviewComplete = draftProgress.complete[current];
   const currentDecision = stepStatuses[`decision:${current}`] ?? "";
   const professionalGuidance = [
     ["Business advisor", "Use an SBA resource partner to test fit, ownership demands, and the acquisition plan.", "https://www.sba.gov/local-assistance"],
@@ -492,20 +516,29 @@ export function AcquisitionPlanner({
   const stageResources = generalResources;
 
   return (
-    <section className="acquisition-workspace">
+    <section className="acquisition-workspace" aria-labelledby="buying-checklist-title">
+      <header className="buying-checklist-progress">
+        <div><span className="mini-label">{es ? "DE LA EVALUACIÓN A LA TRANSICIÓN" : "FROM FIRST LOOK TO HANDOVER"}</span><h2 id="buying-checklist-title">{es ? "Tu lista de compra" : "Your buying checklist"}</h2><p>{es ? "Completa las tareas de cada paso y guarda tu decisión para avanzar al siguiente." : "Complete each step’s tasks and save your decision to move to the next."}</p></div>
+        <div className="buying-checklist-progress__meter">
+          <label htmlFor="buying-progress"><strong>{progress.percent}%</strong> {es ? "progreso guardado" : "saved progress"}</label>
+          <progress id="buying-progress" max={100} value={progress.percent}>{progress.percent}%</progress>
+          <p>{progress.completedSteps}/{stages.length} {es ? "pasos revisados" : "steps reviewed"} · {progress.completedItems}/{progress.totalItems} {es ? "tareas guardadas" : "tasks saved"}</p>
+        </div>
+        <p className="buying-checklist-next" role="status">{isSaving ? (es ? "Guardando cambios…" : "Saving changes…") : progress.finished ? (es ? "Lista revisada. Esto no confirma una compra ni transfiere fondos." : "Checklist reviewed. This does not confirm a purchase or transfer funds.") : (es ? `Próximo paso pendiente: ${progress.nextStep + 1}. ${stages[progress.nextStep][0]}` : `Next unfinished step: ${progress.nextStep + 1}. ${stages[progress.nextStep][0]}`)}</p>
+      </header>
       <aside className="acquisition-steps">
-        <p>{es ? "Lista de adquisición" : "Acquisition checklist"}</p>
-        <div className="checklist-overall-progress"><strong>{overallProgress}%</strong><span>{es ? "progreso total" : "overall progress"}</span><i><b style={{ width: `${overallProgress}%` }} /></i></div>
+        <p>{es ? "Tu camino, paso a paso" : "Your path, step by step"}</p>
         {stages.map(([title], index) => (
-          <button aria-current={index === current ? "step" : undefined} className={index === current ? "is-current" : stepStatuses[String(index)] === "complete" ? "is-complete" : stepStatuses[String(index)] === "skipped" ? "is-skipped" : ""} onClick={() => setCurrent(index)} key={title}>
-            <span>{stepStatuses[String(index)] === "complete" ? "✓" : stepStatuses[String(index)] === "skipped" ? "!" : index + 1}</span>{title}
+          <button aria-current={index === current ? "step" : undefined} className={index === current ? "is-current" : progress.complete[index] ? "is-complete" : savedStatuses[String(index)] === "skipped" ? "is-skipped" : ""} onClick={() => selectStage(index)} key={title}>
+            <span aria-hidden="true">{index + 1}</span><div>{title}<small>{progress.complete[index] ? (es ? "Revisado" : "Reviewed") : index === progress.nextStep ? (es ? "Siguiente pendiente" : "Next unfinished") : savedStatuses[String(index)] === "skipped" ? (es ? "Pendiente" : "Deferred") : (es ? "Por hacer" : "Upcoming")}</small></div>
           </button>
         ))}
       </aside>
       <div className="acquisition-stage">
         <span className="mini-label">{es ? "Paso" : "Step"} {current + 1} {es ? "de" : "of"} {stages.length}</span>
-        <h2>{stages[current][0]}</h2>
+        <h2 ref={stageHeading} tabIndex={-1}>{stages[current][0]}</h2>
         <p className="stage-intro">{stages[current][1]}</p>
+        {earlierStepPending && <div className="checklist-sequence-note"><p>{es ? `Estás consultando un paso posterior. Puedes preparar tus tareas, pero primero debes revisar el paso ${draftProgress.nextStep + 1} para seguir avanzando.` : `You’re looking ahead. You can prepare these tasks, but review step ${draftProgress.nextStep + 1} first to keep moving in order.`}</p><button className="button button--light" onClick={() => selectStage(draftProgress.nextStep)}>{es ? `Volver al paso ${draftProgress.nextStep + 1}` : `Return to step ${draftProgress.nextStep + 1}`}</button></div>}
 
         {currentChecklist.length > 0 && <div className="check-card">
           <div className="check-card__heading">
@@ -513,7 +546,7 @@ export function AcquisitionPlanner({
             <span>{completedChecklistItems}/{currentChecklist.length} {es ? "completados" : "completed"}</span>
           </div>
           {currentChecklist.map((item, index) => <label key={item}>
-            <input type="checkbox" checked={stepStatuses[itemKey(current, index)] === "complete"} onChange={() => toggleChecklistItem(index)} />
+            <input type="checkbox" disabled={isSaving} checked={stepStatuses[itemKey(current, index)] === "complete"} onChange={() => toggleChecklistItem(index)} />
             {item}
           </label>)}
         </div>}
@@ -596,18 +629,18 @@ export function AcquisitionPlanner({
         <div className="decision-gate">
           <div><span>{es ? "Decisión de esta etapa" : "Stage decision"}</span><strong>{es ? "¿Qué debes hacer ahora?" : "What should happen next?"}</strong><p>{es ? "Registra una decisión clara. Puedes cambiarla después." : "Record a clear decision. You can change it later."}</p></div>
           <div>
-            <button className={currentDecision === "continue" ? "is-selected" : ""} type="button" onClick={() => recordDecision("continue")}>{atLastStep ? (es ? "Revisión terminada" : "Review finished") : (es ? "Listo para continuar" : "Ready for next step")}</button>
-            <button className={currentDecision === "pause" ? "is-selected" : ""} type="button" onClick={() => recordDecision("pause")}>{es ? "Necesito más tiempo" : "I need more time"}</button>
-            <button className={currentDecision === "pass" ? "is-selected" : ""} type="button" onClick={() => recordDecision("pass")}>{es ? "No es adecuado" : "Not a fit"}</button>
+            <button disabled={isSaving} aria-pressed={currentDecision === "continue"} className={currentDecision === "continue" ? "is-selected" : ""} type="button" onClick={() => recordDecision("continue")}>{atLastStep ? (es ? "Revisión terminada" : "Review finished") : (es ? "Listo para continuar" : "Ready for next step")}</button>
+            <button disabled={isSaving} aria-pressed={currentDecision === "pause"} className={currentDecision === "pause" ? "is-selected" : ""} type="button" onClick={() => recordDecision("pause")}>{es ? "Necesito más tiempo" : "I need more time"}</button>
+            <button disabled={isSaving} aria-pressed={currentDecision === "pass"} className={currentDecision === "pass" ? "is-selected" : ""} type="button" onClick={() => recordDecision("pass")}>{es ? "No es adecuado" : "Not a fit"}</button>
           </div>
         </div>
         {saveMessage && <p className="workspace-save-message" aria-live="polite">{saveMessage}</p>}
         <p className="advisor-note">Crestview provides organizational tools and illustrative calculations, not legal, tax, accounting, lending, or investment advice.</p>
         <div className="stage-actions">
-          <button className="button button--light" disabled={current === 0} onClick={() => setCurrent((value) => Math.max(0, value - 1))}>Back</button>
-          <button className="button button--light" disabled={isSaving} onClick={() => persist()}>{isSaving ? "Saving…" : "Save progress"}</button>
+          <button className="button button--light" disabled={current === 0} onClick={() => selectStage(Math.max(0, current - 1))}>{es ? "Atrás" : "Back"}</button>
+          <button className="button button--light" disabled={isSaving} onClick={() => persist()}>{isSaving ? (es ? "Guardando…" : "Saving…") : (es ? "Guardar progreso" : "Save progress")}</button>
           {!atLastStep && <button className="skip-link" onClick={() => setSkipOpen(true)}>{es ? "Hacer después" : "Do this later"}</button>}
-          <button className="button button--primary" disabled={isSaving || currentDecision !== "continue" || completedChecklistItems !== currentChecklist.length || (atLastStep && stepStatuses[String(current)] === "complete")} onClick={() => advance("complete")}>{atLastStep ? (stepStatuses[String(current)] === "complete" ? (es ? "Lista revisada" : "Checklist reviewed") : (es ? "Finalizar revisión de la lista" : "Finish checklist review")) : (es ? "Guardar y continuar" : "Save and continue")}</button>
+          <button className="button button--primary" disabled={isSaving || !canReviewAcquisitionStep(checklistItems, stepStatuses, current) || (atLastStep && currentReviewComplete)} onClick={() => advance("complete")}>{atLastStep ? (currentReviewComplete ? (es ? "Lista revisada" : "Checklist reviewed") : (es ? "Finalizar revisión de la lista" : "Finish checklist review")) : (es ? "Guardar y continuar" : "Save and continue")}</button>
         </div>
         {completedChecklistItems !== currentChecklist.length && <p className="advisor-note">{es ? "Completa los elementos y registra tu decisión para finalizar esta etapa. Puedes guardar o volver después." : "Complete the items and record your decision to finish this stage. You can save or return later."}</p>}
       </div>

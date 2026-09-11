@@ -311,11 +311,11 @@ export function AcquisitionPlanner({
   const es = locale === "es";
   const [stepStatuses, setStepStatuses] = useState<Record<string, string>>(initialWorkspace?.checklist_progress ?? {});
   const plan = readDealPlan(stepStatuses["plan:profile"]);
-  const stages = (es ? stagesEs : stagesEn).map(stage=>[...stage]);
+  const stages: string[][] = (es ? stagesEs : stagesEn).map(stage=>[...stage]);
   if(plan?.financing === "cash") stages[3] = es ? ["Fondos de compra", "Confirma los fondos disponibles, gastos de cierre y reserva operativa."] : ["Purchase funds", "Confirm available funds, closing costs and operating reserves."];
   const checklistItems = tailoredChecklist(es ? checklistItemsEs : checklistItemsEn,plan,es);
   const readyWhen = es ? readyWhenEs : readyWhenEn;
-  const useInformation = (es ? useInformationEs : useInformationEn).map(items=>[...items]);
+  const useInformation: string[][] = (es ? useInformationEs : useInformationEn).map(items=>[...items]);
   if(plan?.financing === "cash") useInformation[3] = es ? ["Separa el precio de compra, gastos de cierre y reserva operativa.", "Revisa la disponibilidad de fondos con tu asesor y agente de cierre.", "Documenta las condiciones pendientes antes de comprometer fondos."] : ["Separate the purchase price, closing costs and operating reserve.", "Review funds availability with your advisor and closing agent.", "Document outstanding conditions before committing funds."];
   const user = useCrestviewUser();
   const [started, setStarted] = useState(Boolean(initialWorkspace && initialWorkspace.stage !== "saved"));

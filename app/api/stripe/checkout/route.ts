@@ -130,6 +130,12 @@ export async function POST(request: Request) {
     return NextResponse.redirect(session.url, 303);
   } catch (error) {
     await reportOperationalEvent({ event: "stripe.checkout_failed", level: "error", requestId, route: "/api/stripe/checkout", error, details: { productCode: productCodeValue } });
+    if (isListingProduct(productCodeValue)) {
+      const returnUrl = new URL(`/${locale}/dashboard/listings`, request.url);
+      returnUrl.searchParams.set("purchase", "checkout_failed");
+      returnUrl.hash = "listing-purchases";
+      return NextResponse.redirect(returnUrl, 303);
+    }
     return NextResponse.redirect(stripeReturnUrl(request, locale, { billing_error: "checkout" }), 303);
   }
 }

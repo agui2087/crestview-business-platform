@@ -152,11 +152,11 @@ test("reopening an earlier task removes overall completion without deleting late
   });
   const h = await harness(workspace);
   assert.equal(h.percent(), 100);
-  await h.invoke(h.button("Quick fit checkReviewed"));
+  await h.invoke(h.button("1Quick fit checkReviewed"));
   const firstItem = h.nodes().find(node => node.type === "input" && node.props.type === "checkbox")!;
   await h.invoke(firstItem, "onChange");
   assert.ok(Number(h.percent()) < 100);
-  await h.invoke(h.button("First 90 daysReviewed"));
+  await h.invoke(h.button("8First 90 daysReviewed"));
   assert.equal(h.button("Finish checklist review").props.disabled, true);
   assert.equal(h.saved().checklist_progress["7"], "complete");
   assert.equal((await harness(h.saved())).step(), "Quick fit check");

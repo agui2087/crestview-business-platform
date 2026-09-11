@@ -9,20 +9,21 @@ export async function ListingPurchases({userId,listings,locale,purchase}:{userId
   const es=locale==='es';
   if(!userId)return <section id="listing-purchases" className="panel"><h2>{es?'Productos para anuncios':'Listing products'}</h2><p>{es?'Inicia sesión para seleccionar un anuncio real.':'Sign in to select a real listing.'}</p></section>;
   const supabase=await createSupabaseServerClient();
-  const [{data,error},{data:plan,error:planError},{data:metrics,error:metricsError}]=await Promise.all([
+  const [{data,error},{data:plan,error:planError},{data:metrics,error:metricsError},{data:current,error:currentError}]=await Promise.all([
     supabase.from('listing_product_orders').select('id,listing_id,product_code,status,ends_at,created_at').eq('user_id',userId).order('created_at',{ascending:false}).limit(200),
     supabase.from('billing_entitlements').select('active,expires_at').eq('user_id',userId).eq('product_code','broker_plan').maybeSingle(),
     supabase.rpc('my_listing_promotion_metrics'),
+    supabase.rpc('my_current_listing_orders'),
   ]);
-  if(error||planError||metricsError)throw new Error('Listing purchase status could not be loaded.');
-  const orders=(data??[]) as Order[];
+  if(error||planError||metricsError||currentError)throw new Error('Listing purchase status could not be loaded.');
+  const orders=[...new Map([...((current??[]) as Order[]),...((data??[]) as Order[])].map(o=>[o.id,o])).values()].sort((a,b)=>Date.parse(b.created_at)-Date.parse(a.created_at));
   const daily=(metrics??[]) as {order_id:string;day:string;views:number;engagements:number}[];
   const brokerActive=plan?.active&&(!plan.expires_at||new Date(plan.expires_at)>new Date());
   return <section id="listing-purchases" className="panel" style={{padding:'1.5rem',marginBlock:'1.5rem'}}>
     <h2>{es?'Publicación y promociones':'Listing purchases and promotions'}</h2>
     <p>{es?'Selecciona un anuncio propio. El pago no publica automáticamente ni evita el requisito de NDA.':'Choose your own listing. Payment does not automatically publish it or bypass the NDA requirement.'}</p>
     <p>{es?'Las promociones duran 30 días calendario desde la confirmación del pago. Solo se muestran en resultados pertinentes mientras el anuncio está publicado y vigente. No garantizan consultas ni una venta.':'Promotions run for 30 calendar days from payment confirmation. They appear only in relevant results while the listing is published and current. They do not guarantee inquiries or a sale.'}</p>
-    {purchase && <p role="status">{es?'Revisa el estado confirmado abajo. Volver de la página de pago no confirma un cobro. Actualiza la página si el pago sigue procesándose.':'Review the confirmed status below. Returning from checkout does not confirm a charge. Refresh if payment is still processing.'}</p>}
+    {purchase==='access_required'?<p role="alert">{es?'Para publicar, compra una publicación individual para este borrador o activa un plan de corredor.':'To publish, purchase a Single Listing for this draft or activate a broker plan.'}</p>:purchase && <p role="status">{es?'Revisa el estado confirmado abajo. Volver de la página de pago no confirma un cobro. Actualiza la página si el pago sigue procesándose.':'Review the confirmed status below. Returning from checkout does not confirm a charge. Refresh if payment is still processing.'}</p>}
     {purchase==='review_required'&&<p role="alert">{es?'No se pudo cancelar este pago. Puede estar procesándose. Revisa Administrar facturación antes de intentar otro pago.':'This checkout could not be canceled and may already be processing. Check Manage billing before attempting another payment.'}</p>}
     {purchase==='checkout_failed'&&<p role="alert">{es?'No se pudo abrir el pago. Para una publicación individual, guarda un borrador con un NDA autorizado y revisado. Para una promoción, confirma que el anuncio esté publicado y vigente. Si aparece un pago pendiente, continúa ese pago en lugar de iniciar otro.':'Checkout could not be opened. For a Single Listing, save a draft with an authorized, reviewed NDA. For a promotion, confirm that the listing is published and current. If a pending checkout appears, resume it instead of starting another payment.'}</p>}
     <a className="button button--light" href={`/${locale}/pricing`}>{es?'Administrar facturación':'Manage billing'}</a>
@@ -39,7 +40,7 @@ export async function ListingPurchases({userId,listings,locale,purchase}:{userId
           const rows=daily.filter(d=>d.order_id===o.id);const views=rows.reduce((n,d)=>n+Number(d.views),0),engagements=rows.reduce((n,d)=>n+Number(d.engagements),0);
           return <details key={o.id}><summary>{productName(o.product_code,es)} · {es?'Resultados':'Results'}</summary>
             <p>{views} {es?'vistas de miembros':'member card views'} · {engagements} {es?'interacciones':'engagements'}</p>
-            <p>{es?'Una vista o interacción por miembro y día UTC; excluye tu cuenta y visitantes sin sesión. No son ventas ni compradores únicos durante toda la campaña.':'At most one view or engagement per member per UTC day; excludes your account and signed-out visitors. These are not sales or campaign-wide unique buyers.'}</p>
+            <p>{es?'Últimos 90 días: una vista o interacción por miembro que permite estadísticas y día UTC; excluye tu cuenta y visitantes sin sesión. Borrar actividad reduce los totales. No son ventas ni compradores únicos durante toda la campaña.':'Last 90 days: at most one view or engagement per consenting member per UTC day; excludes your account and signed-out visitors. Cleared activity reduces totals. These are not sales or campaign-wide unique buyers.'}</p>
             {o.product_code==='highest_visibility'&&<ul>{rows.slice(0,30).map(d=><li key={d.day}>{d.day} · {d.views} {es?'vistas':'views'} · {d.engagements} {es?'interacciones':'engagements'}</li>)}</ul>}
           </details>;
         })}

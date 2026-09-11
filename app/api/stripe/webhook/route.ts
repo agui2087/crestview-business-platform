@@ -8,7 +8,7 @@ import {
 } from "@/lib/stripe/config";
 import { getStripe } from "@/lib/stripe/server";
 import { createRequestId, logOperationalEvent, reportOperationalEvent } from "@/lib/observability";
-import { deliverListingCheckout, expireListingCheckout, revokeListingCharge } from "@/lib/listing-product-server";
+import { deliverListingCheckout, expireListingCheckout, failListingCheckout, revokeListingCharge } from "@/lib/listing-product-server";
 
 export const runtime = "nodejs";
 
@@ -194,6 +194,7 @@ export async function POST(request: Request) {
       case "invoice.payment_failed":
       case "payment_intent.payment_failed":
       case "checkout.session.async_payment_failed":
+        if(event.type==='checkout.session.async_payment_failed')await failListingCheckout(event.data.object);
         await applyBillingEvent(event);
         await reportOperationalEvent({
           event: "stripe.payment_failed",

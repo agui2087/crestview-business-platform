@@ -14,7 +14,7 @@ test('listing-specific paid delivery, permissions and lifecycle',async t=>{
       insert into auth.users values('${owner}'),('${other}');
       create table marketplace_listings(id uuid primary key,broker_id uuid,status text,updated_at timestamptz default now());
       create table listing_nda_templates(listing_id uuid,broker_id uuid,broker_attested boolean,auto_send boolean,storage_path text,security_status text);`);
-    for(const name of ['0010_stripe_billing.sql','0044_listing_product_delivery.sql'])await db.exec(await readFile(new URL(`../supabase/migrations/${name}`,import.meta.url),'utf8'));
+    for(const name of ['0010_stripe_billing.sql','0044_listing_product_delivery.sql','0045_listing_checkout_recovery.sql'])await db.exec(await readFile(new URL(`../supabase/migrations/${name}`,import.meta.url),'utf8'));
     const reset=async()=>{await db.exec(`reset role;truncate listing_promotion_engagement,listing_product_orders,listing_payment_revocations,marketplace_listings,listing_nda_templates,billing_customers,billing_entitlements;
       insert into marketplace_listings(id,broker_id,status) values('${listing}','${owner}','draft');
       insert into listing_nda_templates values('${listing}','${owner}',true,true,'synthetic.pdf','malware_scanned');
@@ -73,6 +73,36 @@ test('listing-specific paid delivery, permissions and lifecycle',async t=>{
       assert.equal((await db.query<{views:number}>('select * from my_listing_promotion_metrics()')).rows[0].views,1);
       await assert.rejects(prepare('enhanced_visibility'));
       await db.exec("reset role;update listing_product_orders set ends_at=now()-interval '1 second';set role anon");assert.equal((await db.query('select * from active_listing_promotions()')).rows.length,0);
+    });
+    await t.test('only expired unbound reservations can be released, and only by the service',async()=>{
+      await reset();const o=await prepare();
+      assert.equal((await db.query<{ok:boolean}>('select expire_unbound_listing_order($1) ok',[o.id])).rows[0].ok,false);
+      await db.exec("reset role;update listing_product_orders set checkout_expires_at=now()-interval '2 minutes';set role authenticated");
+      await assert.rejects(db.query('select expire_unbound_listing_order($1)',[o.id]),{code:'42501'});
+      await db.exec('set role service_role');assert.equal((await db.query<{ok:boolean}>('select expire_unbound_listing_order($1) ok',[o.id])).rows[0].ok,true);
+      await reset();const p=await prepare();await db.query('select bind_listing_product_checkout($1,$2)',[p.id,'cs_fixture']);
+      await db.exec("reset role;update listing_product_orders set checkout_expires_at=now()-interval '2 minutes';set role service_role");
+      assert.equal((await db.query<{ok:boolean}>('select expire_unbound_listing_order($1) ok',[p.id])).rows[0].ok,false);
+    });
+    await t.test('failed checkout cannot release another owner or replace an already paid order',async()=>{
+      await reset();const o=await prepare();
+      await assert.rejects(db.query("select fail_listing_product_checkout($1,'cs_fixture',$2,$3,'cus_fixture','single_listing')",[o.id,other,listing]));
+      await deliver(o.id);
+      assert.equal((await db.query<{ok:boolean}>("select fail_listing_product_checkout($1,'cs_fixture',$2,$3,'cus_fixture','single_listing') ok",[o.id,owner,listing])).rows[0].ok,false);
+      await db.exec(`set role authenticated;select set_config('request.jwt.claim.sub','${owner}',false)`);
+      assert.equal((await db.query<{orders:unknown[]}>('select my_current_listing_orders() orders')).rows[0].orders.length,1);
+      await db.exec(`select set_config('request.jwt.claim.sub','${other}',false)`);
+      assert.equal((await db.query<{orders:unknown[]}>('select my_current_listing_orders() orders')).rows[0].orders.length,0);
+    });
+    await t.test('members can clear only their own analytics and reports prune old activity',async()=>{
+      await reset();const o=await prepare();await deliver(o.id);await db.exec('reset role');
+      await db.query("insert into listing_promotion_engagement values($1,$2,current_date,'view'),($1,$3,current_date,'view'),($1,$3,current_date-91,'view')",[o.id,owner,other]);
+      await db.exec(`set role authenticated;select set_config('request.jwt.claim.sub','${other}',false);select clear_my_listing_promotion_activity();reset role`);
+      assert.equal((await db.query<{n:number}>('select count(*)::int n from listing_promotion_engagement')).rows[0].n,1);
+      await db.query("insert into listing_promotion_engagement values($1,$2,current_date-91,'view')",[o.id,other]);
+      await db.exec(`set role authenticated;select set_config('request.jwt.claim.sub','${owner}',false)`);
+      assert.equal((await db.query<{views:number}>('select * from my_listing_promotion_metrics()')).rows[0].views,1);
+      await db.exec('reset role');assert.equal((await db.query<{n:number}>('select count(*)::int n from listing_promotion_engagement')).rows[0].n,1);
     });
     await t.test('browser roles cannot mutate fulfillment; purchase history is owner scoped',async()=>{
       await reset();await prepare();for(const role of ['anon','authenticated']){

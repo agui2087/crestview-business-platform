@@ -2,6 +2,13 @@ import {NextResponse} from 'next/server';
 import {hasValidOrigin} from '@/lib/stripe/request';
 import {createSupabaseServerClient} from '@/lib/supabase/server';
 import {listingProductsEnabled} from '@/lib/billing-availability';
+export async function DELETE(request:Request){
+  if(!hasValidOrigin(request))return new NextResponse(null,{status:403});
+  const supabase=await createSupabaseServerClient();const {data:{user}}=await supabase.auth.getUser();
+  if(!user)return new NextResponse(null,{status:401});
+  const {error}=await supabase.rpc('clear_my_listing_promotion_activity');
+  return new NextResponse(null,{status:error?503:204});
+}
 export async function POST(request:Request){
   if(!listingProductsEnabled()||!hasValidOrigin(request))return new NextResponse(null,{status:403});
   if(Number(request.headers.get('content-length')??0)>1024)return new NextResponse(null,{status:413});

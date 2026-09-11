@@ -6,7 +6,7 @@ import { LocaleSwitcher } from "@/components/locale-switcher";
 import { chatGPTSignOutPath, getChatGPTUser } from "@/app/chatgpt-auth";
 import { isLocale } from "@/lib/i18n";
 import { localizedPublicMetadata } from "@/lib/seo";
-import { isCheckoutProductAvailable } from "@/lib/billing-availability";
+import { isCheckoutProductAvailable, isListingProduct } from "@/lib/billing-availability";
 
 export async function generateMetadata({ params }: PageProps<"/[locale]/pricing">): Promise<Metadata> {
   const { locale } = await params;
@@ -47,7 +47,7 @@ function PlanCard({
         <strong>{plan.price}</strong>
         {plan.cadence && <span>{plan.cadence}</span>}
       </div>
-      {plan.productCode && !isCheckoutProductAvailable(plan.productCode) ? (
+      {plan.productCode && isCheckoutProductAvailable(plan.productCode) && isListingProduct(plan.productCode) ? <Link className="button button--primary" href={`/${locale}/dashboard/listings#listing-purchases`}>{locale==='es'?'Elegir anuncio':'Choose a listing'}</Link> : plan.productCode && !isCheckoutProductAvailable(plan.productCode) ? (
         <div>
           <button className="button button--light" type="button" disabled>{locale === "es" ? "Aún no disponible" : "Not yet available"}</button>
           <p>{locale === "es" ? "Funciones previstas. Las compras están pausadas mientras verificamos la entrega. No se cobrará este producto." : "Planned features. Purchases are paused while delivery is verified. This product cannot be charged."}</p>
@@ -340,7 +340,7 @@ export default async function PricingPage({
       <section className="shell pricing-faq"><h2>{es ? "Preguntas sobre los planes" : "Plan questions"}</h2><div>
         <article><h3>{es ? "¿Puedo usar todo el proceso gratis?" : "Can I complete the process for free?"}</h3><p>{es ? "Sí. Buscar, guardar, valorar, organizar la diligencia y avanzar por la lista de adquisición permanecerá disponible sin Pro." : "Yes. Searching, saving, valuing, organizing diligence, and moving through the acquisition checklist will remain available without Pro."}</p></article>
         <article><h3>{es ? "¿Puedo comenzar sin elegir un plan pagado?" : "Can I start without choosing a paid plan?"}</h3><p>{es ? "Sí. Crea una cuenta gratuita y comienza con las herramientas esenciales. Podrás elegir una mejora desde tu cuenta cuando la necesites." : "Yes. Create a free account and begin with the essential tools. You can choose an upgrade from your account when you need it."}</p></article>
-        <article><h3>{es ? "¿Cuánto dura una publicación?" : "How long does a listing remain active?"}</h3><p>{es ? "Una publicación continúa hasta su venta, retiro o inactividad. La disponibilidad debe confirmarse cada 30 días; los anuncios sin confirmar se ocultan de la búsqueda hasta que el corredor los vuelva a confirmar." : "A listing continues until it is sold, withdrawn, or inactive. Availability must be confirmed every 30 days; unconfirmed listings are hidden from search until the broker reconfirms them."}</p></article>
+        <article><h3>{es ? "¿Cuánto dura una publicación?" : "How long does a listing remain active?"}</h3><p>{es ? "Una publicación continúa hasta su venta, retiro o inactividad. Confirma la disponibilidad cada 30 días con el Plan para Corredores, o cada 60 días con Una publicación. Los anuncios sin confirmar se ocultan hasta que vuelvas a confirmarlos. Una compra individual no se transfiere a otro anuncio." : "A listing continues until it is sold, withdrawn, or inactive. Confirm availability every 30 days with Broker Plan, or every 60 days with Single Listing. Unconfirmed listings are hidden until reconfirmed. A Single Listing purchase cannot be transferred to another listing."}</p></article>
       </div></section>
     </main>
 

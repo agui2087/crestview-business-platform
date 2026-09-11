@@ -5,6 +5,8 @@ import { PageHeading, PlatformShell } from "@/components/platform-shell";
 import { getMarketplaceListings, formatMoney } from "@/lib/marketplace";
 import { isLocale } from "@/lib/i18n";
 import { createInquiry } from "./actions";
+import {ListingPromotionLabel} from '@/components/listing-promotion-label';
+import {PromotionEngagement} from '@/components/promotion-engagement';
 
 export const metadata: Metadata = { title: "Marketplace" };
 
@@ -67,6 +69,8 @@ export default async function MarketplacePage({ params, searchParams }: PageProp
         <div className="marketplace-listings">
           {visibleListings.map((listing) => (
             <article className="marketplace-card" key={listing.id}>
+              <ListingPromotionLabel tier={listing.promotion?.tier} locale={locale}/>
+              {listing.promotion && <PromotionEngagement listingId={listing.id}/>}
               <header>
                 <div>
                   <span className="source-label">Broker-posted opportunity</span>

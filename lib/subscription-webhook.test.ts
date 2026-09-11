@@ -15,6 +15,7 @@ test('subscription webhook reads current Stripe state, verifies identity metadat
   runInNewContext(ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{
     exports,process:{env:{STRIPE_WEBHOOK_SECRET:'synthetic-test-only'}},require:(name:string)=>{
       if(name==='next/server')return {NextResponse:{json:(_:unknown,opts?:{status:number})=>({status:opts?.status??200})}};
+      if(name==='@/lib/listing-product-server')return {};
       if(name==='@/lib/observability')return {createRequestId:()=>"synthetic",logOperationalEvent:()=>{},reportOperationalEvent:async()=>{}};
       if(name==='@/lib/stripe/config')return {getProductCodeForPrice:()=> 'broker_plan',productDefinitions:{broker_plan:{mode:'subscription'}}};
       if(name==='@/lib/supabase/admin')return {createSupabaseAdminClient:()=>({rpc:async(name:string,params:Record<string,unknown>)=>{calls.push({name,params});return {error:null};}})};

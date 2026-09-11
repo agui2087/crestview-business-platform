@@ -1,5 +1,7 @@
 import "server-only";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import {listingProductsEnabled} from '@/lib/billing-availability';
+import {applyListingPlacement,type Promotion} from '@/lib/listing-placement';
 
 export type MarketplaceListing = {
   id: string;
@@ -18,6 +20,8 @@ export type MarketplaceListing = {
   updated_at: string;
   quality_score?: number;
   nda_automatic?: boolean;
+  promotion?: Promotion;
+  confirmation_days?: number;
 };
 
 export type DealInquiry = {
@@ -120,7 +124,7 @@ export async function getMarketplaceListings() {
   try {
     const supabase = await createSupabaseServerClient();
     const freshnessCutoff = new Date();
-    freshnessCutoff.setDate(freshnessCutoff.getDate() - 30);
+    freshnessCutoff.setDate(freshnessCutoff.getDate() - (listingProductsEnabled()?60:30));
     const { data, error } = await supabase
       .from("marketplace_listings")
       .select("id,broker_id,title,summary,industry,city,state_code,asking_price,annual_revenue,cash_flow,financing_available,public_highlights,status,updated_at,quality_score,listing_nda_templates(auto_send)")
@@ -129,12 +133,19 @@ export async function getMarketplaceListings() {
       .order("updated_at", { ascending: false });
     if (error) throw new Error("Workspace records could not be loaded.");
     if (!data?.length) return [];
-    return data.map((listing) => ({
+    const mapped=data.map((listing) => ({
       ...listing,
       nda_automatic: Array.isArray(listing.listing_nda_templates)
         ? Boolean(listing.listing_nda_templates[0]?.auto_send)
         : Boolean((listing.listing_nda_templates as { auto_send?: boolean } | null)?.auto_send),
     })) as MarketplaceListing[];
+    if(!listingProductsEnabled())return mapped;
+    const {data:promotions,error:promotionError}=await supabase.rpc('active_listing_promotions');
+    if(promotionError)throw new Error('Promotion placement could not be verified.');
+    const {data:windows,error:windowError}=await supabase.rpc('listing_publication_windows');
+    if(windowError)throw new Error('Listing availability could not be verified.');
+    const days=new Map((windows as {listing_id:string;days:number}[]).map(w=>[w.listing_id,w.days]));
+    return applyListingPlacement(mapped.filter(l=>new Date(l.updated_at).getTime()>=Date.now()-(days.get(l.id)??30)*86400000),(promotions??[]) as Promotion[]);
   } catch {
     throw new Error("Workspace records could not be loaded. Please try again.");
   }
@@ -152,8 +163,14 @@ export async function getMyListings(userId?: string) {
       .order("updated_at", { ascending: false });
     if (error) throw new Error("Workspace records could not be loaded.");
     if (!data?.length) return [];
+    let days=new Map<string,number>();
+    if(listingProductsEnabled()){
+      const result=await supabase.rpc('listing_publication_windows');if(result.error)throw result.error;
+      days=new Map((result.data as {listing_id:string;days:number}[]).map(w=>[w.listing_id,w.days]));
+    }
     return data.map((listing) => ({
       ...listing,
+      confirmation_days:days.get(listing.id)??30,
       nda_automatic: Array.isArray(listing.listing_nda_templates)
         ? Boolean(listing.listing_nda_templates[0]?.auto_send)
         : Boolean((listing.listing_nda_templates as { auto_send?: boolean } | null)?.auto_send),

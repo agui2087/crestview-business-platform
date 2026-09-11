@@ -12,7 +12,8 @@ import {
 } from "@/lib/stripe/config";
 import { hasValidOrigin, redirectToSignIn, stripeReturnUrl } from "@/lib/stripe/request";
 import { getStripe } from "@/lib/stripe/server";
-import { isCheckoutProductAvailable } from "@/lib/billing-availability";
+import { isCheckoutProductAvailable, isListingProduct } from "@/lib/billing-availability";
+import { listingProductCheckout } from "@/lib/listing-product-server";
 import { createRequestId, logOperationalEvent, reportOperationalEvent } from "@/lib/observability";
 
 export const runtime = "nodejs";
@@ -85,6 +86,11 @@ export async function POST(request: Request) {
         updated_at: new Date().toISOString(),
       }, { onConflict: "user_id" });
       if (error) throw error;
+    }
+
+    if(isListingProduct(productCode)){
+      const url=await listingProductCheckout({userId:user.id,listingId:String(formData.get('listing_id')??''),product:productCode,price:priceId,customer:stripeCustomerId,locale,origin:new URL(request.url).origin});
+      return NextResponse.redirect(url,303);
     }
 
     const metadata = {

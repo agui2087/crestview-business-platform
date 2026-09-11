@@ -29,6 +29,7 @@ test('released schema enforces subscription writes and retains read/security acc
   await as(owner);await db.query("select workforce_save_business($1,0,'Business','America/Los_Angeles')",[owner]);
   const employee=(await db.query<{id:string}>("insert into employees(user_id,full_name) values($1,'Synthetic') returning id",[owner])).rows[0].id;
   const membership=(await db.query<{id:string}>("select workforce_invite($1,'hr@example.invalid','hr',null) id",[owner])).rows[0].id;
+  await db.query("select workforce_invite($1,'hr@example.invalid','hr',$2)",[owner,employee]);
   await as(hr);await db.query('select workforce_membership_decision($1,true)',[membership]);
   assert.equal((await db.query<{active:boolean}>('select * from workforce_billing_status($1)',[owner])).rows[0].active,true);
   await db.query("select workforce_update_employee($1,1,'{\"position\":\"Manager\"}')",[employee]);

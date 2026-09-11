@@ -29,7 +29,7 @@ begin
  if TG_OP='UPDATE' then
    o:=to_jsonb(OLD);
    if (coalesce(o->>'owner_id',o->>'user_id') is not null and coalesce(o->>'owner_id',o->>'user_id') is distinct from business::text)
-      or (n->>'employee_id' is distinct from o->>'employee_id') then
+      or (coalesce(n->>'owner_id',n->>'user_id') is null and n->>'employee_id' is distinct from o->>'employee_id') then
      raise exception 'Business cannot change' using errcode='42501';
    end if;
    -- Security revocations must never be held behind a subscription paywall.

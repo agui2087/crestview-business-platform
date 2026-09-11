@@ -12,6 +12,9 @@ for (const locale of ["en","es"]) {
     if(await start.count())await start.click();
     const stages=page.locator('.acquisition-steps button');
     await expect(stages).toHaveCount(8);
+    const progress = page.getByRole('progressbar', {name: locale === 'es' ? '0% progreso guardado' : '0% saved progress'});
+    await expect(progress).toHaveAttribute('value', '0');
+    expect(await page.locator('#valuation').evaluate(el => Boolean(el.compareDocumentPosition(document.querySelector('#summary')!) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
     await page.locator('.skip-link').click();
     const dialog=page.getByRole('dialog');
     await expect(dialog).toBeVisible();
@@ -24,6 +27,8 @@ for (const locale of ["en","es"]) {
     for(let stage=0;stage<8;stage++){
       await stages.nth(stage).click();
       await expect(stages.nth(stage)).toHaveAttribute('aria-current','step');
+      await expect(page.locator('.acquisition-stage > h2')).toBeFocused();
+      if(stage > 0) await expect(page.locator('.checklist-sequence-note')).toBeVisible();
       const results=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa','wcag22aa']).analyze();
       expect(results.violations.map(v=>v.id+': '+v.nodes.map(n=>n.target.join(' ')).join(',')),`Stage ${stage+1}`).toEqual([]);
       expect(await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth),`Stage ${stage+1} overflow`).toBe(false);
@@ -36,11 +41,25 @@ for (const locale of ["en","es"]) {
     const finalItems=page.locator('.acquisition-stage .check-card input[type="checkbox"]');
     for(const item of await finalItems.all()) await item.check();
     await page.getByRole('button',{name:locale==='es'?'Revisión terminada':'Review finished',exact:true}).click();
-    await expect(finish).toBeEnabled();
-    await finish.click();
-    await expect(page.getByRole('button',{name:locale==='es'?'Lista revisada':'Checklist reviewed',exact:true})).toBeDisabled();
-    await finalItems.first().uncheck();
+    // Filling the final stage cannot bypass the seven earlier reviews.
     await expect(finish).toBeDisabled();
+    await expect(progress).toHaveAttribute('value', '0');
+    await page.locator('.checklist-sequence-note button').click();
+    await expect(stages.first()).toHaveAttribute('aria-current', 'step');
+    const firstItems=page.locator('.acquisition-stage .check-card input[type="checkbox"]');
+    for (const item of await firstItems.all()) await item.check();
+    await page.getByRole('button', {name: locale === 'es' ? 'Listo para continuar' : 'Ready for next step', exact: true}).click();
+    const next=page.getByRole('button', {name: locale === 'es' ? 'Guardar y continuar' : 'Save and continue', exact: true});
+    await expect(next).toBeEnabled();
+    await next.click();
+    // This presentation environment has no hosted database. A rejected save
+    // must remain visibly incomplete rather than pretending persistence worked.
+    await expect(page.getByText(locale==='es'?'No se guardó el progreso. Vuelve a intentarlo antes de salir.':'Progress was not saved. Retry before leaving this page.',{exact:true})).toBeVisible();
+    await expect(page.getByRole('button',{name:locale==='es'?'Lista revisada':'Checklist reviewed',exact:true})).toHaveCount(0);
+    await expect(stages.first()).toHaveAttribute('aria-current', 'step');
+    await expect(progress).toHaveAttribute('value', '0');
+    await firstItems.first().uncheck();
+    await expect(next).toBeDisabled();
     await expect(page.getByText('Purchase complete',{exact:true})).toHaveCount(0);
   });
 }

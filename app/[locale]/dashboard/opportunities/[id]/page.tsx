@@ -132,9 +132,10 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
           </div>
         </div>
         <div className="source-warning">{es ? "Información proporcionada por el vendedor o corredor. Crestview no ha verificado el anuncio." : "Seller or broker reported information. Crestview has not independently verified the listing."} {inquiryId ? (es ? "Registro del trato actualizado:" : "Deal record updated:") : (es ? "Fuente revisada:" : "Source last checked:")} {opportunity.lastChecked}. <strong>{es ? "Los cálculos de Crestview se muestran por separado." : "Crestview calculations are labeled separately."}</strong></div>
-        <nav className="deal-workspace-nav" aria-label="Deal workspace sections">
-          <a href="#summary">{es ? "Resumen" : "Summary"}</a><a href="#valuation">{es ? "Plan de adquisición" : "Acquisition plan"}</a><a href="#guided-plan">{es ? "Espacio guiado" : "Guided workspace"}</a><a href="#diligence">{es ? "Diligencia" : "Diligence"}</a><a href="#broker">{es ? "Actividad del corredor" : "Broker activity"}</a><a href="#notes">{es ? "Notas privadas" : "Private notes"}</a>
+        <nav className="deal-workspace-nav" aria-label={es ? "Secciones del espacio de adquisición" : "Deal workspace sections"}>
+          <a href="#valuation">{es ? "Lista de compra" : "Buying checklist"}</a><a href="#summary">{es ? "Resumen" : "Summary"}</a><a href="#guided-plan">{es ? "Herramientas de apoyo" : "Supporting tools"}</a><a href="#diligence">{es ? "Diligencia" : "Diligence"}</a><a href="#broker">{es ? "Actividad del corredor" : "Broker activity"}</a><a href="#notes">{es ? "Notas privadas" : "Private notes"}</a>
         </nav>
+        <div id="valuation"><AcquisitionPlanner opportunity={opportunity} initialWorkspace={workspace} locale={locale} /></div>
         <div className="detail-metrics" id="summary">
           {[[es ? "Precio solicitado" : "Asking price",opportunity.price],[es ? "Ingresos" : "Revenue",opportunity.revenue],[es ? "Flujo de caja / SDE" : "Cash flow / SDE",opportunity.cashFlow],["EBITDA",opportunity.ebitda]].map(([label,value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}
         </div>
@@ -183,7 +184,6 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
             <p>{buyerFit.matched} {es ? "criterios coinciden" : "criteria match"} · {buyerFit.needsReview} {es ? "necesitan revisión" : "need review"}. {es ? "Este porcentaje organiza tu investigación; no recomienda la compra." : "This percentage organizes your research; it is not a recommendation to buy."}</p>
           </> : <div className="buyer-deal-fit__empty"><p>{es ? "Guarda tu presupuesto, flujo de caja, industrias y ubicaciones preferidas una sola vez. Crestview explicará cómo encaja cada anuncio." : "Save your budget, cash-flow target, industries, and locations once. Crestview will explain how every listing fits."}</p><Link className="button button--primary" href={`/${locale}/dashboard/settings#listing-alerts`}>{es ? "Crear mi perfil de comprador" : "Create my buyer profile"}</Link></div>}
         </section>
-        <div id="valuation"><AcquisitionPlanner opportunity={opportunity} initialWorkspace={workspace} locale={locale} /></div>
         {workspace && workspace.stage !== "saved" && <GuidedAcquisitionWorkspace
           locale={locale} opportunityKey={opportunity.id} industry={opportunity.industry}
           defaultPrice={opportunity.priceValue ?? 0} defaultCashFlow={opportunity.cashFlowValue ?? 0}

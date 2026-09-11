@@ -8,6 +8,7 @@ import {
 } from "@/lib/stripe/config";
 import { getStripe } from "@/lib/stripe/server";
 import { createRequestId, logOperationalEvent, reportOperationalEvent } from "@/lib/observability";
+import { deliverListingCheckout, expireListingCheckout, revokeListingCharge } from "@/lib/listing-product-server";
 
 export const runtime = "nodejs";
 
@@ -62,6 +63,11 @@ async function applyBillingEvent(
 }
 
 async function processPaidCheckout(event: Stripe.Event, session: Stripe.Checkout.Session) {
+  if(session.metadata?.fulfillment_version==='listing-v1'){
+    await deliverListingCheckout(event,session);
+    await applyBillingEvent(event);
+    return;
+  }
   if (session.mode !== "payment" || session.payment_status !== "paid") {
     await applyBillingEvent(event);
     return;
@@ -157,6 +163,20 @@ export async function POST(request: Request) {
 
   try {
     switch (event.type) {
+      case 'checkout.session.expired':
+        await expireListingCheckout(event.data.object);
+        await applyBillingEvent(event);
+        break;
+      case 'charge.refunded':
+        await revokeListingCharge(event,event.data.object.id,'refunded');
+        await applyBillingEvent(event);
+        break;
+      case 'charge.dispute.created': {
+        const charge=event.data.object.charge;
+        await revokeListingCharge(event,typeof charge==='string'?charge:charge.id,'disputed');
+        await applyBillingEvent(event);
+        break;
+      }
       case "checkout.session.completed":
       case "checkout.session.async_payment_succeeded":
         await processPaidCheckout(event, event.data.object);

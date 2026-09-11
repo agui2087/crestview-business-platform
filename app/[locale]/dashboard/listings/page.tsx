@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { PageHeading, PlatformShell } from "@/components/platform-shell";
 import { FormattedMoneyInput } from "@/components/formatted-money-input";
 import { ListingDraftEditor } from "@/components/listing-draft-editor";
+import {ListingPurchases} from '@/components/listing-purchases';
 import "./listings.css";
 import { getCrestviewUser } from "@/lib/current-user";
 import { formatMoney, getMyListings } from "@/lib/marketplace";
@@ -38,7 +39,7 @@ export default async function ListingsPage({ params, searchParams }: PageProps<"
     }
   }
   const listings = await getMyListings(userId);
-  const freshnessCutoff = currentTimestamp() - 30 * 24 * 60 * 60 * 1000;
+  const currentTime = currentTimestamp();
   const activeListings = listings.filter((item) => ["published", "under_offer"].includes(item.status));
   return (
     <PlatformShell locale={locale} active="listings">
@@ -52,7 +53,7 @@ export default async function ListingsPage({ params, searchParams }: PageProps<"
         {query.created && <p className="notice">Your listing was saved successfully.</p>}
         {query.updated && <p className="notice" role="status">{locale === "es" ? "Cambios guardados." : "Your listing changes were saved."}</p>}
         {query.nda_saved && <p className="notice" role="status">{locale === "es" ? "NDA guardado. Ahora puedes publicar el borrador con un plan activo." : "NDA saved. You can now publish the draft with an active broker plan."}</p>}
-        {query.confirmed && <p className="notice">Availability confirmed. Buyers can continue finding this listing for another 30 days.</p>}
+        {query.confirmed && <p className="notice">{locale==='es'?'Disponibilidad confirmada.':'Listing availability confirmed.'}</p>}
         {query.duplicate && <p className="auth-error">Possible duplicate detected. Your listing was saved, but please compare it with your existing listings and pause or remove any duplicate.</p>}
         {query.error === "limit" && <p className="auth-error">You have reached the limit of 100 active listings. Pause, sell, or withdraw one before publishing another.</p>}
         {query.error === "nda_required" && <p className="auth-error">Add an approved PDF NDA and confirm you are authorized to use it before publishing. You can keep the listing as a draft until then.</p>}
@@ -123,6 +124,7 @@ export default async function ListingsPage({ params, searchParams }: PageProps<"
             </div>
           </form>
         </details>
+        <ListingPurchases userId={userId} listings={listings} locale={locale} purchase={query.purchase}/>
         <div className="listing-management">
           {listings.map((listing) => (
             <article key={listing.id}>
@@ -139,7 +141,7 @@ export default async function ListingsPage({ params, searchParams }: PageProps<"
               {!listing.id.startsWith("demo-") && ["published", "under_offer"].includes(listing.status) && <form action={confirmListingAvailability}>
                 <input type="hidden" name="locale" value={locale} />
                 <input type="hidden" name="listing_id" value={listing.id} />
-                <small>{new Date(listing.updated_at).getTime() >= freshnessCutoff ? `Confirmed ${new Date(listing.updated_at).toLocaleDateString()}` : "Confirmation overdue—hidden from buyer search"}</small>
+                <small>{new Date(listing.updated_at).getTime() >= currentTime-(listing.confirmation_days??30)*86400000 ? `Confirmed ${new Date(listing.updated_at).toLocaleDateString()} · ${listing.confirmation_days??30}-day confirmation window` : "Confirmation overdue—hidden from buyer search"}</small>
                 <button type="submit">Confirm availability</button>
               </form>}
               {listing.id.startsWith("demo-") && <span className="stage">Example listing</span>}

@@ -105,6 +105,7 @@ async function requireActiveBrokerPlan(
   locale: string,
   supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
   userId: string,
+  listingId?: string,
 ) {
   const { data: entitlement } = await supabase
     .from("billing_entitlements")
@@ -116,7 +117,13 @@ async function requireActiveBrokerPlan(
     entitlement?.active &&
       (!entitlement.expires_at || new Date(entitlement.expires_at) > new Date()),
   );
-  if (!active) redirect(`/${locale}/pricing?billing_error=broker_plan_required`);
+  if(!active && listingId && process.env.CRESTVIEW_LISTING_PRODUCTS_ENABLED==='true'){
+    const {data:license,error}=await supabase.from('listing_product_orders').select('id').eq('user_id',userId).eq('listing_id',listingId)
+      .eq('product_code','single_listing').eq('status','paid').is('ends_at',null).maybeSingle();
+    if(error)throw error;
+    if(license)return;
+  }
+  if (!active) redirect(listingId && process.env.CRESTVIEW_LISTING_PRODUCTS_ENABLED==='true'?`/${locale}/dashboard/listings?purchase=access_required#listing-purchases`:`/${locale}/pricing?billing_error=broker_plan_required`);
 }
 
 function optionalNumber(value: FormDataEntryValue | null) {
@@ -284,7 +291,7 @@ export async function updateListingStatus(formData: FormData) {
   const status = z.enum(["draft","published","paused","under_offer","sold","withdrawn"]).parse(formData.get("status"));
   const listingId = z.string().uuid().parse(formData.get("listing_id"));
   if (ACTIVE_LISTING_STATUSES.includes(status)) {
-    await requireActiveBrokerPlan(locale, supabase, user.id);
+    await requireActiveBrokerPlan(locale, supabase, user.id,listingId);
     const { data: ndaTemplate } = await supabase.from("listing_nda_templates")
       .select("id")
       .eq("listing_id", listingId)

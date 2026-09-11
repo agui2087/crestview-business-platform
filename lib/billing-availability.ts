@@ -7,5 +7,13 @@ const availableProducts = new Set([
 ]);
 
 export function isCheckoutProductAvailable(productCode: string) {
-  return availableProducts.has(productCode);
+  return availableProducts.has(productCode) || (listingProductsEnabled() && isListingProduct(productCode));
+}
+
+export function listingProductsEnabled() {
+  return process.env.CRESTVIEW_LISTING_PRODUCTS_ENABLED === 'true';
+}
+
+export function isListingProduct(value: string) {
+  return ['single_listing','enhanced_visibility','highest_visibility'].includes(value);
 }

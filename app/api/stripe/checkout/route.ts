@@ -12,7 +12,8 @@ import {
 } from "@/lib/stripe/config";
 import { hasValidOrigin, redirectToSignIn, stripeReturnUrl } from "@/lib/stripe/request";
 import { getStripe } from "@/lib/stripe/server";
-import { isCheckoutProductAvailable } from "@/lib/billing-availability";
+import { isCheckoutProductAvailable, isListingProduct } from "@/lib/billing-availability";
+import { listingProductCheckout } from "@/lib/listing-product-server";
 import { createRequestId, logOperationalEvent, reportOperationalEvent } from "@/lib/observability";
 
 export const runtime = "nodejs";
@@ -87,6 +88,11 @@ export async function POST(request: Request) {
       if (error) throw error;
     }
 
+    if(isListingProduct(productCode)){
+      const url=await listingProductCheckout({userId:user.id,listingId:String(formData.get('listing_id')??''),product:productCode,price:priceId,customer:stripeCustomerId,locale,origin:new URL(request.url).origin});
+      return NextResponse.redirect(url,303);
+    }
+
     const metadata = {
       crestview_user_id: user.id,
       product_code: productCode,
@@ -124,6 +130,12 @@ export async function POST(request: Request) {
     return NextResponse.redirect(session.url, 303);
   } catch (error) {
     await reportOperationalEvent({ event: "stripe.checkout_failed", level: "error", requestId, route: "/api/stripe/checkout", error, details: { productCode: productCodeValue } });
+    if (isListingProduct(productCodeValue)) {
+      const returnUrl = new URL(`/${locale}/dashboard/listings`, request.url);
+      returnUrl.searchParams.set("purchase", "checkout_failed");
+      returnUrl.hash = "listing-purchases";
+      return NextResponse.redirect(returnUrl, 303);
+    }
     return NextResponse.redirect(stripeReturnUrl(request, locale, { billing_error: "checkout" }), 303);
   }
 }

@@ -30,3 +30,25 @@ test("undelivered paid listing products cannot open checkout, including a forged
   for(const product of ['broker_plan','crestview_pro','workforce'])assert.equal(isCheckoutProductAvailable(product),true);
   assert.equal(isCheckoutProductAvailable('unknown_product'),false);
 });
+
+test("listing checkout failure returns to its workflow with a visible error, not a success claim",async()=>{
+  const source=await readFile(new URL('../app/api/stripe/checkout/route.ts',import.meta.url),'utf8');
+  const exports:Record<string,(r:Request)=>Promise<{url:URL}>>={};
+  runInNewContext(ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,{
+    exports,Request,FormData,String,URL,require:(name:string)=>{
+      if(name==='next/server')return {NextResponse:{redirect:(url:URL)=>({url})}};
+      if(name==='@/lib/billing-availability')return {isCheckoutProductAvailable:()=>true,isListingProduct:()=>true};
+      if(name==='@/lib/i18n')return {isLocale:()=>true};
+      if(name==='@/lib/stripe/config')return {isProductCode:()=>true};
+      if(name==='@/lib/stripe/request')return {hasValidOrigin:()=>true};
+      if(name==='@/lib/observability')return {createRequestId:()=>"synthetic",reportOperationalEvent:async()=>{}};
+      if(name==='@/lib/supabase/server')return {createSupabaseServerClient:async()=>{throw new Error('Synthetic unavailable dependency');}};
+      return {};
+    }
+  });
+  const data=new FormData();data.set('product_code','single_listing');data.set('locale','es');
+  const result=await exports.POST(new Request('https://example.test/api/stripe/checkout',{method:'POST',body:data}));
+  assert.equal(result.url.pathname,'/es/dashboard/listings');
+  assert.equal(result.url.searchParams.get('purchase'),'checkout_failed');
+  assert.equal(result.url.hash,'#listing-purchases');
+});

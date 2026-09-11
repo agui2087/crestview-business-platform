@@ -5,6 +5,8 @@ import { PageHeading, PlatformShell } from "@/components/platform-shell";
 import { getMarketplaceListings, formatMoney } from "@/lib/marketplace";
 import { isLocale } from "@/lib/i18n";
 import { createInquiry } from "./actions";
+import {ListingPromotionLabel} from '@/components/listing-promotion-label';
+import {PromotionAnalytics,PromotionEngagement} from '@/components/promotion-engagement';
 
 export const metadata: Metadata = { title: "Marketplace" };
 
@@ -64,9 +66,11 @@ export default async function MarketplacePage({ params, searchParams }: PageProp
           <div><strong>{visibleListings.length} {visibleListings.length === 1 ? "opportunity" : "opportunities"}</strong><span>Broker-posted and ready for review</span></div>
           <Link href={`/${locale}/dashboard/settings#listing-alerts`}>Set listing alerts →</Link>
         </div>
-        <div className="marketplace-listings">
+        <PromotionAnalytics locale={locale}><div className="marketplace-listings">
           {visibleListings.map((listing) => (
             <article className="marketplace-card" key={listing.id}>
+              <ListingPromotionLabel tier={listing.promotion?.tier} locale={locale}/>
+              {listing.promotion && <PromotionEngagement listingId={listing.id}/>}
               <header>
                 <div>
                   <span className="source-label">Broker-posted opportunity</span>
@@ -115,7 +119,7 @@ export default async function MarketplacePage({ params, searchParams }: PageProp
               </details>
             </article>
           ))}
-        </div>
+        </div></PromotionAnalytics>
         {!visibleListings.length && <div className="empty-state"><strong>No exact matches yet</strong><p>Clear a filter or set a listing alert and Crestview will keep watch for you.</p><Link className="button button--primary" href={`/${locale}/dashboard/settings#listing-alerts`}>Set listing alert</Link></div>}
       </div>
     </PlatformShell>

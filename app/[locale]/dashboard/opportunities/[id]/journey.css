@@ -6,6 +6,19 @@
 .acquisition-detail-page .financing-disclaimer { color: #536159; }
 .acquisition-skip-dialog { margin: auto; border: 1px solid #dce4de; max-width: calc(100vw - 32px); }
 .acquisition-skip-dialog::backdrop { background: rgb(12 31 23 / .55); }
+.acquisition-coordination { grid-column:1 / -1; display:grid; gap:12px; }
+.acquisition-plan-settings,.checklist-broker-status { background:#fff; border:1px solid #c5d7cb; border-radius:12px; padding:18px; }
+.acquisition-plan-settings summary,.acquisition-task-details summary { cursor:pointer; color:#194f3d; font-weight:650; padding:8px 0; }
+.acquisition-plan-settings form,.acquisition-task-details form { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; padding-top:12px; }
+.acquisition-plan-settings label,.acquisition-task-details form label { display:grid; gap:6px; font-size:.85rem; border:0; padding:0; color:#244b3b; }
+.acquisition-plan-settings input,.acquisition-plan-settings select,.acquisition-task-details input,.acquisition-task-details select,.acquisition-task-details textarea { width:100%; min-width:0; padding:10px; border:1px solid #a8baad; border-radius:6px; background:white; color:#183e2e; font:inherit; }
+.acquisition-task-details p,.acquisition-plan-settings p { grid-column:1 / -1; font-size:.8rem; line-height:1.6; }
+.acquisition-task { border-bottom:1px solid #dce5de; padding-bottom:12px; margin-bottom:12px; }
+.acquisition-task-details { padding:0 10px; font-size:.8rem; }
+.acquisition-task-details form input { height:auto; min-height:44px; flex:auto; width:100%; }
+.task-applicability,.task-assignment,.task-overdue { margin:8px 10px; font-size:.8rem; line-height:1.5; }
+.task-applicability { color:#405b4d; }.task-overdue { color:#8c301c; font-weight:650; }
+@media(max-width:760px) { .acquisition-plan-settings form,.acquisition-task-details form { grid-template-columns:minmax(0,1fr); } }
 
 .acquisition-detail-page #valuation { scroll-margin-top: 24px; margin-bottom: 24px; }
 .acquisition-start-roadmap { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 24px; padding-left: 20px; color: #244b3b; font-size: .85rem; }

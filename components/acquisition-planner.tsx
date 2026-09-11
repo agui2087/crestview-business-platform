@@ -6,6 +6,9 @@ import type { Opportunity } from "@/lib/demo-data";
 import { financingResourcesFor } from "@/lib/financing-resources";
 import { saveAcquisitionWorkspace } from "@/app/[locale]/dashboard/opportunities/actions";
 import { acquisitionProgress, canReviewAcquisitionStep } from "@/lib/acquisition-progress";
+import {changeDealPlan, readDealPlan, readTaskDetails, tailoredChecklist, taskIsResolved} from "@/lib/acquisition-tailoring";
+import {AcquisitionTaskDetails} from "@/components/acquisition-task-details";
+import {AcquisitionPlanSettings} from "@/components/acquisition-plan-settings";
 
 const stagesEn = [
   ["Quick fit check", "Confirm this business fits your goals before spending more time or money."],
@@ -294,23 +297,32 @@ export function AcquisitionPlanner({
   opportunity,
   initialWorkspace,
   locale,
+  documents = [],
+  brokerStatus = null,
+  today = "",
 }: {
   opportunity: Opportunity;
   initialWorkspace: InitialWorkspace;
   locale: string;
+  documents?: Array<{id:string;title:string}>;
+  brokerStatus?: {nda:string;access:string;requests:number}|null;
+  today?: string;
 }) {
   const es = locale === "es";
-  const stages = es ? stagesEs : stagesEn;
-  const checklistItems = es ? checklistItemsEs : checklistItemsEn;
+  const [stepStatuses, setStepStatuses] = useState<Record<string, string>>(initialWorkspace?.checklist_progress ?? {});
+  const plan = readDealPlan(stepStatuses["plan:profile"]);
+  const stages = (es ? stagesEs : stagesEn).map(stage=>[...stage]);
+  if(plan?.financing === "cash") stages[3] = es ? ["Fondos de compra", "Confirma los fondos disponibles, gastos de cierre y reserva operativa."] : ["Purchase funds", "Confirm available funds, closing costs and operating reserves."];
+  const checklistItems = tailoredChecklist(es ? checklistItemsEs : checklistItemsEn,plan,es);
   const readyWhen = es ? readyWhenEs : readyWhenEn;
-  const useInformation = es ? useInformationEs : useInformationEn;
+  const useInformation = (es ? useInformationEs : useInformationEn).map(items=>[...items]);
+  if(plan?.financing === "cash") useInformation[3] = es ? ["Separa el precio de compra, gastos de cierre y reserva operativa.", "Revisa la disponibilidad de fondos con tu asesor y agente de cierre.", "Documenta las condiciones pendientes antes de comprometer fondos."] : ["Separate the purchase price, closing costs and operating reserve.", "Review funds availability with your advisor and closing agent.", "Document outstanding conditions before committing funds."];
   const user = useCrestviewUser();
   const [started, setStarted] = useState(Boolean(initialWorkspace && initialWorkspace.stage !== "saved"));
   const [current, setCurrent] = useState(() => {
     const next = acquisitionProgress(checklistItems, initialWorkspace?.checklist_progress ?? {}).nextStep;
     return next < 0 ? stages.length - 1 : next;
   });
-  const [stepStatuses, setStepStatuses] = useState<Record<string, string>>(initialWorkspace?.checklist_progress ?? {});
   const [savedStatuses, setSavedStatuses] = useState<Record<string, string>>(initialWorkspace?.checklist_progress ?? {});
   const stageHeading = useRef<HTMLHeadingElement>(null);
   const focusStage = useRef(false);
@@ -487,13 +499,15 @@ export function AcquisitionPlanner({
   }
   const atLastStep = current === stages.length - 1;
   const currentChecklist = checklistItems[current];
-  const completedChecklistItems = currentChecklist.filter((_, index) => stepStatuses[itemKey(current, index)] === "complete").length;
-  const progress = acquisitionProgress(checklistItems, savedStatuses);
+  const completedChecklistItems = currentChecklist.filter((_, index) => taskIsResolved(stepStatuses,current,index)).length;
+  const progress = acquisitionProgress(tailoredChecklist(es?checklistItemsEs:checklistItemsEn,readDealPlan(savedStatuses["plan:profile"]),es), savedStatuses);
   const draftProgress = acquisitionProgress(checklistItems, stepStatuses);
   const earlierStepPending = draftProgress.nextStep >= 0 && current > draftProgress.nextStep;
   const currentReviewComplete = draftProgress.complete[current];
+  const dealHref = opportunity.id.startsWith("deal-") ? `/${locale}/dashboard/deals/${opportunity.id.slice(5)}` : null;
+  const notApplicableCount = checklistItems.reduce((sum,items,step)=>sum+items.filter((_,item)=>savedStatuses[itemKey(step,item)]==="not_applicable"&&taskIsResolved(savedStatuses,step,item)).length,0);
   const currentDecision = stepStatuses[`decision:${current}`] ?? "";
-  const professionalGuidance = [
+  const professionalGuidance = current===3&&plan?.financing==="cash" ? [es?"Contador y agente de cierre":"Accountant and closing agent",es?"Revisa los fondos disponibles, gastos y reservas antes del cierre.":"Review available funds, costs and reserves before closing.","https://www.sba.gov/business-guide/plan-your-business/buy-existing-business-or-franchise"] : [
     ["Business advisor", "Use an SBA resource partner to test fit, ownership demands, and the acquisition plan.", "https://www.sba.gov/local-assistance"],
     ["Attorney", "Confirm the NDA is appropriate and understand its restrictions before relying on it.", "https://www.usa.gov/legal-aid"],
     ["Accountant or valuation professional", "Review earnings adjustments, tax records, and material valuation assumptions.", "https://www.sba.gov/business-guide/plan-your-business/buy-existing-business-or-franchise"],
@@ -524,10 +538,17 @@ export function AcquisitionPlanner({
         <div className="buying-checklist-progress__meter">
           <label htmlFor="buying-progress"><strong>{progress.percent}%</strong> {es ? "progreso guardado" : "saved progress"}</label>
           <progress id="buying-progress" max={100} value={progress.percent}>{progress.percent}%</progress>
-          <p>{progress.completedSteps}/{stages.length} {es ? "pasos revisados" : "steps reviewed"} · {progress.completedItems}/{progress.totalItems} {es ? "tareas guardadas" : "tasks saved"}</p>
+          <p>{progress.completedSteps}/{stages.length} {es ? "pasos revisados" : "steps reviewed"} · {progress.completedItems}/{progress.totalItems} {es ? "tareas atendidas" : "tasks addressed"} · {notApplicableCount} {es?"no aplican":"not applicable"}</p>
         </div>
         <p className="buying-checklist-next" role="status">{isSaving ? (es ? "Guardando cambios…" : "Saving changes…") : progress.finished ? (es ? "Lista revisada. Esto no confirma una compra ni transfiere fondos." : "Checklist reviewed. This does not confirm a purchase or transfer funds.") : (es ? `Próximo paso pendiente: ${progress.nextStep + 1}. ${stages[progress.nextStep][0]}` : `Next unfinished step: ${progress.nextStep + 1}. ${stages[progress.nextStep][0]}`)}</p>
       </header>
+      <div className="acquisition-coordination">
+        <AcquisitionPlanSettings plan={plan} es={es} busy={isSaving||isAdvancing} onSave={async nextPlan=>{
+          const next=changeDealPlan(stepStatuses,nextPlan); setIsAdvancing(true);
+          try {const saved=await persist(0,next);if(saved){setStepStatuses(next);selectStage(0);}return saved;} finally{setIsAdvancing(false);}
+        }}/>
+        {brokerStatus && <div className="checklist-broker-status"><strong>{es?"Estado compartido con el corredor":"Shared broker workflow"}</strong><p>NDA: {brokerStatus.nda} · {es?"Acceso financiero":"Financial access"}: {brokerStatus.access} · {brokerStatus.requests} {es?"solicitudes pendientes":"open requests"}</p><a href={dealHref+"#deal-conversation"}>{es?"Abrir mensajes y NDA":"Open messages and NDA"}</a><p>{es?"La lista privada no cambia estos permisos.":"Your private checklist does not change these permissions."}</p></div>}
+      </div>
       <aside className="acquisition-steps">
         <p>{es ? "Tu camino, paso a paso" : "Your path, step by step"}</p>
         {stages.map(([title], index) => (
@@ -545,12 +566,24 @@ export function AcquisitionPlanner({
         {currentChecklist.length > 0 && <div className="check-card">
           <div className="check-card__heading">
             <h3>{es ? "Qué hacer" : "What to do"}</h3>
-            <span>{completedChecklistItems}/{currentChecklist.length} {es ? "completados" : "completed"}</span>
+            <span>{completedChecklistItems}/{currentChecklist.length} {es ? "atendidos" : "addressed"}</span>
           </div>
-          {currentChecklist.map((item, index) => <label key={item}>
-            <input type="checkbox" disabled={isAdvancing} checked={stepStatuses[itemKey(current, index)] === "complete"} onChange={() => toggleChecklistItem(index)} />
-            {item}
-          </label>)}
+          {currentChecklist.map((item, index) => {
+            const key=itemKey(current,index), details=readTaskDetails(stepStatuses[`details:${key}`]);
+            const na=stepStatuses[key]==="not_applicable"&&taskIsResolved(stepStatuses,current,index);
+            const overdue=details?.due && today && details.due<today && !taskIsResolved(stepStatuses,current,index);
+            return <div className="acquisition-task" key={key}>
+              <label><input type="checkbox" disabled={isAdvancing||na} checked={stepStatuses[key]==="complete"} onChange={()=>toggleChecklistItem(index)}/>{item}</label>
+              {na&&<p className="task-applicability">{es?"No aplica":"Not applicable"}: {details?.reason}</p>}
+              {details&&<p className={overdue?"task-overdue":"task-assignment"}>{es?"Responsable":"Owner"}: {details.assignee||({buyer:es?"Comprador":"Buyer",broker:es?"Corredor":"Broker",lender:es?"Prestamista":"Lender",advisor:es?"Asesor":"Advisor"})[details.owner]} {details.due&&` · ${es?"Fecha":"Due"}: ${details.due}`} {overdue&&(es?" · Vencida (UTC)":" · Overdue (UTC)")} {details.waiting!=="none"&&` · ${es?"En espera de":"Waiting on"}: ${details.waiting}`}</p>}
+              {details?.document&&<p>{documents.some(d=>d.id===details.document)?<a href={dealHref+"#deal-documents"}>{es?"Ver evidencia vinculada":"Review linked evidence"}: {documents.find(d=>d.id===details.document)?.title}</a>:(es?"La evidencia vinculada ya no está disponible.":"Linked evidence is no longer available.")}</p>}
+              <AcquisitionTaskDetails taskKey={key} label={item} status={stepStatuses[key]??"open"} raw={stepStatuses[`details:${key}`]} es={es} busy={isSaving||isAdvancing} documents={documents} dealHref={dealHref} onSave={async(details,notApplicable)=>{
+                const next={...stepStatuses,[`details:${key}`]:JSON.stringify(details),[key]:notApplicable?"not_applicable":stepStatuses[key]==="not_applicable"?"open":stepStatuses[key]??"open",[String(current)]:"open"};
+                setIsAdvancing(true);setStepStatuses(next);
+                try{return await persist(current,next);}finally{setIsAdvancing(false);}
+              }}/>
+            </div>;
+          })}
         </div>}
 
         {current === 1 && <div className="workflow-connection"><div><span>{es ? "Conecta con el corredor" : "Connect with the broker"}</span><strong>{es ? "Firma el NDA y solicita documentos" : "Sign the NDA first, then ask for records"}</strong><p>{es ? "Los mensajes, acuerdos y permisos se gestionan en el espacio compartido. Marcar esta lista no concede acceso a documentos." : "Messages, agreements, and access permissions are managed in the shared deal room. Checking this list does not grant document access."}</p></div><a href={opportunity.id.startsWith("deal-") ? opportunity.sourceUrl : `/${locale}/dashboard/marketplace`}>{es ? "Abrir espacio del corredor" : "Open broker workspace"}</a></div>}
@@ -580,7 +613,7 @@ export function AcquisitionPlanner({
           </div>
         </div>}
 
-        {current === 3 && <section className="financing-help" aria-labelledby="financing-help-title">
+        {current === 3 && plan?.financing !== "cash" && plan?.financing !== "seller" && <section className="financing-help" aria-labelledby="financing-help-title">
           <header>
             <div>
               <span>{es ? "Ayuda local para financiar" : "Local financing help"}</span>
@@ -622,7 +655,7 @@ export function AcquisitionPlanner({
         </details>
         <div className="step-finish-note">
           <span>{es ? "Listo para continuar cuando" : "Ready to continue when"}</span>
-          <p>{readyWhen[current]}</p>
+          <p>{current===3&&(plan?.financing==="cash"||plan?.financing==="seller")?(es?"Has documentado las fuentes de fondos, condiciones pendientes y reserva operativa con tus asesores.":"You have documented funding sources, outstanding conditions and operating reserves with your advisors."):readyWhen[current]}</p>
         </div>
         <details className="stage-notes-wrap">
           <summary>{es ? "Agregar notas (opcional)" : "Add notes (optional)"}</summary>

@@ -10,4 +10,7 @@ for(const locale of ['en','es'])test(`${locale} pricing separates available subs
   await expect(page.locator('form input[value="broker_plan"]')).toHaveCount(1);
   await expect(page.getByText(locale==='es'?'Regresaste de la página de pago':'You returned from checkout',{exact:true})).toBeVisible();
   await expect(page.getByText('Payment received',{exact:true})).toHaveCount(0);
+  await page.goto(`/${locale}/pricing?billing_error=existing_subscription`);
+  await expect(page.getByRole('alert')).toHaveCount(1);
+  await expect(page.getByRole('alert')).toContainText(locale==='es'?'Ya tienes una suscripción':'You already have a subscription');
 });

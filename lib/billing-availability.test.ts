@@ -28,4 +28,5 @@ test("undelivered paid listing products cannot open checkout, including a forged
     assert.equal(result.url.searchParams.get('billing_error'),'not_available');
   }
   for(const product of ['broker_plan','crestview_pro','workforce'])assert.equal(isCheckoutProductAvailable(product),true);
+  assert.equal(isCheckoutProductAvailable('unknown_product'),false);
 });

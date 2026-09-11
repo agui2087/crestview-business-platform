@@ -250,7 +250,7 @@ export default async function PricingPage({
             <span>{es ? "No confirmamos un pago desde esta página. Si enviaste un pago, revisa Administrar facturación antes de volver a intentarlo." : "This page does not confirm a payment. If you submitted one, check Manage billing before trying again."}</span>
           </div>
         )}
-        {typeof query.billing_error === "string" && (
+        {typeof query.billing_error === "string" && !["not_available", "existing_subscription"].includes(query.billing_error) && (
           <div className="billing-status billing-status--error" role="alert">
             <strong>{query.billing_error === "broker_plan_required" ? (es ? "Necesitas acceso para publicar" : "Publishing access is required") : (es ? "No se pudo abrir la facturación" : "Billing could not be opened")}</strong>
             <span>{query.billing_error === "broker_plan_required" ? (es ? "Tu borrador sigue guardado. Activa el Plan para Corredores o usa tu código de acceso y vuelve a Mis anuncios para publicarlo." : "Your draft is still saved. Activate the Broker Plan or redeem your access code, then return to My listings to publish it.") : (es ? "Vuelve a intentarlo o inicia sesión antes de seleccionar un plan." : "Please try again or sign in before selecting a plan.")}</span>

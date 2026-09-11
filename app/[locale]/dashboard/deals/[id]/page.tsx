@@ -26,7 +26,7 @@ type WorkspaceData = {
   isDemo: boolean;
 };
 
-async function getWorkspace(id: string, userId?: string): Promise<WorkspaceData> {
+async function getWorkspace(id: string, userId?: string, locale = "en"): Promise<WorkspaceData> {
   if (!userId || !isSupabaseConfigured() || id.startsWith("demo-")) {
     const inquiry = demoInquiries[0];
     return {
@@ -72,6 +72,7 @@ async function getWorkspace(id: string, userId?: string): Promise<WorkspaceData>
     const canRelease = ["basic_validated", "malware_scanned"].includes(document.security_status ?? "basic_validated");
     if (!canRelease) return { ...document, secure_url: null };
     if (!document.storage_path) return { ...document, secure_url: null };
+    if (document.mime_type === "application/pdf") return { ...document, secure_url: `/${locale}/dashboard/deals/${id}/documents/${document.id}` };
     const { data } = await supabase.storage.from("deal-files").createSignedUrl(document.storage_path, 60 * 15);
     return { ...document, secure_url: data?.signedUrl ?? null };
   }));
@@ -89,7 +90,7 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
   const user = await getCrestviewUser(locale);
   let userId: string | undefined;
   if (isSupabaseConfigured() && user.source === "supabase") userId = (await (await createSupabaseServerClient()).auth.getUser()).data.user?.id;
-  const workspace = await getWorkspace(id, userId);
+  const workspace = await getWorkspace(id, userId, locale);
   // Treat the signed NDA record as the source of truth. Older workspaces can have
   // a signed agreement while their inquiry stage still says `nda_sent`.
   const ndaSigned = workspace.nda?.status === "signed";

@@ -1,3 +1,4 @@
+import {taskIsResolved} from "./acquisition-tailoring.ts";
 /**
  * Checklist progress is self-reported work, not purchase/escrow confirmation.
  * Keep the existing stored keys so older workspaces retain all their work.
@@ -7,7 +8,7 @@ export function acquisitionProgress(
   statuses: Readonly<Record<string, string>>,
 ) {
   const itemCounts = items.map((stage, step) =>
-    stage.filter((_, item) => statuses[`item:${step}:${item}`] === "complete").length,
+    stage.filter((_, item) => taskIsResolved(statuses, step, item)).length,
   );
   const complete = items.map((stage, step) =>
     stage.length > 0 && itemCounts[step] === stage.length &&
@@ -32,6 +33,6 @@ export function canReviewAcquisitionStep(
   if (!Number.isInteger(step) || step < 0 || step >= items.length || !items[step].length) return false;
   const progress = acquisitionProgress(items, statuses);
   return progress.complete.slice(0, step).every(Boolean) &&
-    items[step].every((_, item) => statuses[`item:${step}:${item}`] === "complete") &&
+    items[step].every((_, item) => taskIsResolved(statuses, step, item)) &&
     statuses[`decision:${step}`] === "continue";
 }

@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import { runInNewContext } from "node:vm";
 import ts from "typescript";
 import * as progress from "./acquisition-progress.ts";
+import * as tailoring from "./acquisition-tailoring.ts";
 
 type Node = { type: string; props: Record<string, unknown> };
 type Workspace = { stage: string; current_step: number; checklist_progress: Record<string, string>; step_notes: Record<string, string>; valuation_inputs: Record<string, string> };
@@ -47,6 +48,9 @@ async function harness(initialWorkspace = empty(), locale = "en") {
     if (name === "@/components/user-provider") return { useCrestviewUser: () => ({ displayName: "Synthetic buyer" }) };
     if (name === "@/lib/financing-resources") return { financingResourcesFor: () => [] };
     if (name === "@/lib/acquisition-progress") return progress;
+    if (name === "@/lib/acquisition-tailoring") return tailoring;
+    if (name === "@/components/acquisition-plan-settings") return { AcquisitionPlanSettings: "plan-settings" };
+    if (name === "@/components/acquisition-task-details") return { AcquisitionTaskDetails: "task-details" };
     if (name === "@/app/[locale]/dashboard/opportunities/actions") return { saveAcquisitionWorkspace: async (form: FormData) => {
       if (saveOK) saved = { ...saved, current_step: Number(form.get("current_step")), checklist_progress: JSON.parse(String(form.get("checklist_progress"))), step_notes: JSON.parse(String(form.get("step_notes"))), valuation_inputs: JSON.parse(String(form.get("valuation_inputs"))) };
       return { ok: saveOK };
@@ -73,11 +77,12 @@ async function harness(initialWorkspace = empty(), locale = "en") {
   render();
   return {
     nodes, button, invoke,
+    rerender: render,
     percent: () => nodes().find(node => node.type === "progress")!.props.value,
     step: () => nodes().find(node => node.type === "h2" && node.props.tabIndex === -1)!.props.children,
     checkAll: async () => {
       for (;;) {
-        const item = nodes().find(node => node.type === "input" && node.props.type === "checkbox" && node.props.checked === false);
+        const item = nodes().find(node => node.type === "input" && node.props.type === "checkbox" && node.props.checked === false && !node.props.disabled);
         if (!item) break;
         await invoke(item, "onChange");
       }
@@ -86,6 +91,31 @@ async function harness(initialWorkspace = empty(), locale = "en") {
     failSaves: (fail: boolean) => { saveOK = !fail; },
   };
 }
+
+test('saved applicability and assignment survive reload without checking the task', async()=>{
+  const h=await harness();
+  const detail=h.nodes().find(node=>node.type==='task-details')!;
+  assert.equal(await (detail.props.onSave as (d: tailoring.TaskDetails, na:boolean)=>Promise<boolean>)({...tailoring.defaultTaskDetails,owner:'advisor',assignee:'Synthetic advisor',due:'2026-09-01',waiting:'broker',reason:'Does not apply to this synthetic purchase.'},true),true);
+  h.rerender();
+  assert.equal(h.saved().checklist_progress['item:0:0'],'not_applicable');
+  const resumed=await harness(h.saved());
+  const checkbox=resumed.nodes().find(node=>node.type==='input'&&node.props.type==='checkbox')!;
+  assert.equal(checkbox.props.checked,false);
+  assert.equal(checkbox.props.disabled,true);
+  assert.ok(Number(resumed.percent())>0);
+});
+
+test('purchase settings apply only after a successful save',async()=>{
+  const h=await harness();
+  const settings=h.nodes().find(node=>node.type==='plan-settings')!;
+  const save=settings.props.onSave as (plan:tailoring.DealPlan)=>Promise<boolean>;
+  h.failSaves(true);
+  assert.equal(await save({...tailoring.defaultDealPlan,financing:'cash'}),false);
+  assert.equal(h.saved().checklist_progress['plan:profile'],undefined);
+  h.failSaves(false);
+  assert.equal(await save({...tailoring.defaultDealPlan,financing:'cash'}),true);
+  assert.equal(tailoring.readDealPlan(h.saved().checklist_progress['plan:profile'])?.financing,'cash');
+});
 
 for (const locale of ["en", "es"]) {
   test(`all eight saved reviews advance sequentially and resume without data loss (${locale})`, async () => {

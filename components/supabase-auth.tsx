@@ -28,6 +28,7 @@ export function SupabaseAuth({
         <button className={`button ${mode === "create" ? "button--primary is-active" : "button--light"}`} type="button" onClick={() => setMode("create")}>{es ? "Crear cuenta" : "Create account"}</button>
       </div>
       {message === "check-email" && <p className="auth-success" role="status">{es ? "Revisa tu correo para confirmar tu cuenta y vuelve aquí para iniciar sesión." : "Check your email to confirm your account, then return here to sign in."}</p>}
+      {message === "password-updated" && <p className="auth-success" role="status">{es ? "Contraseña actualizada. Inicia sesión con tu nueva contraseña." : "Password updated. Sign in with your new password."}</p>}
       {error && <p className="auth-error" role="alert">{error === "invalid" ? (es ? "El correo o la contraseña son incorrectos." : "The email or password is incorrect.") : (es ? "No pudimos crear la cuenta. Es posible que ya exista." : "We could not create that account. It may already exist.")}</p>}
       <form action={mode === "create" ? signUp : signIn}>
         <input type="hidden" name="locale" value={locale} />
@@ -58,6 +59,7 @@ export function SupabaseAuth({
         </div>
         {mode === "create" && <div className="account-note"><span aria-hidden="true">i</span><p>{es ? "El proveedor de autenticación de Crestview protege tu cuenta para acceder desde tus dispositivos." : "Your account is securely managed by Crestview’s authentication provider and works across your devices."}</p></div>}
         <AuthSubmit mode={mode} locale={locale} />
+        {mode === "sign-in" && <a className="auth-back" href={`/${locale}/recover-password`}>{es ? "¿Olvidaste tu contraseña?" : "Forgot password?"}</a>}
         <button className="button button--light auth-switch" type="button" onClick={() => setMode(mode === "create" ? "sign-in" : "create")}>
           {mode === "create" ? (es ? "¿Ya tienes cuenta? Inicia sesión" : "Already have an account? Sign in") : (es ? "¿Nuevo en Crestview? Crea una cuenta" : "New to Crestview? Create an account")}
         </button>

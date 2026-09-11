@@ -89,7 +89,8 @@ async function harness(initialWorkspace = empty(), locale = "en") {
 
 for (const locale of ["en", "es"]) {
   test(`all eight saved reviews advance sequentially and resume without data loss (${locale})`, async () => {
-    const h = await harness(empty(), locale);
+    const initial = { ...empty(), step_notes: { "2": "Existing private research" }, valuation_inputs: { price: "500000", sde: "123000" } };
+    const h = await harness(initial, locale);
     for (let step = 0; step < 8; step++) {
       const next = step === 7 ? (locale === "es" ? "Finalizar revisión de la lista" : "Finish checklist review") : (locale === "es" ? "Guardar y continuar" : "Save and continue");
       assert.equal(h.button(next).props.disabled, true);
@@ -102,6 +103,8 @@ for (const locale of ["en", "es"]) {
       assert.equal(h.saved().current_step, Math.min(7, step + 1));
     }
     assert.equal(h.percent(), 100);
+    assert.equal(h.saved().step_notes["2"], "Existing private research");
+    assert.equal(h.saved().valuation_inputs.price, "500000");
     const resumed = await harness(h.saved(), locale);
     assert.equal(resumed.percent(), 100);
     assert.equal(resumed.button(locale === "es" ? "Lista revisada" : "Checklist reviewed").props.disabled, true);
@@ -138,4 +141,23 @@ test("deferred steps remain outstanding on reload, despite saved later navigatio
   const resumed = await harness(h.saved());
   assert.equal(resumed.step(), "Quick fit check");
   assert.equal(resumed.saved().checklist_progress["item:1:0"], "complete");
+});
+
+test("reopening an earlier task removes overall completion without deleting later work", async () => {
+  const workspace = empty();
+  [5, 6, 7, 5, 7, 7, 7, 6].forEach((count, step) => {
+    for (let item = 0; item < count; item++) workspace.checklist_progress[`item:${step}:${item}`] = "complete";
+    workspace.checklist_progress[String(step)] = "complete";
+    workspace.checklist_progress[`decision:${step}`] = "continue";
+  });
+  const h = await harness(workspace);
+  assert.equal(h.percent(), 100);
+  await h.invoke(h.button("Quick fit checkReviewed"));
+  const firstItem = h.nodes().find(node => node.type === "input" && node.props.type === "checkbox")!;
+  await h.invoke(firstItem, "onChange");
+  assert.ok(Number(h.percent()) < 100);
+  await h.invoke(h.button("First 90 daysReviewed"));
+  assert.equal(h.button("Finish checklist review").props.disabled, true);
+  assert.equal(h.saved().checklist_progress["7"], "complete");
+  assert.equal((await harness(h.saved())).step(), "Quick fit check");
 });

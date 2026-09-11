@@ -6,7 +6,7 @@ import {
 } from "@/lib/deal-intelligence";
 import {
   addDealProfessional, addDiligenceEvidence, addDocumentFinding, generateGuidedPlan,
-  saveSbaReadiness, updateTransitionItem,
+  saveSbaReadiness, updateTransitionItem, reviewDocumentFinding,
 } from "@/app/[locale]/dashboard/opportunities/actions";
 
 type Diligence = {
@@ -165,6 +165,7 @@ export function GuidedAcquisitionWorkspace({
       <header><div><span>{es ? "INTELIGENCIA DOCUMENTAL" : "DOCUMENT INTELLIGENCE"}</span><h3>{es ? "Convierte documentos en afirmaciones comprobables" : "Turn documents into traceable deal facts"}</h3><p>{es ? "Cada hallazgo conserva el documento fuente, periodo, valor y estado de revisión." : "Every finding keeps its source document, period, value, and review status."}</p></div><b>PRO</b></header>
       {hasPro ? <>
         <div className="finding-summary">
+          <Link className="button button--light" href={`/api/export/decision-report?key=${encodeURIComponent(opportunityKey)}&locale=${locale}`}>{es?'Descargar informe de decisión (texto)':'Download decision report (text)'}</Link>
           <div><strong>{findings.length}</strong><span>{es ? "hallazgos" : "findings"}</span></div>
           <div className={conflicts.length ? "is-alert" : ""}><strong>{conflicts.length}</strong><span>{es ? "discrepancias" : "discrepancies"}</span></div>
           <div><strong>{findings.filter((item) => item.review_status === "confirmed").length}</strong><span>{es ? "revisión confirmada" : "review confirmed"}</span></div>
@@ -177,6 +178,10 @@ export function GuidedAcquisitionWorkspace({
           <div><span>{finding.metric_name} · {finding.period_label ?? (es ? "sin periodo" : "no period")}</span><strong>{finding.reported_value}</strong></div>
           <div><span>{finding.source_document}</span><small>{formatSupportLevel(finding.confidence, es ? "es" : "en")} · {formatReviewStatus(finding.review_status, es ? "es" : "en")}</small></div>
           {finding.source_url && <a href={finding.source_url} target="_blank" rel="noreferrer">{es ? "Abrir fuente ↗" : "Open source ↗"}</a>}
+          <form action={reviewDocumentFinding}>
+            <input type="hidden" name="locale" value={locale}/><input type="hidden" name="opportunity_key" value={opportunityKey}/><input type="hidden" name="finding_id" value={finding.id}/>
+            <label>{es?'Tu revisión (no verificación independiente)':'Your review (not independent verification)'}<select name="review_status" defaultValue={['unreviewed','reviewed','conflict'].includes(finding.review_status)?finding.review_status:'unreviewed'}><option value="unreviewed">{es?'Sin revisar':'Unreviewed'}</option><option value="reviewed">{es?'Revisado por mí':'Reviewed by me'}</option><option value="conflict">{es?'Conflicto señalado':'Conflict flagged'}</option></select></label><button>{es?'Guardar revisión':'Save review'}</button>
+          </form>
         </article>)}</div>
         <details className="finding-form"><summary>+ {es ? "Registrar hallazgo de documento" : "Record a document finding"}</summary><form action={addDocumentFinding}>
           <input type="hidden" name="locale" value={locale}/><input type="hidden" name="opportunity_key" value={opportunityKey}/>
@@ -192,7 +197,7 @@ export function GuidedAcquisitionWorkspace({
         </form></details>
       </> : <div className="pro-lock">
         <span>◇</span><h4>{es ? "La ejecución esencial permanece gratis" : "Essential execution stays free"}</h4>
-        <p>{es ? "Pro agrega extracción estructurada, comparación entre documentos, alertas de discrepancias y explicaciones avanzadas. El checklist, pasaporte básico, tareas y progreso siguen disponibles gratis." : "Pro adds structured findings, cross-document comparisons, discrepancy alerts, and advanced explanations. The checklist, basic passport, tasks, and progress remain free."}</p>
+        <p>{es ? "Pro organiza los hallazgos que ingresas, compara valores del mismo periodo y permite registrar tu revisión y exportar un informe. No extrae ni verifica documentos automáticamente. El checklist, tareas y progreso siguen gratis." : "Pro organizes findings you enter, compares values for the same period, records your review, and exports a report. It does not automatically extract or verify documents. The checklist, tasks, and progress remain free."}</p>
         <a className="button button--primary" href={`/${locale}/pricing#buyer-pricing`}>{es ? "Ver Crestview Pro" : "See Crestview Pro"}</a>
       </div>}
       <footer>{es ? "Crestview ayuda a organizar y comparar información; no certifica documentos ni reemplaza la revisión profesional." : "Crestview helps organize and compare information; it does not certify documents or replace professional review."}</footer>

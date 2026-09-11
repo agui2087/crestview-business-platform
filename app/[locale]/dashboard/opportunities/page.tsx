@@ -31,7 +31,7 @@ export default async function OpportunitiesPage({ params }: { params: Promise<{ 
   return (
     <PlatformShell locale={locale} active="opportunities">
       <div className="dashboard-content">
-        <PageHeading eyebrow={text.opportunities.eyebrow} title={text.opportunities.title} body={text.opportunities.body} action={<Link className="button button--light" href="/api/export/opportunities">{locale === "es" ? "Exportar CSV" : "Export CSV"}</Link>} />
+        <PageHeading eyebrow={text.opportunities.eyebrow} title={text.opportunities.title} body={text.opportunities.body} action={<Link className="button button--light" href={`/api/export/opportunities?locale=${locale}`}>{locale === "es" ? "Exportar mis guardados (CSV)" : "Export my saved opportunities (CSV)"}</Link>} />
         <div className="data-notice"><strong>{text.opportunities.seller}</strong><span>{text.opportunities.notice}</span></div>
         <BuyerFitCalculator locale={locale} savedAvailableCash={financialProfile?.available_cash} savedDesiredIncome={preferences?.desired_owner_income} savedInjectionPercent={financialProfile?.buyer_injection_percent} savedInterestRate={financialProfile?.illustrative_interest_rate} />
         <OpportunitySearch items={opportunities} locale={locale} storageReady={storageReady} preferences={preferences} />

@@ -35,6 +35,7 @@ export default async function WorkforcePage({ params, searchParams }: { params: 
   if (!isLocale(locale)) notFound();
   const es = locale === "es";
   let employees: Employee[] = [];
+  let capacity = 0;
   let loadFailed = !isSupabaseConfigured();
   const { notice } = await searchParams;
   const messages: Record<string, string> = {
@@ -43,19 +44,22 @@ export default async function WorkforcePage({ params, searchParams }: { params: 
     failed: es ? "No se guardaron los cambios. Inténtalo de nuevo." : "Changes were not saved. Please try again.",
     invalid: es ? "Revisa los campos, las fechas y las horas." : "Check the required fields, dates, and hours.",
     csv: es ? "CSV inválido: máximo 500 filas y 750 KB. Revisa los encabezados y los datos." : "Invalid CSV: maximum 500 rows and 750 KB. Check the headers and data.",
+    capacity: es ? "Para agregar o restaurar empleados necesitas una suscripción activa con plazas disponibles. Revisa tu plan." : "Adding or restoring employees requires an active subscription with available seats. Review your plan.",
   };
 
   if (isSupabaseConfigured()) {
     const supabase = await createSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
+      const { data: plan, error: planError } = await supabase.from('billing_entitlements').select('active,quantity,expires_at').eq('user_id',user.id).eq('product_code','workforce').maybeSingle();
+      capacity = !planError && plan?.active && (!plan.expires_at || new Date(plan.expires_at)>new Date()) ? plan.quantity : 0;
       const { data, error } = await supabase
         .from("employees")
         .select("id,full_name,email,position,department,manager_name,start_date,employment_status,preferred_locale,employee_records(id,record_type,title,status,expires_on,hours)")
         .eq("user_id", user.id)
         .is("archived_at", null)
         .order("full_name");
-      loadFailed = !!error;
+      loadFailed = !!error || !!planError;
       employees = (data ?? []) as Employee[];
     }
   }
@@ -81,6 +85,7 @@ export default async function WorkforcePage({ params, searchParams }: { params: 
 
         {notice && messages[notice] && <p role={["failed", "invalid", "csv"].includes(notice) ? "alert" : "status"} className="workforce-alerts">{messages[notice]}</p>}
         {loadFailed && <p role="alert">{es ? "No se pudo cargar el personal. Actualiza la página para volver a intentar." : "Workforce data could not be loaded. Refresh the page to try again."}</p>}
+        <p className="workforce-alerts">{es ? `Plazas utilizadas: ${employees.filter(e=>e.employment_status!=='terminated').length} de ${capacity}. Los registros existentes se conservan. Agregar o restaurar personal requiere plazas disponibles.` : `Seats used: ${employees.filter(e=>e.employment_status!=='terminated').length} of ${capacity}. Existing records are retained. Adding or restoring employees requires available seats.`} <Link href={`/${locale}/pricing#workforce-pricing`}>{es?'Revisar plan':'Review plan'}</Link></p>
         <section className="workforce-summary" aria-label={es ? "Resumen del personal" : "Workforce summary"}>
           <article><span>{es ? "Empleados activos" : "Active employees"}</span><strong>{activeEmployees}</strong><small>{departments} {es ? "departamentos" : "departments"}</small></article>
           <article><span>{es ? "Necesita atención" : "Needs attention"}</span><strong>{expiringRecords.length}</strong><small>{es ? "vencidos o próximos 60 días" : "expired or due within 60 days"}</small></article>

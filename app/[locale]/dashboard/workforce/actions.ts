@@ -29,7 +29,7 @@ export async function createEmployee(formData: FormData) {
     manager_name: value(formData, "manager_name") || null, start_date: date || null,
     preferred_locale: value(formData, "preferred_locale") === "es" ? "es" : "en",
   });
-  finish(locale, error ? "failed" : "saved");
+  finish(locale, error ? (error.message.includes('Workforce') ? "capacity" : "failed") : "saved");
 }
 export async function addEmployeeRecord(formData: FormData) {
   const { locale, supabase, user } = await ctx(formData);
@@ -58,5 +58,5 @@ export async function importEmployees(formData: FormData) {
   let rows;
   try { rows = parseEmployeeCsv(await file.text()); } catch { finish(locale, "csv"); }
   const { error } = await supabase.from("employees").insert(rows.map(row => ({ ...row, user_id: user.id })));
-  finish(locale, error ? "failed" : "imported");
+  finish(locale, error ? (error.message.includes('Workforce') ? "capacity" : "failed") : "imported");
 }

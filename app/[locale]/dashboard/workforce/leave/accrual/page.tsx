@@ -1,3 +1,4 @@
+import {WorkforceAccessNotice} from '@/components/workforce-access-notice';
 import Link from 'next/link';
 import {notFound,redirect} from 'next/navigation';
 import {PlatformShell,PageHeading} from '@/components/platform-shell';
@@ -31,7 +32,7 @@ export default async function Accrual({params,searchParams}:{params:Promise<{loc
   const eligible=selected&&person.data&&!person.data.archived_at&&person.data.employment_status==='active'&&total?.configured&&selected.starts_on<=first&&(!selected.ends_on||selected.ends_on>=first);
   const preview=eligible&&Number.isSafeInteger(amount)&&amount>0&&amount<=selected.accrual_minutes?proposedAccrual({reviewed:true,amountMinutes:amount,currentBalanceMinutes:Number(total.minutes),balanceCapMinutes:selected.balance_cap_minutes,periodReference:first,postedReferences:[]}):null;
   const hidden=(operation:string)=><><input type="hidden" name="locale" value={locale}/><input type="hidden" name="policy" value={selected?.id??''}/><input type="hidden" name="operation" value={operation}/><input type="hidden" name="version" value={rule.data?.version??0}/></>;
-  return <PlatformShell locale={locale} active="workforce"><div className="dashboard-content wf-ops">
+  return <PlatformShell locale={locale} active="workforce"><div className="dashboard-content wf-ops"><WorkforceAccessNotice owner={user.id} locale={locale}/>
     <PageHeading eyebrow={t('Owner controls','Controles del propietario')} title={t('Reviewed monthly accrual','Acumulación mensual revisada')} body={t('Separate opt-in. Existing policies remain manual until the owner approves automation.','Activación independiente. Las políticas siguen siendo manuales hasta que el propietario apruebe la automatización.')} action={<Link href={`/${locale}/dashboard/workforce/leave`}>{t('Leave ledger','Registro de ausencias')}</Link>}/>
     <p>{t('Fixed monthly credits only, starting next month on the first day in UTC. No proration, hours-worked rules, automatic backfill, forfeiture or payroll payments. An hourly job checks due rules; posting may occur later in the same month. Missed months, changed policies and inactive employees pause the rule for review. Owners must confirm this method matches their adopted policy.','Solo créditos mensuales fijos, desde el primer día del próximo mes en UTC. Sin prorrateo, reglas por horas trabajadas, recuperación automática, pérdida de saldo ni pagos. Una tarea cada hora revisa las reglas; el registro puede ocurrir más tarde en el mismo mes. Meses omitidos, políticas modificadas o empleados inactivos pausan la regla. El propietario debe confirmar que el método corresponde a su política adoptada.')}</p>
     {query.notice==='saved'&&<p role="status">{t('Rule updated.','Regla actualizada.')}</p>}

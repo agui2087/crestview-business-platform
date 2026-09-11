@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { WorkforceAccessNotice } from "@/components/workforce-access-notice";
 import "./workforce.css";
 import Link from "next/link";
 import { PageHeading, PlatformShell } from "@/components/platform-shell";
@@ -36,6 +37,7 @@ export default async function WorkforcePage({ params, searchParams }: { params: 
   const es = locale === "es";
   let employees: Employee[] = [];
   let capacity = 0;
+  let ownerId: string | null = null;
   let loadFailed = !isSupabaseConfigured();
   const { notice } = await searchParams;
   const messages: Record<string, string> = {
@@ -51,6 +53,7 @@ export default async function WorkforcePage({ params, searchParams }: { params: 
     const supabase = await createSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
+      ownerId = user.id;
       const { data: plan, error: planError } = await supabase.from('billing_entitlements').select('active,quantity,expires_at').eq('user_id',user.id).eq('product_code','workforce').maybeSingle();
       capacity = !planError && plan?.active && (!plan.expires_at || new Date(plan.expires_at)>new Date()) ? plan.quantity : 0;
       const { data, error } = await supabase
@@ -76,6 +79,7 @@ export default async function WorkforcePage({ params, searchParams }: { params: 
   return (
     <PlatformShell locale={locale} active="workforce">
       <div className="dashboard-content">
+        {ownerId && <WorkforceAccessNotice owner={ownerId} locale={locale} />}
         <PageHeading
           eyebrow={es ? "Centro de personal" : "People operations"}
           title={es ? "Personal" : "Workforce"}

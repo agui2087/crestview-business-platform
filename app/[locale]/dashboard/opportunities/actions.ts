@@ -7,6 +7,7 @@ import { resolveOpportunity } from "@/lib/opportunity-resolver";
 import { isLocale } from "@/lib/i18n";
 import { normalizeBuyerFindingConfidence } from "@/lib/deal-intelligence";
 import { buildGuidedChecklist, type GuidanceProfile } from "@/lib/guided-acquisition";
+import {readTaskDetails,validateTaskMetadata} from "@/lib/acquisition-tailoring";
 
 async function authenticatedRequest(formData: FormData) {
   const locale = String(formData.get("locale") ?? "en");
@@ -78,6 +79,13 @@ export async function saveAcquisitionWorkspace(formData: FormData) {
   const stepNotes = progressJson(formData.get("step_notes"));
   const valuationInputs = progressJson(formData.get("valuation_inputs"));
   if (!checklistProgress || !stepNotes || !valuationInputs) return {ok:false,message:locale === "es" ? "Revisa el contenido antes de guardar." : "Review the progress fields before saving."};
+  if(!validateTaskMetadata(checklistProgress))return {ok:false,message:"Review the task details and not-applicable reasons."};
+  const documentIds=[...new Set(Object.entries(checklistProgress).filter(([key])=>key.startsWith("details:")).map(([,value])=>readTaskDetails(value)?.document).filter((id):id is string=>Boolean(id)))];
+  if(documentIds.length) {
+    if(!/^deal-[0-9a-f-]{36}$/i.test(opportunityKey))return {ok:false,message:"Documents must belong to this shared deal."};
+    const {data:accessible,error:documentError}=await supabase.from("deal_room_documents").select("id").eq("inquiry_id",opportunityKey.slice(5)).eq("is_active",true).in("security_status",["basic_validated","malware_scanned"]).in("id",documentIds);
+    if(documentError||accessible?.length!==documentIds.length)return {ok:false,message:"A linked document is no longer available. Remove its link before saving."};
+  }
   const {error:insertError}=await supabase.from("saved_opportunities").upsert({
     user_id:user.id,opportunity_key:opportunityKey,stage:"screening",next_action:"Review the acquisition checklist",
   },{onConflict:"user_id,opportunity_key",ignoreDuplicates:true});

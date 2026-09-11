@@ -37,6 +37,8 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
     step_notes: Record<string, string>;
     valuation_inputs: Record<string, string>;
   } | null = null;
+  let checklistDocuments: Array<{id:string;title:string}> = [];
+  let checklistBrokerStatus: {nda:string;access:string;requests:number}|null = null;
   let diligence: Array<{ id: string; category: string; title: string; status: string; due_date: string | null; reason: string | null; guidance_source: string; source_url: string | null; risk_level: string; assigned_role: string | null }> = [];
   let guidanceProfile: { industry_type: string; purchase_structure: string; financing_type: string; state_code: string; has_employees: boolean; includes_real_estate: boolean; includes_inventory: boolean; first_acquisition: boolean } | null = null;
   let evidence: Array<{ id: string; diligence_item_id: string; label: string; evidence_type: string; source_url: string | null; verification_status: string }> = [];
@@ -64,6 +66,19 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
         .maybeSingle();
       if (workspaceError) throw new Error("Your saved acquisition plan could not be loaded. Please refresh before making changes.");
       workspace = data ?? null;
+      if(inquiryId) {
+        const [inquiryResult,ndaResult,documentsResult,requestsResult]=await Promise.all([
+          supabase.from("deal_inquiries").select("financial_access_status").eq("id",inquiryId).or(`buyer_id.eq.${user.id},broker_id.eq.${user.id}`).maybeSingle(),
+          supabase.from("deal_ndas").select("status").eq("inquiry_id",inquiryId).maybeSingle(),
+          supabase.from("deal_room_documents").select("id,title").eq("inquiry_id",inquiryId).eq("is_active",true).in("security_status",["basic_validated","malware_scanned"]),
+          supabase.from("deal_document_requests").select("id").eq("inquiry_id",inquiryId).eq("status","requested"),
+        ]);
+        if([inquiryResult,ndaResult,documentsResult,requestsResult].some(result=>result.error))throw new Error("The shared checklist context could not be loaded. Please refresh.");
+        if(inquiryResult.data) {
+          checklistDocuments=documentsResult.data??[];
+          checklistBrokerStatus={nda:ndaResult.data?.status??"not sent",access:inquiryResult.data.financial_access_status??"not requested",requests:requestsResult.data?.length??0};
+        }
+      }
       const planResults = await Promise.all([
         supabase.from("diligence_items").select("id,category,title,status,due_date,reason,guidance_source,source_url,risk_level,assigned_role").eq("user_id", user.id).eq("opportunity_key", opportunity.id).order("category"),
         supabase.from("broker_interactions").select("id,interaction_type,summary,contact_name,occurred_at").eq("user_id", user.id).eq("opportunity_key", opportunity.id).order("occurred_at", { ascending: false }).limit(10),
@@ -135,7 +150,7 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
         <nav className="deal-workspace-nav" aria-label={es ? "Secciones del espacio de adquisición" : "Deal workspace sections"}>
           <a href="#valuation">{es ? "Lista de compra" : "Buying checklist"}</a><a href="#summary">{es ? "Resumen" : "Summary"}</a><a href="#guided-plan">{es ? "Herramientas de apoyo" : "Supporting tools"}</a><a href="#diligence">{es ? "Diligencia" : "Diligence"}</a><a href="#broker">{es ? "Actividad del corredor" : "Broker activity"}</a><a href="#notes">{es ? "Notas privadas" : "Private notes"}</a>
         </nav>
-        <div id="valuation"><AcquisitionPlanner opportunity={opportunity} initialWorkspace={workspace} locale={locale} /></div>
+        <div id="valuation"><AcquisitionPlanner opportunity={opportunity} initialWorkspace={workspace} locale={locale} documents={checklistDocuments} brokerStatus={checklistBrokerStatus} today={new Date().toISOString().slice(0,10)} /></div>
         <div className="detail-metrics" id="summary">
           {[[es ? "Precio solicitado" : "Asking price",opportunity.price],[es ? "Ingresos" : "Revenue",opportunity.revenue],[es ? "Flujo de caja / SDE" : "Cash flow / SDE",opportunity.cashFlow],["EBITDA",opportunity.ebitda]].map(([label,value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}
         </div>

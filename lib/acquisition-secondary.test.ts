@@ -24,6 +24,7 @@ async function harness(failTable='',missing=false){
       if(name==='@/lib/opportunity-resolver')return {resolveOpportunity:async()=>({id:'synthetic-deal'})};
       if(name==='@/lib/i18n')return {isLocale:()=>true};
       if(name==='@/lib/guided-acquisition')return {buildGuidedChecklist:()=>[{category:'Financial',title:'Synthetic item'}]};
+      if(name==='@/lib/acquisition-tailoring')return tailoring;
       return {};
     }
   });
@@ -59,3 +60,4 @@ test('evidence cannot use executable links or a missing item from another deal',
   const missing=await harness('',true);
   await assert.rejects(missing.exports.addDiligenceEvidence(missing.form),/Choose a checklist item/);assert.equal(missing.writes.length,0);
 });
+import * as tailoring from './acquisition-tailoring.ts';

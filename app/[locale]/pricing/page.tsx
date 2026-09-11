@@ -225,10 +225,6 @@ export default async function PricingPage({
         <LocaleSwitcher locale={locale} />
         {user ? <>
           <Link className="button button--light" href={`/${locale}/dashboard`}>{es ? "Panel" : "Dashboard"}</Link>
-          <form action="/api/stripe/portal" method="post">
-            <input type="hidden" name="locale" value={locale} />
-            <button className="button button--light" type="submit">{es ? "Administrar facturación" : "Manage billing"}</button>
-          </form>
           <a className="header-signout" href={user.source === "chatgpt" ? chatGPTSignOutPath(`/${locale}`) : `/api/local-auth/signout?return_to=/${locale}`}>
             {es ? "Salir" : "Sign out"}
           </a>
@@ -238,6 +234,10 @@ export default async function PricingPage({
 
     <main className="pricing-page">
       <section className="pricing-hero shell">
+        {user && <form action="/api/stripe/portal" method="post">
+          <input type="hidden" name="locale" value={locale} />
+          <button className="button button--light" type="submit">{es ? "Administrar facturación" : "Manage billing"}</button>
+        </form>}
         {query.checkout === "success" && (
           <div className="billing-status billing-status--success" role="status">
             <strong>{es ? "Regresaste de la página de pago" : "You returned from checkout"}</strong>

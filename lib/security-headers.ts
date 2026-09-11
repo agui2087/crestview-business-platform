@@ -3,7 +3,7 @@ const contentSecurityPolicyDirectives = [
   "base-uri 'self'",
   "object-src 'none'",
   "frame-ancestors 'none'",
-  "form-action 'self' https://checkout.stripe.com",
+  "form-action 'self' https://checkout.stripe.com https://billing.stripe.com",
   "script-src 'self' 'unsafe-inline' https://js.stripe.com",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",

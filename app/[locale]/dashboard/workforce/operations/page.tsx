@@ -1,3 +1,4 @@
+import {WorkforceAccessNotice} from '@/components/workforce-access-notice';
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { PageHeading, PlatformShell } from "@/components/platform-shell";
@@ -54,7 +55,7 @@ export default async function WorkforceOperations({params,searchParams}:{params:
   const ownMember=members.find(m=>m.owner_id===owner&&m.user_id===user.id&&m.accepted_at&&!m.revoked_at);
   const hidden=(operation:string,employee?:string,id?:string)=><><input type="hidden" name="locale" value={locale}/><input type="hidden" name="owner" value={owner}/><input type="hidden" name="operation" value={operation}/>{employee&&<input type="hidden" name="employee" value={employee}/ >}{id&&<input type="hidden" name="id" value={id}/>}</>;
   const submit=<button className="button button--primary">{t("Save","Guardar")}</button>;
-  return <PlatformShell locale={locale} active="workforce"><div className="dashboard-content wf-ops">
+  return <PlatformShell locale={locale} active="workforce"><div className="dashboard-content wf-ops"><WorkforceAccessNotice owner={owner} locale={locale}/>
     <PageHeading eyebrow={t("People operations","Operaciones de personal")} title={t("Workforce command center","Centro de operaciones de personal")} body={t("Manage your team’s requests, transitions and training—with explicit access and a record of changes.","Administra solicitudes, transiciones y capacitación con acceso explícito e historial.")} action={<Link className="button button--light" href={`/${locale}/dashboard/workforce`}>{t("Directory","Directorio")}</Link>}/>
     <nav aria-label={t("Workforce workspaces","Espacios de personal")} className="wf-links"><Link href={`?owner=${user.id}`}>{t("My workspace","Mi espacio")}</Link>{members.filter(m=>m.user_id===user.id&&m.accepted_at&&!m.revoked_at).map(m=><Link key={m.id} href={`?owner=${m.owner_id}`}>{t("Shared workspace","Espacio compartido")} · {m.role} · {m.owner_id.slice(0,8)}</Link>)}</nav>
     {query.notice&&<p role={query.notice==="saved"?"status":"alert"}>{query.notice==="saved"?t("Saved successfully.","Guardado correctamente."):t("Not saved. Check your access, required fields and whether this item has changed. Refresh before retrying.","No se guardó. Revisa tu acceso, los campos y si el registro cambió. Actualiza antes de reintentar.")}</p>}

@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { PageHeading, PlatformShell } from "@/components/platform-shell";
 import { FormattedMoneyInput } from "@/components/formatted-money-input";
 import { ListingDraftEditor } from "@/components/listing-draft-editor";
+import { NdaFileInput } from "@/components/nda-file-input";
 import {ListingPurchases} from '@/components/listing-purchases';
 import "./listings.css";
 import { getCrestviewUser } from "@/lib/current-user";
@@ -59,7 +60,9 @@ export default async function ListingsPage({ params, searchParams }: PageProps<"
         {query.error === "nda_required" && <p className="auth-error">Add an approved PDF NDA and confirm you are authorized to use it before publishing. You can keep the listing as a draft until then.</p>}
         {query.error === "nda_file" && <p className="auth-error">The NDA must be a PDF no larger than 10 MB.</p>}
         {query.error === "nda_upload" && <p className="auth-error">The NDA could not be uploaded. Your listing was not published. Please try the upload again.</p>}
-        {typeof query.error === "string" && !["limit", "nda_required", "nda_file", "nda_upload"].includes(query.error) && <p className="auth-error">We could not save that listing. Review the required fields and try again.</p>}
+        {query.error === "nda_exists" && <p className="notice" role="status">{locale==='es'?'Este anuncio ya tiene un NDA guardado. No se reemplazó el acuerdo existente. No necesitas volver a subirlo.':'This listing already has a saved NDA. The existing agreement was not replaced. You do not need to upload it again.'}</p>}
+        {query.error === "nda_lookup" && <p className="auth-error" role="alert">{locale==='es'?'No pudimos comprobar el NDA existente. No se cambió ningún archivo. Actualiza la página e inténtalo de nuevo.':'We could not check the existing NDA. No files were changed. Refresh the page and try again.'}</p>}
+        {typeof query.error === "string" && !["limit", "nda_required", "nda_file", "nda_upload", "nda_exists", "nda_lookup"].includes(query.error) && <p className="auth-error">We could not save that listing. Review the required fields and try again.</p>}
         <div className="broker-summary">
           <article><span>Total listings</span><strong>{listings.length}</strong></article>
           <article><span>Active listings</span><strong>{activeListings.length} / 100</strong></article>
@@ -93,10 +96,7 @@ export default async function ListingsPage({ params, searchParams }: PageProps<"
             </div>
             <div className="form-section-heading nda-automation"><span>02</span><div><strong>Add your NDA</strong><small>Upload it once. Buyers can review and sign it without waiting for you.</small></div></div>
             <div className="nda-template-editor">
-              <label className="span-three nda-upload-primary">Upload your approved NDA
-                <input name="nda_file" type="file" accept="application/pdf,.pdf" />
-                <small>PDF only, up to 10 MB. Crestview records exactly which version each buyer signs.</small>
-              </label>
+              <div className="span-three nda-upload-primary"><NdaFileInput locale={locale}/></div>
               <label className="nda-confirmation span-three"><input type="checkbox" name="nda_attested" /> I am authorized to use this NDA and have had it reviewed for this listing. <small>Required to publish</small></label>
               <input type="hidden" name="auto_send_nda" value="on" />
               <details className="nda-advanced span-three">

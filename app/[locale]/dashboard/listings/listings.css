@@ -2,3 +2,8 @@
 .listing-management .listing-draft-continuation { flex-basis: 100%; min-width: 0; width: 100%; }
 .listing-draft-continuation .listing-editor { width: 100%; }
 .listing-draft-continuation input:not([type=checkbox]), .listing-draft-continuation textarea { max-width: 100%; }
+.nda-file-picker { display: grid; gap: 12px; min-width: 0; }
+.nda-file-picker .button { justify-self: start; min-height: 44px; }
+.nda-file-picker input[type=file] { display: block; width: 100%; min-width: 0; max-width: 100%; }
+.nda-file-picker .nda-file-name { margin: 0; overflow-wrap: anywhere; }
+.nda-file-picker input:focus-visible, .nda-file-picker button:focus-visible { outline: 3px solid #79559a; outline-offset: 3px; }

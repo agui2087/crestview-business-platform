@@ -336,7 +336,8 @@ export async function attachDraftNda(formData:FormData) {
   if(!listing)redirect(`/${locale}/dashboard/listings?error=draft_changed`);
   const {data:existing,error:lookupError}=await supabase.from("listing_nda_templates").select("id").eq("listing_id",id).maybeSingle();
   // Never replace an existing agreement or invalidate a version already signed.
-  if(lookupError || existing)redirect(`/${locale}/dashboard/listings?error=nda_exists`);
+  if(lookupError)redirect(`/${locale}/dashboard/listings?error=nda_lookup`);
+  if(existing)redirect(`/${locale}/dashboard/listings?error=nda_exists`);
   const file=formData.get("nda_file");
   if(formData.get("nda_attested") !== "on" || !(file instanceof File) || !file.size)redirect(`/${locale}/dashboard/listings?error=nda_required`);
   if(file.type !== "application/pdf" || file.size > maxVaultDocumentBytes || !await validateUploadedDocument(file))redirect(`/${locale}/dashboard/listings?error=nda_file`);

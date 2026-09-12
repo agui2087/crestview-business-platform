@@ -1,5 +1,6 @@
 import type {MarketplaceListing} from "@/lib/marketplace";
 import {FormattedMoneyInput} from "@/components/formatted-money-input";
+import {NdaFileInput} from "@/components/nda-file-input";
 import {attachDraftNda,updateDraftListing} from "@/app/[locale]/dashboard/marketplace/actions";
 
 export function ListingDraftEditor({listing,locale}:{listing:MarketplaceListing;locale:string}) {
@@ -22,7 +23,7 @@ export function ListingDraftEditor({listing,locale}:{listing:MarketplaceListing;
     </details>
     {!listing.nda_automatic && <details className="listing-editor"><summary><strong>{es ? "Agregar el NDA al borrador" : "Add NDA to this draft"}</strong></summary><form action={attachDraftNda}>
       <input type="hidden" name="locale" value={locale}/><input type="hidden" name="listing_id" value={listing.id}/>
-      <label>{es ? "NDA revisado (PDF, máximo 10 MB)" : "Reviewed NDA (PDF, maximum 10 MB)"}<input type="file" name="nda_file" accept="application/pdf,.pdf" required/></label>
+      <NdaFileInput locale={locale} required/>
       <label><input type="checkbox" name="nda_attested" required/>{es ? "Estoy autorizado para usar este acuerdo revisado para el anuncio." : "I am authorized to use this reviewed agreement for the listing."}</label>
       <p>{es ? "Guardar el NDA no publica el anuncio. Después elige Publicado en Estado. Se requiere un plan de corredor activo." : "Saving the NDA does not publish the listing. Next choose Published under Status. An active broker plan is required."}</p>
       <button className="button button--primary" type="submit">{es ? "Guardar NDA revisado" : "Save reviewed NDA"}</button>

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Brand } from "@/components/brand";
+import {WorkforceSeatSelector} from '@/components/workforce-seat-selector';
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { chatGPTSignOutPath, getChatGPTUser } from "@/app/chatgpt-auth";
 import { isLocale } from "@/lib/i18n";
@@ -210,11 +211,9 @@ export default async function PricingPage({
   ];
 
   const workforceTiers = es ? [
-    ["10 empleados", "$20/mes"], ["25 empleados", "$50/mes"], ["50 empleados", "$100/mes"],
-    ["100 empleados", "$200/mes"], ["200 empleados", "$400/mes"], ["300 empleados", "$600/mes"], ["Más de 300 empleados", "Precio personalizado"],
+    ["1 empleado", "$2/mes"], ["4 empleados", "$8/mes"], ["5 empleados", "$10/mes"], ["25 empleados", "$50/mes"],
   ] : [
-    ["10 employees", "$20/month"], ["25 employees", "$50/month"], ["50 employees", "$100/month"],
-    ["100 employees", "$200/month"], ["200 employees", "$400/month"], ["300 employees", "$600/month"], ["More than 300 employees", "Custom pricing"],
+    ["1 employee", "$2/month"], ["4 employees", "$8/month"], ["5 employees", "$10/month"], ["25 employees", "$50/month"],
   ];
 
   return <>
@@ -317,21 +316,16 @@ export default async function PricingPage({
         <div className="pricing-section__heading"><div><p className="eyebrow">{es ? "Personal" : "Workforce"}</p><h2 id="workforce-pricing">{es ? "Precios que crecen con tu equipo." : "Pricing that grows with your team."}</h2></div><p>{es ? "Administración sencilla de empleados, documentos, certificaciones, capacitación y tiempo libre. El procesamiento de nómina no está incluido inicialmente." : "Straightforward employee, document, certification, training, and time-off administration. Payroll processing is not included initially."}</p></div>
         <div className="workforce-pricing">
           <div className="workforce-pricing__intro">
-            <span>{es ? "Desde" : "Starting at"}</span><strong>$20</strong><small>/{es ? "mes" : "month"}</small>
-            <p>{es ? "Precio equivalente a $2 por empleado al mes. Todos los niveles incluyen la experiencia bilingüe en inglés y español." : "Equivalent to $2 per employee per month. Every tier includes the bilingual English and Spanish experience."}</p>
+            <span>{es ? "Desde" : "Starting at"}</span><strong>$2</strong><small>/{es ? "mes" : "month"}</small>
+            <p>{es ? "$2 por empleado al mes. Ingresa el número exacto de empleados, desde 1. Incluye la experiencia bilingüe en inglés y español." : "$2 per employee per month. Enter your exact employee count, starting at 1. Includes the bilingual English and Spanish experience."}</p>
             <form className="workforce-checkout-form" action="/api/stripe/checkout" method="post">
               <input type="hidden" name="locale" value={locale} />
               <input type="hidden" name="product_code" value="workforce" />
-              <label htmlFor="workforce-quantity">{es ? "Número de empleados" : "Employee count"}</label>
-              <select id="workforce-quantity" name="quantity" defaultValue="10">
-                {[10, 25, 50, 100, 200, 300].map((quantity) => (
-                  <option key={quantity} value={quantity}>{quantity}</option>
-                ))}
-              </select>
+              <WorkforceSeatSelector locale={locale}/>
               <button className="button button--primary" type="submit">{es ? "Elegir Workforce" : "Choose Workforce"}</button>
             </form>
           </div>
-          <div className="workforce-tiers" role="table" aria-label={es ? "Niveles de precios de personal" : "Workforce pricing tiers"}>
+          <div className="workforce-tiers" role="table" aria-label={es ? "Ejemplos de precios de personal" : "Workforce pricing examples"}>
             {workforceTiers.map(([size, price]) => <div role="row" key={size}><span role="cell">{size}</span><strong role="cell">{price}</strong></div>)}
           </div>
         </div>

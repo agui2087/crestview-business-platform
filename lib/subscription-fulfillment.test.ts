@@ -13,7 +13,7 @@ test("ordered subscription fulfillment and access projection",async(t)=>{
       create function auth.uid() returns uuid language sql as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
       grant usage on schema auth to authenticated;
       insert into auth.users values ('${owner}'),('${stranger}');`);
-    for(const name of ["0010_stripe_billing.sql","0043_ordered_subscription_fulfillment.sql"])
+    for(const name of ["0010_stripe_billing.sql","0043_ordered_subscription_fulfillment.sql","0050_workforce_exact_seats.sql"])
       await db.exec(await readFile(new URL(`../supabase/migrations/${name}`,import.meta.url),"utf8"));
     const clear=()=>db.exec("reset role; truncate billing_complimentary_grants,billing_entitlements,billing_subscriptions,billing_customers,stripe_webhook_events");
     const apply=async(id:string,time:number,status="active",sub="sub_fixture",user=owner,customer="cus_fixture",quantity=1,product="broker_plan")=>{
@@ -32,6 +32,18 @@ test("ordered subscription fulfillment and access projection",async(t)=>{
       assert.equal(await apply("evt_once",100),false);
       assert.deepEqual(await state(),{status:"active",active:true,quantity:1});
       assert.equal((await db.query<{n:number}>("select count(*)::int n from stripe_webhook_events")).rows[0].n,1);
+    });
+    await t.test("exact Workforce seats survive renewal, resizing and cancellation",async()=>{
+      for(const quantity of [1,4,5,11,301,99999]){
+        await clear();await apply('evt_seats',100,'active','sub_fixture',owner,'cus_fixture',quantity,'workforce');
+        assert.deepEqual(await state(),{status:'active',active:true,quantity});
+        await apply('evt_renew',200,'active','sub_fixture',owner,'cus_fixture',quantity,'workforce');
+        assert.equal((await state()).quantity,quantity);
+        await apply('evt_resize',300,'active','sub_fixture',owner,'cus_fixture',4,'workforce');
+        assert.equal((await state()).quantity,4);
+        await apply('evt_cancel',400,'canceled','sub_fixture',owner,'cus_fixture',4,'workforce');
+        assert.equal((await state()).active,false);
+      }
     });
     await t.test("older active event cannot undo a newer unpaid state",async()=>{
       await clear();await apply("evt_new",200,"unpaid");
@@ -58,7 +70,7 @@ test("ordered subscription fulfillment and access projection",async(t)=>{
     await t.test("invalid quantities cannot activate subscriptions",async()=>{
       await clear();
       await assert.rejects(apply("evt_many",100,"active","sub_fixture",owner,"cus_fixture",2),{code:"22023"});
-      await assert.rejects(apply("evt_tier",100,"active","sub_fixture",owner,"cus_fixture",11,"workforce"),{code:"22023"});
+      await assert.rejects(apply("evt_tier",100,"active","sub_fixture",owner,"cus_fixture",100000,"workforce"),{code:"22023"});
     });
     await t.test("entitlement failure rolls back event receipt and subscription so retry succeeds",async()=>{
       await clear();await db.exec("alter table billing_entitlements add constraint test_failure check(product_code<>'broker_plan')");

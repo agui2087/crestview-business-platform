@@ -1,4 +1,5 @@
 import "server-only";
+import {parseWorkforceSeats} from '../workforce-seat-pricing';
 
 export const STRIPE_API_VERSION = "2026-06-24.dahlia" as const;
 export const STRIPE_INTEGRATION_IDENTIFIER = "crestview_qmrvxkda";
@@ -37,7 +38,6 @@ export const productDefinitions: Record<ProductCode, ProductDefinition> = {
   workforce: { envName: "STRIPE_PRICE_WORKFORCE", mode: "subscription" },
 };
 
-export const workforceQuantities = [10, 25, 50, 100, 200, 300] as const;
 
 export function isProductCode(value: string): value is ProductCode {
   return productCodes.includes(value as ProductCode);
@@ -61,12 +61,5 @@ export function getProductCodeForPrice(priceId: string) {
 
 export function parseCheckoutQuantity(productCode: ProductCode, rawQuantity: unknown) {
   if (productCode !== "workforce") return 1;
-  const quantity = Number(rawQuantity);
-  if (
-    !Number.isInteger(quantity) ||
-    !workforceQuantities.includes(quantity as (typeof workforceQuantities)[number])
-  ) {
-    throw new Error("Choose a supported workforce employee count.");
-  }
-  return quantity;
+  return parseWorkforceSeats(rawQuantity);
 }

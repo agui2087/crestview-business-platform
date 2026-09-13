@@ -1,5 +1,6 @@
 import {createSupabaseServerClient} from '@/lib/supabase/server';
 import {listingProductsEnabled} from '@/lib/billing-availability';
+import {logOperationalEvent} from '@/lib/observability';
 import type {MarketplaceListing} from '@/lib/marketplace';
 type Order={id:string;listing_id:string;product_code:string;status:string;ends_at:string|null;created_at:string};
 const products=[['single_listing','$30'],['enhanced_visibility','$49.99'],['highest_visibility','$99.99']] as const;
@@ -15,7 +16,21 @@ export async function ListingPurchases({userId,listings,locale,purchase}:{userId
     supabase.rpc('my_listing_promotion_metrics'),
     supabase.rpc('my_current_listing_orders'),
   ]);
-  if(error||planError||metricsError||currentError)throw new Error('Listing purchase status could not be loaded.');
+  if(error||planError||metricsError||currentError){
+    logOperationalEvent({event:'listing.purchase_status_unavailable',level:'error',route:'/dashboard/listings',
+      details:{ordersFailed:Boolean(error),planFailed:Boolean(planError),metricsFailed:Boolean(metricsError),currentOrdersFailed:Boolean(currentError)}});
+    // Unknown billing state must never look like an unpaid plan or offer a
+    // second checkout. Keep this failure local to the purchase panel.
+    return <section id="listing-purchases" className="panel" style={{padding:'1.5rem',marginBlock:'1.5rem'}}>
+      <h2>{es?'Publicación y promociones':'Listing purchases and promotions'}</h2>
+      <p role="alert">{es?'No pudimos verificar tus compras y promociones. Los controles de compra están temporalmente deshabilitados para evitar pagos duplicados. Esto no significa que hayas perdido el acceso.':'We could not verify your purchases and promotions. Purchase controls are temporarily unavailable to avoid duplicate payments. This does not mean your access has been lost.'}</p>
+      <p>{es?'Tus anuncios guardados no se cambiaron. Revisa la facturación antes de volver a pagar.':'Your saved listings were not changed. Review billing before making another payment.'}</p>
+      <div style={{display:'flex',gap:'0.75rem',flexWrap:'wrap'}}>
+        <a className="button button--primary" href={`/${locale}/dashboard/listings#listing-purchases`}>{es?'Volver a comprobar':'Check again'}</a>
+        <a className="button button--light" href={`/${locale}/pricing`}>{es?'Administrar facturación':'Manage billing'}</a>
+      </div>
+    </section>;
+  }
   const orders=[...new Map([...((current??[]) as Order[]),...((data??[]) as Order[])].map(o=>[o.id,o])).values()].sort((a,b)=>Date.parse(b.created_at)-Date.parse(a.created_at));
   const daily=(metrics??[]) as {order_id:string;day:string;views:number;engagements:number}[];
   const brokerActive=plan?.active&&(!plan.expires_at||new Date(plan.expires_at)>new Date());

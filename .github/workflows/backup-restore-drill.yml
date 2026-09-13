@@ -46,11 +46,7 @@ jobs:
           cache: npm
       - run: npm ci --omit=dev
       - name: Require backup credentials
-        run: |
-          test -n "$SUPABASE_DB_URL"
-          test -n "$NEXT_PUBLIC_SUPABASE_URL"
-          test -n "$SUPABASE_SERVICE_ROLE_KEY"
-          test -n "$CRESTVIEW_BACKUP_PASSPHRASE"
+        run: node scripts/check-backup-configuration.mjs backup
       - name: Create logical database backup
         run: pg_dump "$SUPABASE_DB_URL" --format=custom --no-owner --no-acl --schema=public --schema=auth --file=crestview-database.dump
       - name: Back up private object storage
@@ -76,8 +72,7 @@ jobs:
       # drill must remain a failed job without discarding a usable backup.
       - name: Require isolated restore credentials
         run: |
-          test -n "$RESTORE_SUPABASE_URL"
-          test -n "$RESTORE_SUPABASE_SERVICE_ROLE_KEY"
+          node scripts/check-backup-configuration.mjs restore
           test "$NEXT_PUBLIC_SUPABASE_URL" != "$RESTORE_SUPABASE_URL"
       - name: Verify and decrypt the saved artifact bytes
         run: |

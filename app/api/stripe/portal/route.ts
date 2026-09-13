@@ -49,7 +49,7 @@ export async function POST(request: Request) {
         if (matchesWorkforcePortal(config, product, priceId)) { configuration = config.id; break; }
       }
       if (!configuration) {
-        const config = await stripe.billingPortal.configurations.create(workforcePortalConfiguration(product, priceId), {idempotencyKey: `workforce-seats-v1-${priceId}`});
+        const config = await stripe.billingPortal.configurations.create(workforcePortalConfiguration(product, priceId), {idempotencyKey: `workforce-seats-v2-${priceId}`});
         if (!matchesWorkforcePortal(config, product, priceId)) throw new Error('workforce_portal_configuration');
         configuration = config.id;
       }

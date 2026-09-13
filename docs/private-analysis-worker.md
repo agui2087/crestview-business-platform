@@ -1,6 +1,6 @@
 # Private document processor — release checklist
 
-Current implementation is not activated in production. Keep `CRESTVIEW_PRIVATE_ANALYSIS_ENABLED` unset until every release check below passes.
+Activation is environment-specific; the source tree alone does not prove that the installed worker matches this release. Keep `CRESTVIEW_PRIVATE_ANALYSIS_ENABLED` unset on new environments until every release check below passes. A web deployment does not update a separately installed Mac worker.
 
 The worker pulls checked, owner-requested PDFs from the existing private vault. It calls only the loopback model endpoint, processes one document at a time, and does not update saved financial figures. Queue entries survive the computer sleeping. Interrupted processing requires a new request after the lease expires. Deleting or replacing the source makes its previous analysis inaccessible.
 
@@ -22,6 +22,10 @@ Customer wording: “Document analysis may take additional time. You can continu
 ## Current limits
 
 Owner-only Pro vault PDFs, 10 MB, 30 pages, 12,000 extracted characters per page; 5 requests/hour and 20/day shared with existing analysis usage. Image-only pages require attention; OCR is not implemented. Extraction is not accounting verification. Human review remains necessary even when citations match.
+
+Each local-model attempt has a maximum of three minutes. A schema-valid response with unsupported citations, values, or periods receives at most one correction attempt against the same source. Network failures are not automatically retried. Every corrected finding must pass the same validation; partial numbers and invented reporting periods are rejected. The complete job has a 35-minute budget within its 40-minute database lease. Exceeding that budget fails safely instead of publishing an expired result. These are safety limits, not completion-time guarantees.
+
+When updating an existing processor, verify there are no active processing leases before stopping it. Deploy `scripts/private-analysis-worker.mts`, `lib/private-analysis.ts`, and `lib/private-model-client.ts` together, retain the existing private environment file, then restart and verify a synthetic request. Never restart a worker in the middle of a customer request just to install an update.
 
 ## Rollback
 

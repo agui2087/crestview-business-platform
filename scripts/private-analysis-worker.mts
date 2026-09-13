@@ -3,8 +3,9 @@ import {createHash} from 'node:crypto';
 import {execFile} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {setTimeout as delay} from 'node:timers/promises';
-import {z} from 'zod';
-import {localModelName,PRIVATE_MODEL_ENDPOINT,PRIVATE_ANALYSIS_MAX_BYTES,privateAnalysisPrompt,privatePageAnalysisSchema,privateAnalysisResultSchema,validatePageFindings} from '../lib/private-analysis.ts';
+import {localModelName,PRIVATE_ANALYSIS_MAX_BYTES,privateAnalysisResultSchema} from '../lib/private-analysis.ts';
+
+import {analyzePrivatePage,PRIVATE_JOB_BUDGET_MS} from '../lib/private-model-client.ts';
 
 const model=localModelName();
 const url=process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -24,6 +25,7 @@ async function runOne(){
   const {data,error}=await client.rpc('claim_private_document_analysis');
   if(error)throw new Error('Queue unavailable');
   const job=data?.[0];if(!job)return false;
+  const deadline=Date.now()+PRIVATE_JOB_BUDGET_MS;
   let result=null;let failure:string|null=null;
   try{
     if(job.size_bytes<1||job.size_bytes>PRIVATE_ANALYSIS_MAX_BYTES)throw new Error('source_unavailable');
@@ -34,12 +36,7 @@ async function runOne(){
     const pages=await extract(bytes);bytes.fill(0);
     const findings=[];
     for(let i=0;i<pages.length;i++){
-      let payload;
-      try{
-        const response=await fetch(PRIVATE_MODEL_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},signal:AbortSignal.timeout(60000),body:JSON.stringify({model,stream:false,keep_alive:0,format:{type:'object',properties:{findings:{type:'array',items:{type:'object',properties:{metric:{type:'string'},reportedValue:{type:'string'},period:{type:'string'},page:{type:'integer'},evidence:{type:'string'},uncertainty:{type:'string'}},required:['metric','reportedValue','period','page','evidence','uncertainty'],additionalProperties:false}}},required:['findings'],additionalProperties:false},options:{temperature:0,num_ctx:8192,num_predict:2000},messages:[{role:'system',content:privateAnalysisPrompt},{role:'user',content:JSON.stringify({page:i+1,language:job.locale,text:pages[i]})}]})});
-        if(!response.ok)throw new Error();payload=await response.json();
-      }catch{throw new Error('model_unavailable');}
-      try{const message=z.object({message:z.object({content:z.string().max(100000)})}).parse(payload);findings.push(...validatePageFindings(privatePageAnalysisSchema.parse(JSON.parse(message.message.content)),i+1,pages[i]));}catch{throw new Error('invalid_result');}
+      findings.push(...await analyzePrivatePage({model,page:i+1,language:job.locale,text:pages[i],deadline}));
       pages[i]='';
     }
     result=privateAnalysisResultSchema.parse({findings,pageCount:pages.length,model,limitations:['AI-generated extraction requires review against the original document. No saved financial figures were changed.']});

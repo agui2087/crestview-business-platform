@@ -46,11 +46,14 @@ export async function POST(request: Request) {
       const product = typeof price.product === 'string' ? price.product : price.product.id;
       let configuration: string | undefined;
       for await (const config of stripe.billingPortal.configurations.list({active: true, limit: 100})) {
-        if (matchesWorkforcePortal(config, product, priceId)) { configuration = config.id; break; }
+        if (config.metadata?.crestview_purpose !== 'workforce_seats_v2' || config.metadata?.crestview_price !== priceId) continue;
+        const expanded = await stripe.billingPortal.configurations.retrieve(config.id, {expand: ['features.subscription_update.products']});
+        if (matchesWorkforcePortal(expanded, product, priceId)) { configuration = expanded.id; break; }
       }
       if (!configuration) {
         const config = await stripe.billingPortal.configurations.create(workforcePortalConfiguration(product, priceId), {idempotencyKey: `workforce-seats-v2-${priceId}`});
-        if (!matchesWorkforcePortal(config, product, priceId)) throw new Error('workforce_portal_configuration');
+        const expanded = await stripe.billingPortal.configurations.retrieve(config.id, {expand: ['features.subscription_update.products']});
+        if (!matchesWorkforcePortal(expanded, product, priceId)) throw new Error('workforce_portal_configuration');
         configuration = config.id;
       }
       const session = await stripe.billingPortal.sessions.create({

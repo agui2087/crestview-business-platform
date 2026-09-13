@@ -16,6 +16,7 @@ test('source citations reject blank fields, invented periods and truncated finan
     assert.throws(()=>validatePageFindings({findings:[{...finding,reportedValue,evidence,period:''}]},1,evidence));
   }
   assert.equal(validatePageFindings({findings:[{...finding,reportedValue:'$100,000',evidence:'Revenue $100,000',period:''}]},1,'Revenue $100,000.').length,1);
+  assert.equal(validatePageFindings({findings:[{...finding,evidence:'Revenue $100',period:'2025'}]},1,'For 2025, Revenue $100.').length,1);
 });
 test('local model configuration requires cloud disabled and rejects cloud tags',()=>{
   assert.throws(()=>localModelName({CRESTVIEW_PRIVATE_MODEL:'qwen3:4b'}));

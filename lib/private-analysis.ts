@@ -40,7 +40,7 @@ function containsQuote(source:string,quote:string){
     const splitStart=word.test(quote[0])&&word.test(before);
     const splitEnd=word.test(quote.at(-1)!)&&word.test(after);
     const strippedSign=/^\d/.test(quote)&&/[\p{Sc}+\-.,]/u.test(before);
-    const splitNumber=/\d$/.test(quote)&&(/[%,]/.test(after)||(after==='.'&&/\d/.test(source[offset+quote.length+1]??'')));
+    const splitNumber=/\d$/.test(quote)&&(after==='%'||(/[.,]/.test(after)&&/\d/.test(source[offset+quote.length+1]??'')));
     if(!splitStart&&!splitEnd&&!strippedSign&&!splitNumber)return true;
     offset=source.indexOf(quote,offset+1);
   }

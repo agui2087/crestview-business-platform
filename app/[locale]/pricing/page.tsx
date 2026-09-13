@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Brand } from "@/components/brand";
+import {WorkforceSeatSelector} from '@/components/workforce-seat-selector';
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { chatGPTSignOutPath, getChatGPTUser } from "@/app/chatgpt-auth";
 import { isLocale } from "@/lib/i18n";
@@ -100,10 +101,10 @@ export default async function PricingPage({
       cadence: "/mes",
       productCode: "crestview_pro",
       action: "Elegir Pro",
-      description: "Ayuda avanzada para entender contratos, documentos financieros y el lenguaje de M&A.",
+      description: "Organiza y compara hallazgos financieros para revisar con tus asesores. No incluye extracción automática de documentos.",
       badge: "Ayuda avanzada",
       featured: true,
-      features: ["Todo lo incluido en Gratis", "Calculadora Excel de diligencia financiera", "Inteligencia documental con fuentes", "Alertas por discrepancias entre documentos", "Explicaciones avanzadas de riesgos", "Comparaciones financieras avanzadas", "Estados de revisión controlados para hallazgos"],
+      features: ["Todo lo incluido en Gratis", "Calculadora Excel de diligencia financiera", "Hallazgos ingresados con referencias a fuentes", "Alertas de discrepancias en valores ingresados", "Estados de revisión del comprador", "Resumen para prestamista con inventario de documentos (texto)", "Informe de decisión descargable (texto)"],
     },
   ] : [
     {
@@ -112,7 +113,7 @@ export default async function PricingPage({
       cadence: "/forever",
       description: "Complete resources for moving from discovery through closing without paying for the essential process.",
       badge: "For everyone",
-      features: ["Search, filter, and save opportunities", "Deal command center and next steps", "Deal-specific acquisition checklist", "Basic verified listing passport", "Valuation calculators", "Tasks, evidence, and progress tracking"],
+      features: ["Search, filter, and save opportunities", "Deal command center and next steps", "Deal-specific acquisition checklist", "Basic listing evidence passport", "Valuation calculators", "Tasks, evidence, and progress tracking"],
     },
     {
       name: "Crestview Pro",
@@ -120,10 +121,10 @@ export default async function PricingPage({
       cadence: "/month",
       productCode: "crestview_pro",
       action: "Choose Pro",
-      description: "Advanced help understanding contracts, financial documents, and high-level M&A language.",
+      description: "Organize and compare financial findings to review with your advisors. Automatic document extraction is not included.",
       badge: "Advanced guidance",
       featured: true,
-      features: ["Everything included in Free", "Excel financial due-diligence calculator", "Source-linked document intelligence", "Cross-document discrepancy alerts", "Detailed match explanations", "Lender package generation", "Advanced valuation scenarios", "Exportable decision reports"],
+      features: ["Everything included in Free", "Excel financial due-diligence calculator", "Entered findings with source references", "Discrepancy alerts for entered values", "Buyer-recorded review states", "Lender summary with document inventory (text)", "Downloadable decision report (text)"],
     },
   ];
 
@@ -146,7 +147,7 @@ export default async function PricingPage({
       description: "Para corredores que necesitan administrar varias publicaciones y consultas.",
       badge: "Para profesionales",
       featured: true,
-      features: ["Varias publicaciones activas", "Perfil profesional", "Bandeja de clientes potenciales", "Análisis de publicaciones", "Solicitudes de documentos y NDA"],
+      features: ["Hasta 100 publicaciones activas", "Cuenta de corredor y administración de publicaciones", "Bandeja de clientes potenciales", "Confirmación de disponibilidad cada 30 días", "Alertas de posibles duplicados", "Solicitudes de documentos y NDA"],
     },
     {
       name: "Visibilidad mejorada",
@@ -165,7 +166,7 @@ export default async function PricingPage({
       action: "Obtener máxima visibilidad",
       description: "La promoción más fuerte en búsquedas, categorías y ubicaciones relevantes.",
       badge: "Mayor alcance",
-      features: ["Ubicación prioritaria", "Parte superior de búsquedas apropiadas", "Promoción por categoría y ubicación", "Estadísticas avanzadas de promoción"],
+      features: ["Ubicación prioritaria", "Prioridad en resultados relevantes por categoría y ubicación", "Totales de vistas e interacciones de miembros participantes", "Desglose diario de promoción"],
     },
   ] : [
     {
@@ -186,7 +187,7 @@ export default async function PricingPage({
       description: "For brokers who need to manage multiple listings and buyer inquiries.",
       badge: "For professionals",
       featured: true,
-      features: ["Up to 100 active listings", "Professional broker profile", "Buyer lead inbox", "30-day availability confirmations", "Duplicate-listing alerts", "Document and NDA requests"],
+      features: ["Up to 100 active listings", "Broker account and listing management", "Buyer lead inbox", "30-day availability confirmations", "Duplicate-listing alerts", "Document and NDA requests"],
     },
     {
       name: "Enhanced Visibility",
@@ -205,16 +206,14 @@ export default async function PricingPage({
       action: "Get highest visibility",
       description: "The strongest promotion across relevant searches, categories, and locations.",
       badge: "Maximum reach",
-      features: ["Priority placement", "Top of appropriate searches", "Category and location promotion", "Advanced promotion analytics"],
+      features: ["Priority placement", "Priority in relevant category and location results", "Opt-in member view and engagement totals", "Daily promotion breakdown"],
     },
   ];
 
   const workforceTiers = es ? [
-    ["10 empleados", "$20/mes"], ["25 empleados", "$50/mes"], ["50 empleados", "$100/mes"],
-    ["100 empleados", "$200/mes"], ["200 empleados", "$400/mes"], ["300 empleados", "$600/mes"], ["Más de 300 empleados", "Precio personalizado"],
+    ["1 empleado", "$2/mes"], ["4 empleados", "$8/mes"], ["5 empleados", "$10/mes"], ["25 empleados", "$50/mes"],
   ] : [
-    ["10 employees", "$20/month"], ["25 employees", "$50/month"], ["50 employees", "$100/month"],
-    ["100 employees", "$200/month"], ["200 employees", "$400/month"], ["300 employees", "$600/month"], ["More than 300 employees", "Custom pricing"],
+    ["1 employee", "$2/month"], ["4 employees", "$8/month"], ["5 employees", "$10/month"], ["25 employees", "$50/month"],
   ];
 
   return <>
@@ -317,21 +316,16 @@ export default async function PricingPage({
         <div className="pricing-section__heading"><div><p className="eyebrow">{es ? "Personal" : "Workforce"}</p><h2 id="workforce-pricing">{es ? "Precios que crecen con tu equipo." : "Pricing that grows with your team."}</h2></div><p>{es ? "Administración sencilla de empleados, documentos, certificaciones, capacitación y tiempo libre. El procesamiento de nómina no está incluido inicialmente." : "Straightforward employee, document, certification, training, and time-off administration. Payroll processing is not included initially."}</p></div>
         <div className="workforce-pricing">
           <div className="workforce-pricing__intro">
-            <span>{es ? "Desde" : "Starting at"}</span><strong>$20</strong><small>/{es ? "mes" : "month"}</small>
-            <p>{es ? "Precio equivalente a $2 por empleado al mes. Todos los niveles incluyen la experiencia bilingüe en inglés y español." : "Equivalent to $2 per employee per month. Every tier includes the bilingual English and Spanish experience."}</p>
+            <span>{es ? "Desde" : "Starting at"}</span><strong>$2</strong><small>/{es ? "mes" : "month"}</small>
+            <p>{es ? "$2 por empleado al mes. Ingresa el número exacto de empleados, desde 1. Incluye la experiencia bilingüe en inglés y español." : "$2 per employee per month. Enter your exact employee count, starting at 1. Includes the bilingual English and Spanish experience."}</p>
             <form className="workforce-checkout-form" action="/api/stripe/checkout" method="post">
               <input type="hidden" name="locale" value={locale} />
               <input type="hidden" name="product_code" value="workforce" />
-              <label htmlFor="workforce-quantity">{es ? "Número de empleados" : "Employee count"}</label>
-              <select id="workforce-quantity" name="quantity" defaultValue="10">
-                {[10, 25, 50, 100, 200, 300].map((quantity) => (
-                  <option key={quantity} value={quantity}>{quantity}</option>
-                ))}
-              </select>
+              <WorkforceSeatSelector locale={locale}/>
               <button className="button button--primary" type="submit">{es ? "Elegir Workforce" : "Choose Workforce"}</button>
             </form>
           </div>
-          <div className="workforce-tiers" role="table" aria-label={es ? "Niveles de precios de personal" : "Workforce pricing tiers"}>
+          <div className="workforce-tiers" role="table" aria-label={es ? "Ejemplos de precios de personal" : "Workforce pricing examples"}>
             {workforceTiers.map(([size, price]) => <div role="row" key={size}><span role="cell">{size}</span><strong role="cell">{price}</strong></div>)}
           </div>
         </div>

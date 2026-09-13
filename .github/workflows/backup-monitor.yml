@@ -1,0 +1,38 @@
+name: Backup incident monitor
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/backup-monitor.yml
+      - scripts/backup-incident.mjs
+  workflow_run:
+    workflows: ["Encrypted backup and restore drill"]
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+concurrency:
+  group: crestview-backup-incidents
+  cancel-in-progress: false
+
+jobs:
+  incident:
+    if: github.repository == 'agui2087/crestview-business-platform' && ((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.head_repository.full_name == github.repository))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Never check out workflow_run.head_sha or download triggering artifacts.
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/github-script@v8
+        with:
+          script: |
+            const {reportBackupIncident} = await import(`${process.env.GITHUB_WORKSPACE}/scripts/backup-incident.mjs`);
+            const outcome = await reportBackupIncident({github,context});
+            core.info(`Backup incident result: ${outcome}`);

@@ -9,6 +9,14 @@ test('private analysis is disabled unless explicitly enabled',()=>{
   assert.equal(privateAnalysisEnabled({}),false);
   assert.equal(privateAnalysisEnabled({CRESTVIEW_PRIVATE_ANALYSIS_ENABLED:'true'}),true);
 });
+test('source citations reject blank fields, invented periods and truncated financial tokens',()=>{
+  for(const key of ['metric','reportedValue','evidence'])assert.throws(()=>validatePageFindings({findings:[{...finding,[key]:' '}]},1,'Revenue $100 in 2025'));
+  assert.throws(()=>validatePageFindings({findings:[{...finding,period:'025'}]},1,'Revenue $100 in 2025'));
+  for(const [reportedValue,evidence] of [['$100','Revenue $100,000'],['100','Revenue $100'],['100','Revenue -100'],['10','Margin 10%'],['100','Revenue 100.5']]){
+    assert.throws(()=>validatePageFindings({findings:[{...finding,reportedValue,evidence,period:''}]},1,evidence));
+  }
+  assert.equal(validatePageFindings({findings:[{...finding,reportedValue:'$100,000',evidence:'Revenue $100,000',period:''}]},1,'Revenue $100,000.').length,1);
+});
 test('local model configuration requires cloud disabled and rejects cloud tags',()=>{
   assert.throws(()=>localModelName({CRESTVIEW_PRIVATE_MODEL:'qwen3:4b'}));
   assert.throws(()=>localModelName({OLLAMA_NO_CLOUD:'1',CRESTVIEW_PRIVATE_MODEL:'qwen3:cloud'}));
@@ -27,4 +35,6 @@ test('findings must cite the actual page and exact reported amount',()=>{
   assert.throws(()=>validatePageFindings({findings:[finding]},2,'Revenue $100 in 2025'));
   assert.throws(()=>validatePageFindings({findings:[finding]},1,'Revenue $200 in 2025'));
   assert.throws(()=>validatePageFindings({findings:[{...finding,reportedValue:'$999'}]},1,'Revenue $100 in 2025'));
+  assert.throws(()=>validatePageFindings({findings:[{...finding,period:'fiscal year 025'}]},1,'Revenue $100 in 2025'));
+  assert.equal(validatePageFindings({findings:[{...finding,period:''}]},1,'Revenue $100 in 2025').length,1);
 });

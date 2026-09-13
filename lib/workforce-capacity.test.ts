@@ -22,6 +22,14 @@ test('Workforce database capacity protects inserts, imports, restores and busine
     assert.equal((await db.query('select * from employees')).rows.length,2);
     await add();
     await assert.rejects(db.query('update employees set archived_at=null where id=$1',[first]),/capacity/);
+    // A paid downgrade never deletes records, even when existing staff exceed the new allowance.
+    await db.exec('update billing_entitlements set quantity=1');
+    assert.equal((await db.query('select * from employees')).rows.length,3);
+    await assert.rejects(add(),/capacity/);
+    await assert.rejects(db.query('update employees set archived_at=null where id=$1',[first]),/capacity/);
+    await db.query("update employees set full_name='Still editable' where archived_at is null");
+    await db.exec('update billing_entitlements set quantity=4');
+    await db.query('update employees set archived_at=null where id=$1',[first]);
     await db.exec('update billing_entitlements set active=false');
     await assert.rejects(add(),/subscription/);
     await db.query("update employees set full_name='Preserved' where id=$1",[first]);

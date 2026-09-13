@@ -237,6 +237,17 @@ export default async function PricingPage({
           <input type="hidden" name="locale" value={locale} />
           <button className="button button--light" type="submit">{es ? "Administrar facturación" : "Manage billing"}</button>
         </form>}
+        {user && <details className="pricing-card" id="workforce-manage">
+          <summary>{es ? 'Cambiar el número de empleados de Workforce' : 'Change Workforce employee count'}</summary>
+          <p>{es ? '¿Ya tienes una suscripción? Elige cualquier número entero de empleados en Stripe y revisa el nuevo importe y el ajuste proporcional antes de confirmar. Los créditos no son reembolsos automáticos a tu tarjeta.' : 'Already subscribed? Choose any whole employee count in Stripe and review the new amount and prorated adjustment before confirming. Credits are not automatic refunds to your card.'}</p>
+          <p>{es ? 'Reducir las plazas no elimina registros. Si tienes más empleados que plazas, no podrás agregar ni restaurar empleados hasta liberar plazas o aumentar tu plan.' : 'Reducing seats never deletes records. If you have more employees than seats, you cannot add or restore employees until you free seats or increase your plan.'}</p>
+          <form action="/api/stripe/portal" method="post">
+            <input type="hidden" name="locale" value={locale}/>
+            <input type="hidden" name="intent" value="workforce_seats"/>
+            <button className="button button--primary" type="submit">{es ? 'Revisar cambio de empleados en Stripe' : 'Review employee-count change in Stripe'}</button>
+          </form>
+        </details>}
+        {query.billing_error === 'workforce_change' && <p role="alert">{es ? 'Necesitas una suscripción activa de Workforce sin pagos ni cambios pendientes. Usa Administrar facturación para resolverlos o reactivar una cancelación programada. Si el problema continúa, solicita ayuda; no se ha cambiado tu plan.' : 'You need an active Workforce subscription with no outstanding payments or pending changes. Use Manage billing to resolve these or resume a scheduled cancellation. If the issue continues, request help; your plan has not been changed.'}</p>}
         {query.checkout === "success" && (
           <div className="billing-status billing-status--success" role="status">
             <strong>{es ? "Regresaste de la página de pago" : "You returned from checkout"}</strong>
@@ -249,7 +260,7 @@ export default async function PricingPage({
             <span>{es ? "No confirmamos un pago desde esta página. Si enviaste un pago, revisa Administrar facturación antes de volver a intentarlo." : "This page does not confirm a payment. If you submitted one, check Manage billing before trying again."}</span>
           </div>
         )}
-        {typeof query.billing_error === "string" && !["not_available", "existing_subscription"].includes(query.billing_error) && (
+        {typeof query.billing_error === "string" && !["not_available", "existing_subscription", "workforce_change"].includes(query.billing_error) && (
           <div className="billing-status billing-status--error" role="alert">
             <strong>{query.billing_error === "broker_plan_required" ? (es ? "Necesitas acceso para publicar" : "Publishing access is required") : (es ? "No se pudo abrir la facturación" : "Billing could not be opened")}</strong>
             <span>{query.billing_error === "broker_plan_required" ? (es ? "Tu borrador sigue guardado. Activa el Plan para Corredores o usa tu código de acceso y vuelve a Mis anuncios para publicarlo." : "Your draft is still saved. Activate the Broker Plan or redeem your access code, then return to My listings to publish it.") : (es ? "Vuelve a intentarlo o inicia sesión antes de seleccionar un plan." : "Please try again or sign in before selecting a plan.")}</span>

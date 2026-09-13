@@ -19,8 +19,9 @@ export function editableWorkforceSubscription(subscriptions: Stripe.Subscription
 export function workforcePortalConfiguration(product: string, price: string): Stripe.BillingPortal.ConfigurationCreateParams {
   return {
     name: 'Crestview Workforce employee changes',
-    metadata: {crestview_purpose: 'workforce_seats_v1', crestview_price: price},
+    metadata: {crestview_purpose: 'workforce_seats_v2', crestview_price: price},
     features: {
+      payment_method_update: {enabled: true},
       subscription_update: {
         enabled: true, default_allowed_updates: ['quantity'],
         proration_behavior: 'always_invoice', billing_cycle_anchor: 'unchanged',
@@ -35,7 +36,7 @@ export function matchesWorkforcePortal(config: Stripe.BillingPortal.Configuratio
   const update = config.features.subscription_update;
   const products = update.products;
   const item = products?.[0];
-  return config.active && config.metadata?.crestview_purpose === 'workforce_seats_v1' && config.metadata?.crestview_price === price &&
+  return config.active && config.metadata?.crestview_purpose === 'workforce_seats_v2' && config.metadata?.crestview_price === price && config.features.payment_method_update.enabled &&
     update.enabled && update.default_allowed_updates.length === 1 && update.default_allowed_updates[0] === 'quantity' &&
     update.proration_behavior === 'always_invoice' && update.billing_cycle_anchor !== 'now' &&
     !update.schedule_at_period_end?.conditions?.length && products?.length === 1 && item?.product === product &&

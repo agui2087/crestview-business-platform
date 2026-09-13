@@ -26,6 +26,7 @@ test('Workforce portal is quantity-only, prorated and scoped to its configured p
   assert.equal(matchesWorkforcePortal(config, 'prod_workforce', 'price_workforce'), true);
   for (const mutate of [
     (c: typeof config) => {c.active = false;},
+    (c: typeof config) => {c.features.payment_method_update.enabled = false;},
     (c: typeof config) => {c.features.subscription_update.default_allowed_updates.push('price');},
     (c: typeof config) => {c.features.subscription_update.proration_behavior = 'none';},
     (c: typeof config) => {c.features.subscription_update.billing_cycle_anchor = 'now';},

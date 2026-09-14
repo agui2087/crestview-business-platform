@@ -1,13 +1,31 @@
 import {test,expect} from '@playwright/test';
 import {createLocalAccount} from './helpers';
 
-for(const locale of ['en','es'])test(`${locale} pricing separates available subscriptions from undelivered products`,async({page})=>{
+for(const locale of ['en','es'])test(`${locale} homepage distinguishes Workforce from the real estate preview`,async({page})=>{
+  await page.goto(`/${locale}`);
+  const workforce=page.locator('.product-card').filter({has:page.getByRole('heading',{name:locale==='es'?'Personal':'Workforce',exact:true})});
+  await expect(workforce).not.toContainText(locale==='es'?'fase posterior':'later phase');
+  await expect(workforce).toContainText(locale==='es'?'no incluye procesamiento de nómina':'payroll processing is not included');
+  const link=workforce.getByRole('link',{name:locale==='es'?'Ver precios de Workforce':'See Workforce pricing',exact:true});
+  await expect(link).toHaveAttribute('href',`/${locale}/pricing#workforce-pricing`);
+  await link.click();
+  await expect(page.locator('#workforce-pricing')).toBeVisible();
+  await page.goto(`/${locale}/real-estate`);
+  await expect(page.getByText(locale==='es'?'Vista previa, no mercado activo':'Preview only—not an active marketplace',{exact:true})).toBeVisible();
+});
+
+for(const locale of ['en','es'])test(`${locale} pricing respects listing availability and payment confirmation`,async({page})=>{
   await page.goto(`/${locale}/pricing?checkout=success`);
   const unavailable=page.getByRole('button',{name:locale==='es'?'Aún no disponible':'Not yet available',exact:true});
-  await expect(unavailable).toHaveCount(3);
+  const enabled=process.env.CRESTVIEW_TEST_LISTING_PRODUCTS==='true';
+  await expect(unavailable).toHaveCount(enabled?0:3);
   for(const button of await unavailable.all())await expect(button).toBeDisabled();
   for(const code of ['single_listing','enhanced_visibility','highest_visibility'])
     await expect(page.locator(`form input[name="product_code"][value="${code}"]`)).toHaveCount(0);
+  const listingLinks=page.getByRole('link',{name:locale==='es'?'Elegir anuncio':'Choose a listing',exact:true});
+  await expect(listingLinks).toHaveCount(enabled?3:0);
+  for(const link of await listingLinks.all())await expect(link).toHaveAttribute('href',`/${locale}/dashboard/listings#listing-purchases`);
+  await expect(page.getByText(locale==='es'?'Organiza y compara hallazgos financieros para revisar con tus asesores. No incluye extracción automática de documentos.':'Organize and compare financial findings to review with your advisors. Automatic document extraction is not included.',{exact:true})).toBeVisible();
   await expect(page.locator('form input[value="broker_plan"]')).toHaveCount(1);
   await expect(page.getByText(locale==='es'?'Regresaste de la página de pago':'You returned from checkout',{exact:true})).toBeVisible();
   await expect(page.getByText('Payment received',{exact:true})).toHaveCount(0);

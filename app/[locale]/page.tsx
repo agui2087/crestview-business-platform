@@ -82,6 +82,9 @@ export default async function LandingPage({
                 <span className="product-card__number">02 · {copy.home.planned}</span>
                 <h3>{copy.home.workforce}</h3>
                 <p>{copy.home.workforceBody}</p>
+                <Link className="product-link" href={`/${locale}/pricing#workforce-pricing`}>
+                  {locale === "es" ? "Ver precios de Workforce" : "See Workforce pricing"}
+                </Link>
               </article>
               <article className="product-card product-card--beta">
                 <div className="product-card__art product-card__art--property" aria-hidden="true"><i /><i /><i /></div>

@@ -10,7 +10,7 @@ test("accepts supported files with matching signatures", () => {
 
 test("managed scanning fails closed and records clean results", async () => {
   const file = new File(["%PDF-1.7 ordinary content"], "safe.pdf", { type: "application/pdf" });
-  const clean = await scanUploadedDocument(file, { apiKey: "test", fetchImpl: async () => new Response(JSON.stringify({ CleanResult: true }), { status: 200 }) });
+  const clean = await scanUploadedDocument(file, { apiKey: "test", fetchImpl: async (_url,options) => {assert.equal(options?.redirect,'error');return new Response(JSON.stringify({ CleanResult: true }), { status: 200 });} });
   assert.equal(clean.status, "clean");
   assert.equal(securityStatusForScan(clean), "malware_scanned");
   const unavailable = await scanUploadedDocument(file, { apiKey: "test", fetchImpl: async () => new Response("failure", { status: 503 }) });
@@ -19,6 +19,12 @@ test("managed scanning fails closed and records clean results", async () => {
   const blocked = await scanUploadedDocument(file, { apiKey: "test", fetchImpl: async () => new Response(JSON.stringify({ CleanResult: false }), { status: 200 }) });
   assert.equal(blocked.status, "blocked");
   assert.equal(securityStatusForScan(blocked), "blocked");
+});
+
+test('scanner transport failures keep the file quarantined without exposing provider details',async()=>{
+ const result=await scanUploadedDocument(new File(['%PDF-1.7 synthetic'],'synthetic.pdf',{type:'application/pdf'}),{apiKey:'synthetic',fetchImpl:async()=>{throw new Error('redirect with private provider details');}});
+ assert.equal(result.status,'unavailable');assert.equal(securityStatusForScan(result),'quarantined');
+ assert.ok(!result.reason?.includes('private provider details'));
 });
 
 test("blocks antivirus test payloads and active PDF content", async () => {

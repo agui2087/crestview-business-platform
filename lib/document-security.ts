@@ -86,6 +86,7 @@ export async function scanUploadedDocument(file: File, options: ScanOptions = {}
   try {
     const response = await (options.fetchImpl ?? fetch)("https://api.cloudmersive.com/virus/scan/file/advanced", {
       method: "POST",
+      redirect: "error",
       headers: {
         Apikey: apiKey,
         fileName: file.name,

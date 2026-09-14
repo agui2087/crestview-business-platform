@@ -1,6 +1,8 @@
 name: Backup incident monitor
 
 on:
+  schedule:
+    - cron: "17 */6 * * *"
   push:
     branches: [main]
     paths:
@@ -21,7 +23,7 @@ concurrency:
 
 jobs:
   incident:
-    if: github.repository == 'agui2087/crestview-business-platform' && ((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.head_repository.full_name == github.repository))
+    if: github.repository == 'agui2087/crestview-business-platform' && (((github.event_name == 'push' || github.event_name == 'schedule') && github.ref == 'refs/heads/main') || (github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.head_repository.full_name == github.repository))
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

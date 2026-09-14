@@ -9,9 +9,9 @@
 
 ## Monitoring
 
-1. The `Production monitor` GitHub workflow checks application health, the database, both localized homepages, marketplace, and pricing every 15 minutes
+1. The `Production monitor` GitHub workflow is scheduled to check application health, the database, both localized homepages, marketplace, and pricing every 15 minutes. GitHub schedules can be delayed; verify actual run times rather than claiming continuous coverage
 2. The monitor retries failures once, opens or updates a GitHub incident after two consecutive failures, and closes the incident automatically after recovery
-3. Treat response times above 2.5 seconds as failures; inspect the workflow summary to identify the affected route
+3. Treat complete response times above 2.5 seconds as failures, including reading the body. Unexpected redirects, wrong content types, incomplete/unbranded HTML and health timestamps older than two minutes fail the check. Inspect the workflow summary to identify the affected route; it does not include raw response bodies or error messages
 4. Configure `CRESTVIEW_ALERT_WEBHOOK_URL` and optional `CRESTVIEW_ALERT_WEBHOOK_TOKEN` as sensitive, server-only Production variables. Error-level server events are sent to that approved receiver with a two-second timeout; delivery failures never replace the original response
 5. Search Vercel logs and the receiver for structured events, especially `request.unhandled_error`, `health.database_failed`, `stripe.payment_failed`, `stripe.webhook_failed`, `document.upload_failed`, `document.scan_unavailable`, and `auth.provider_failed`
 6. Send a controlled staging test through each category, then verify the receiver contains only environment, event, route, request ID, sanitized error, and allowlisted details. Never send bodies, files, authorization headers, cookies, signatures, emails, names, or financial fields

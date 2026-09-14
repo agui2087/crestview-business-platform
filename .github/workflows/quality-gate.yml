@@ -32,3 +32,7 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run test:ci
+      - name: Verify enabled listing purchase navigation
+        run: npx playwright test e2e/billing-readiness.spec.ts
+        env:
+          CRESTVIEW_TEST_LISTING_PRODUCTS: 'true'

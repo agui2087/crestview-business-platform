@@ -319,7 +319,7 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
             <label>Upload file<input name="document_file" type="file" accept=".pdf,.csv,.xls,.xlsx,.doc,.docx" /></label><label>Or secure link<input name="external_url" type="url" placeholder="https://" /></label><label>Buyer access<select name="access_level"><option value="nda_signed">Available after NDA</option><option value="approved">Broker approval required</option><option value="broker_only">Broker only</option></select></label>
             {workspace.requests.some((request) => request.status === "requested") && <label>Fulfills request<select name="request_id"><option value="">None</option>{workspace.requests.filter((request) => request.status === "requested").map((request) => <option value={request.id} key={request.id}>{request.item_name}</option>)}</select></label>}
             <button className="button button--primary" type="submit">Add document</button>
-            <small>PDF, CSV, Excel, or Word · maximum 20 MB. Files stay private and follow the access level above.</small>
+            <small>PDF, CSV, Excel, or Word · maximum 3.5 MB. Files stay private and follow the access level above.</small>
           </form></details>}
         </section>
         </section>

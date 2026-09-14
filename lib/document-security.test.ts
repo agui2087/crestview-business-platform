@@ -1,6 +1,19 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { hasValidDocumentSignature, inspectDocumentSafety, scanUploadedDocument, securityStatusForScan } from "./document-security.ts";
+import { maxVaultDocumentBytes, maxDealRoomDocumentBytes, hasValidDocumentSignature, inspectDocumentSafety, scanUploadedDocument, securityStatusForScan } from "./document-security.ts";
+
+test('free scanner limits are enforced without sending oversized documents',async()=>{
+ assert.equal(maxVaultDocumentBytes,3_500_000);
+ assert.equal(maxDealRoomDocumentBytes,3_500_000);
+ let called=false;
+ const result=await scanUploadedDocument(new File([new Uint8Array(3_500_001)],'synthetic.txt',{type:'text/plain'}),{apiKey:'test',fetchImpl:async()=>{called=true;throw Error('must not send');}});
+ assert.equal(called,false);assert.equal(result.status,'blocked');assert.match(result.reason!,/3.5 MB/);
+});
+
+test('quota rejection never falls back to an unscanned upload',async()=>{
+ const result=await scanUploadedDocument(new File(['synthetic'],'synthetic.txt',{type:'text/plain'}),{apiKey:'test',fetchImpl:async()=>new Response('',{status:429})});
+ assert.equal(result.status,'unavailable');assert.equal(securityStatusForScan(result),'quarantined');assert.match(result.reason!,/usage limit/);
+});
 
 test("accepts supported files with matching signatures", () => {
   assert.equal(hasValidDocumentSignature("application/pdf", new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31])), true);

@@ -27,12 +27,27 @@ test('private queue enforces owner, Pro, leases, offline persistence and source 
   await db.exec("reset role;update private_document_analysis_jobs set created_at=now()-interval '2 days'");
   await as(owner);assert.equal((await db.query<{status:string}>('select * from read_private_document_analysis($1)',[doc])).rows[0].status,'queued');
   await db.exec('reset role;set role service_role');
-  const claimed=(await db.query<{id:string;lease_token:string}>('select * from claim_private_document_analysis()')).rows[0];assert.equal(claimed.id,job);
+  let claimed=(await db.query<{id:string;lease_token:string}>('select * from claim_private_document_analysis()')).rows[0];assert.equal(claimed.id,job);
   assert.equal((await db.query<{ok:boolean}>('select finish_private_document_analysis($1,$2,null,$3) ok',[job,other,'invalid_result'])).rows[0].ok,false);
+  // Model a processor that disappears while holding a lease. A restart must
+  // not silently disclose the document again, nor accept a stale result.
+  await db.exec("reset role;update private_document_analysis_jobs set leased_until=now()-interval '1 second'");
+  await as(owner);
+  const expired=(await db.query<{status:string;failure_code:string}>('select * from read_private_document_analysis($1)',[doc])).rows[0];
+  assert.equal(expired.status,'failed');assert.equal(expired.failure_code,'worker_unavailable');
+  await db.exec('reset role;set role service_role');
+  assert.equal((await db.query<{ok:boolean}>("select finish_private_document_analysis($1,$2,'{}',null) ok",[job,claimed.lease_token])).rows[0].ok,false);
+  assert.equal((await db.query('select * from claim_private_document_analysis()')).rows.length,0);
+  await as(owner);
+  const retry=(await db.query<{id:string}>("select queue_private_document_analysis($1,'en') id",[doc])).rows[0].id;
+  assert.notEqual(retry,job);
+  await db.exec('reset role;set role service_role');
+  claimed=(await db.query<{id:string;lease_token:string}>('select * from claim_private_document_analysis()')).rows[0];
+  assert.equal(claimed.id,retry);
   await db.exec('reset role');await db.query('update vault_documents set scan_sha256=$1',['b'.repeat(64)]);
-  await db.exec('set role service_role');await db.query("select finish_private_document_analysis($1,$2,'{}',null)",[job,claimed.lease_token]);
-  await db.exec('reset role');assert.equal((await db.query<{status:string}>('select status from private_document_analysis_jobs')).rows[0].status,'failed');
+  await db.exec('set role service_role');await db.query("select finish_private_document_analysis($1,$2,'{}',null)",[retry,claimed.lease_token]);
+  await db.exec('reset role');assert.equal((await db.query<{status:string}>('select status from private_document_analysis_jobs where id=$1',[retry])).rows[0].status,'failed');
   await as(owner);assert.equal((await db.query('select * from read_private_document_analysis($1)',[doc])).rows.length,0);
-  await db.exec('reset role;delete from vault_documents');assert.equal((await db.query('select * from private_document_analysis_jobs')).rows.length,0);assert.equal((await db.query('select * from ai_analysis_usage')).rows.length,1);
+  await db.exec('reset role;delete from vault_documents');assert.equal((await db.query('select * from private_document_analysis_jobs')).rows.length,0);assert.equal((await db.query('select * from ai_analysis_usage')).rows.length,2);
  }finally{await db.close();}
 });

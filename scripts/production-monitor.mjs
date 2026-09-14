@@ -1,4 +1,5 @@
 import { appendFile } from "node:fs/promises";
+import {checkEndpoint} from "./monitor-endpoint.mjs";
 
 const origin = (process.env.CRESTVIEW_MONITOR_ORIGIN ?? "https://www.crestviewplatform.com").replace(/\/$/, "");
 const timeoutMs = Number(process.env.CRESTVIEW_MONITOR_TIMEOUT_MS ?? 10_000);
@@ -13,44 +14,13 @@ const checks = [
   { name: "Pricing", path: "/en/pricing" },
 ];
 
-async function checkEndpoint(check) {
-  const startedAt = performance.now();
-  try {
-    const response = await fetch(`${origin}${check.path}`, {
-      redirect: "follow",
-      signal: AbortSignal.timeout(timeoutMs),
-      headers: { "user-agent": "Crestview-Production-Monitor/1.0" },
-    });
-    const latencyMs = Math.round(performance.now() - startedAt);
-    let reason = response.ok ? "" : `HTTP ${response.status}`;
-
-    if (check.json && response.ok) {
-      const body = await response.json();
-      if (body?.status !== "ok" || body?.services?.application !== "ok" || body?.services?.database !== "ok") {
-        reason = "health response reported a degraded service";
-      }
-    }
-
-    if (!reason && latencyMs > maxLatencyMs) reason = `latency ${latencyMs}ms exceeded ${maxLatencyMs}ms`;
-    return { ...check, ok: !reason, status: response.status, latencyMs, reason };
-  } catch (error) {
-    return {
-      ...check,
-      ok: false,
-      status: 0,
-      latencyMs: Math.round(performance.now() - startedAt),
-      reason: error instanceof Error ? error.message : "request failed",
-    };
-  }
-}
-
 async function runChecks() {
-  return Promise.all(checks.map(checkEndpoint));
+  return Promise.all(checks.map(check=>checkEndpoint(check,{origin,timeoutMs,maxLatencyMs})));
 }
 
 function markdown(results, heading) {
   const rows = results.map((result) =>
-    `| ${result.ok ? "✅" : "❌"} ${result.name} | ${result.status || "—"} | ${result.latencyMs} ms | ${result.reason || "Healthy"} |`,
+    `| ${result.ok ? "PASS" : "FAIL"} ${result.name} | ${result.status || "—"} | ${result.latencyMs} ms | ${result.reason || "Healthy"} |`,
   );
   return [
     `## ${heading}`,

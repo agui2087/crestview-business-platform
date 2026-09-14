@@ -1,6 +1,19 @@
 import {test,expect} from '@playwright/test';
 import {createLocalAccount} from './helpers';
 
+for(const locale of ['en','es'])test(`${locale} homepage distinguishes Workforce from the real estate preview`,async({page})=>{
+  await page.goto(`/${locale}`);
+  const workforce=page.locator('.product-card').filter({has:page.getByRole('heading',{name:locale==='es'?'Personal':'Workforce',exact:true})});
+  await expect(workforce).not.toContainText(locale==='es'?'fase posterior':'later phase');
+  await expect(workforce).toContainText(locale==='es'?'no incluye procesamiento de nómina':'payroll processing is not included');
+  const link=workforce.getByRole('link',{name:locale==='es'?'Ver precios de Workforce':'See Workforce pricing',exact:true});
+  await expect(link).toHaveAttribute('href',`/${locale}/pricing#workforce-pricing`);
+  await link.click();
+  await expect(page.locator('#workforce-pricing')).toBeVisible();
+  await page.goto(`/${locale}/real-estate`);
+  await expect(page.getByText(locale==='es'?'Vista previa, no mercado activo':'Preview only—not an active marketplace',{exact:true})).toBeVisible();
+});
+
 for(const locale of ['en','es'])test(`${locale} pricing respects listing availability and payment confirmation`,async({page})=>{
   await page.goto(`/${locale}/pricing?checkout=success`);
   const unavailable=page.getByRole('button',{name:locale==='es'?'Aún no disponible':'Not yet available',exact:true});

@@ -22,6 +22,12 @@ Files are stored in private object storage and associated with authorized users/
 
 Users must not use Crestview as the sole system of record for originals. They should maintain an authorized backup of business-critical materials and use qualified professionals to review financial and legal content.
 
+## Optional private document analysis
+
+When the document owner explicitly requests and consents to private analysis, the selected PDF is retrieved from private storage and processed on Crestview-controlled equipment using a local model. This flow has no hosted-AI fallback. Processing may be delayed when that equipment is unavailable. Results are unverified, may be incomplete or incorrect, and do not overwrite saved financial figures. Image-only documents are not supported by the current text extractor.
+
+[OWNER/ATTORNEY REVIEW: confirm device access controls, physical location, disk protection, retention/deletion of analysis results and queue history, and support procedures. Local analysis is not a claim that the original uploaded document never passes through hosting, storage, or an activated malware-scanning provider.]
+
 ## Service providers and disclosure
 
 We disclose information to service providers only as needed to provide, secure, monitor, bill, support, or recover the service, subject to appropriate contracts. Current/proposed providers and activation status are maintained in the public subprocessor list. This may include hosting (Vercel), authentication/database/object storage (Supabase), payment processing (Stripe), source/automation operations (GitHub), and—only if activated—malware scanning (Cloudmersive) and an approved incident-alert receiver.
@@ -36,7 +42,9 @@ The proposed detailed periods and exceptions are in Crestview's retention schedu
 
 ## Security
 
-We use technical and organizational safeguards designed to protect information, including access controls, private storage, encryption provided by hosting vendors, upload screening, logging/redaction, monitoring, backups, and recovery tests. No system is perfectly secure. Report a suspected issue to [SECURITY CONTACT].
+We use technical and organizational safeguards designed to protect information, including access controls, private storage, encryption provided by hosting vendors, upload screening, logging/redaction, and monitoring. No system is perfectly secure. Report a suspected issue to [SECURITY CONTACT].
+
+[RELEASE GATE: do not describe automated backups and recovery tests as verified safeguards until a real backup and isolated restore pass. Current verification has not established recoverability. Do not describe managed malware scanning or direct alert delivery as active until configured and tested.]
 
 ## Choices and rights
 

@@ -39,6 +39,7 @@ test("error reporting sends only redacted operational fields", async () => {
       webhookToken: "test-token",
       fetchImpl: async (_input, init) => {
         sent = String(init?.body ?? "");
+        assert.equal(init?.redirect, "error");
         assert.equal(new Headers(init?.headers).get("authorization"), "Bearer test-token");
         return new Response(null, { status: 204 });
       },

@@ -104,6 +104,7 @@ export async function reportOperationalEvent(input: OperationalEvent, options: A
   try {
     const response = await (options.fetchImpl ?? fetch)(parsedUrl, {
       method: "POST",
+      redirect: "error",
       headers: {
         "content-type": "application/json",
         ...(webhookToken ? { authorization: `Bearer ${webhookToken}` } : {}),

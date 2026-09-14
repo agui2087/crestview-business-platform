@@ -25,7 +25,9 @@ Owner-only Pro vault PDFs, 10 MB, 30 pages, 12,000 extracted characters per page
 
 Each local-model attempt has a maximum of three minutes. A schema-valid response with unsupported citations, values, or periods receives at most one correction attempt against the same source. Network failures are not automatically retried. Every corrected finding must pass the same validation; partial numbers and invented reporting periods are rejected. The complete job has a 35-minute budget within its 40-minute database lease. Exceeding that budget fails safely instead of publishing an expired result. These are safety limits, not completion-time guarantees.
 
-When updating an existing processor, verify there are no active processing leases before stopping it. Deploy `scripts/private-analysis-worker.mts`, `lib/private-analysis.ts`, and `lib/private-model-client.ts` together, retain the existing private environment file, then restart and verify a synthetic request. Never restart a worker in the middle of a customer request just to install an update.
+When updating an existing processor, verify there are no active processing leases before stopping it. Deploy `scripts/private-analysis-worker.mts`, `lib/private-analysis.ts`, `lib/private-model-client.ts`, and `lib/private-pdf-reader.ts` together, retain the existing private environment file, then restart and verify a synthetic request. Never restart a worker in the middle of a customer request just to install an update.
+
+PDF reader process timeouts, startup failures and invalid response protocols report `worker_unavailable`; they do not prove the source PDF is unreadable. Only explicit parser validation reports document errors. The byte buffer is cleared in a finally block, including failed extraction and integrity checks. No raw process error or document text is reported. This distinction improves diagnosis; it does not itself fix an intermittent startup failure or guarantee completion.
 
 ## Rollback
 

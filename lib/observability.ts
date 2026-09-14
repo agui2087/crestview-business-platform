@@ -1,3 +1,4 @@
+import { sendSentryEvent } from './sentry-events.ts';
 export type LogLevel = "info" | "warn" | "error";
 
 export type OperationalEvent = {
@@ -87,6 +88,9 @@ export async function reportOperationalEvent(input: OperationalEvent, options: A
   const payload = payloadFor(input);
   writeOperationalEvent(level, payload);
   if (level !== "error") return;
+
+  try { await sendSentryEvent(input.event); }
+  catch { writeOperationalEvent("error", { ...payloadFor({event:"sentry.delivery_failed"}), message: undefined }); }
 
   const webhookUrl = options.webhookUrl ?? process.env.CRESTVIEW_ALERT_WEBHOOK_URL;
   if (!webhookUrl) return;

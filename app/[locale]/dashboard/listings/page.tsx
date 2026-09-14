@@ -58,7 +58,7 @@ export default async function ListingsPage({ params, searchParams }: PageProps<"
         {query.duplicate && <p className="auth-error">Possible duplicate detected. Your listing was saved, but please compare it with your existing listings and pause or remove any duplicate.</p>}
         {query.error === "limit" && <p className="auth-error">You have reached the limit of 100 active listings. Pause, sell, or withdraw one before publishing another.</p>}
         {query.error === "nda_required" && <p className="auth-error">Add an approved PDF NDA and confirm you are authorized to use it before publishing. You can keep the listing as a draft until then.</p>}
-        {query.error === "nda_file" && <p className="auth-error">The NDA must be a PDF no larger than 10 MB.</p>}
+        {query.error === "nda_file" && <p className="auth-error">The NDA must be a PDF no larger than 3.5 MB.</p>}
         {query.error === "nda_upload" && <p className="auth-error">The NDA could not be uploaded. Your listing was not published. Please try the upload again.</p>}
         {query.error === "nda_exists" && <p className="notice" role="status">{locale==='es'?'Este anuncio ya tiene un NDA guardado. No se reemplazó el acuerdo existente. No necesitas volver a subirlo.':'This listing already has a saved NDA. The existing agreement was not replaced. You do not need to upload it again.'}</p>}
         {query.error === "nda_lookup" && <p className="auth-error" role="alert">{locale==='es'?'No pudimos comprobar el NDA existente. No se cambió ningún archivo. Actualiza la página e inténtalo de nuevo.':'We could not check the existing NDA. No files were changed. Refresh the page and try again.'}</p>}

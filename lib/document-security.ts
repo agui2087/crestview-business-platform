@@ -3,8 +3,10 @@ const officeTypes = new Set([
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ]);
 
-export const maxVaultDocumentBytes = 10 * 1024 * 1024;
-export const maxDealRoomDocumentBytes = 20 * 1024 * 1024;
+// Conservative decimal-byte limit matching the managed scanner's free tier.
+// Applies to new uploads/replacements, not access to existing documents.
+export const maxVaultDocumentBytes = 3_500_000;
+export const maxDealRoomDocumentBytes = 3_500_000;
 
 export type DocumentSafetyResult = { safe: true } | { safe: false; reason: string };
 export type MalwareScanResult = {
@@ -81,6 +83,8 @@ export async function scanUploadedDocument(file: File, options: ScanOptions = {}
   const apiKey = options.apiKey ?? process.env.CLOUDMERSIVE_VIRUS_API_KEY;
   if (!apiKey) return { status: "clean", provider: "local", reason: null, sha256: fileSha256 };
 
+  if (file.size > maxVaultDocumentBytes) return { status: "blocked", provider: "cloudmersive", reason: "Files must be 3.5 MB or smaller for security scanning.", sha256: fileSha256 };
+
   const body = new FormData();
   body.append("inputFile", file, file.name);
   try {
@@ -106,6 +110,7 @@ export async function scanUploadedDocument(file: File, options: ScanOptions = {}
       body,
       signal: AbortSignal.timeout(15_000),
     });
+    if (response.status === 429) return { status: "unavailable", provider: "cloudmersive", reason: "Security scanning has reached its usage limit. Please try again later or contact support.", sha256: fileSha256 };
     if (!response.ok) return { status: "unavailable", provider: "cloudmersive", reason: "Managed security scan could not be completed.", sha256: fileSha256 };
     const result = await response.json() as Record<string, unknown>;
     if (result.CleanResult === true) return { status: "clean", provider: "cloudmersive", reason: null, sha256: fileSha256 };

@@ -47,7 +47,7 @@ export async function PUT(request: Request, context: Context) {
   try {
     const match = await owned(context); if (!match) return Response.json({ error: "Document not found." }, { status: 404 });
     const form = await request.formData(); const file = form.get("file");
-    if (!(file instanceof File) || !allowedDocumentTypes.has(file.type) || file.size > maxDocumentBytes) return Response.json({ error: "Choose a supported file up to 10 MB." }, { status: 400 });
+    if (!(file instanceof File) || !allowedDocumentTypes.has(file.type) || file.size > maxDocumentBytes) return Response.json({ error: "Choose a supported file up to 3.5 MB." }, { status: 400 });
     if (!(await validateUploadedDocument(file))) return Response.json({ error: "The file contents do not match the selected file type." }, { status: 400 });
     const scan = await scanUploadedDocument(file);
     if (scan.status === "blocked") {

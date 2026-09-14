@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SkipLink } from "@/components/skip-link";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -83,7 +84,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <a className="site-skip-link" href="#main-content">Skip to main content</a>
+        <SkipLink />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{

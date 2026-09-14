@@ -50,7 +50,17 @@ test("skip navigation reaches the main content by keyboard", async ({ page }) =>
   const skipLink = page.getByRole("link", { name: "Skip to main content" });
   await expect(skipLink).toBeFocused();
   await page.keyboard.press("Enter");
-  await expect(page.locator("#main-content")).toBeFocused();
+  await expect(page.locator("main h1")).toBeFocused();
+});
+
+test('sign-in skip link bypasses branding and language controls',async({page})=>{
+ await page.goto('/en/sign-in');
+ await page.keyboard.press('Tab');
+ await expect(page.getByRole('link',{name:'Skip to main content'})).toBeFocused();
+ await page.keyboard.press('Enter');
+ await expect(page.locator('#sign-in-title')).toBeFocused();
+ await page.keyboard.press('Tab');
+ await expect(page.locator('.auth-tabs button').first()).toBeFocused();
 });
 
 test("authenticated critical workspaces meet the accessibility release gate", async ({ page }, testInfo) => {

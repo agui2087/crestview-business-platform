@@ -6,7 +6,7 @@ test("only an explicit successful RPC result permits success", async () => {
   assert.deepEqual(await runFinancialAccessChange(async () => ({ error: null })), { ok: true });
 });
 test("resolved database errors never masquerade as success", async () => {
-  for (const [code, reason] of [["40001", "conflict"], ["42501", "forbidden"], ["22023", "invalid"], ["PGRST202", "unavailable"], ["23514", "unavailable"]]) {
+  for (const [code, reason] of [["40001", "conflict"], ["P0001", "conflict"], ["42501", "forbidden"], ["22023", "invalid"], ["PGRST202", "unavailable"], ["23514", "unavailable"]]) {
     assert.deepEqual(await runFinancialAccessChange(async () => ({ error: { code } })), { ok: false, reason });
   }
 });

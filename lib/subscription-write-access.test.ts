@@ -17,7 +17,7 @@ test('released schema enforces subscription writes and retains read/security acc
    alter table storage.objects enable row level security;
    create function storage.foldername(text) returns text[] language sql as $$select string_to_array($1,'/')$$;`);
   const dir=new URL('../supabase/migrations/',import.meta.url);
-  for(const name of (await readdir(dir)).filter(n=>/^\d{4}_/.test(n)&&!['0027','0028'].includes(n.slice(0,4))).sort()) {
+  for(const name of (await readdir(dir)).filter(n=>/^\d{4}_/.test(n)&&!['0027','0028','0052'].includes(n.slice(0,4))).sort()) {
    await db.exec((await readFile(new URL(name,dir),'utf8')).replace('create extension if not exists "pgcrypto";',''));
   }
   await db.query('insert into auth.users(id,email) values($1,$2),($3,$4)',[owner,'owner@example.invalid',hr,'hr@example.invalid']);

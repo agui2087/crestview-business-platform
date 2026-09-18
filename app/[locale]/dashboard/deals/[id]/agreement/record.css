@@ -1,0 +1,15 @@
+.signing-record { max-width: 960px; }
+.signing-record dl { display: grid; grid-template-columns: minmax(140px, 1fr) minmax(0, 3fr); gap: 12px 24px; margin-block: 32px; }
+.signing-record dt { font-weight: 700; }
+.signing-record dd { margin: 0; overflow-wrap: anywhere; }
+.signing-record h1 { line-height: 1.15; }
+.signing-record p { line-height: 1.6; }
+@media (max-width: 600px) {
+  .signing-record dl { grid-template-columns: 1fr; gap: 6px; }
+  .signing-record dd { margin-bottom: 16px; }
+}
+@media print {
+  .print-record-button, .signing-record > a { display: none !important; }
+  .signing-record { color: #000; background: #fff; width: 100%; max-width: none; padding: 0 !important; }
+  .signing-record dt, .signing-record dd { break-inside: avoid; }
+}

@@ -25,6 +25,9 @@ try{
  check(await admin.from('deal_inquiries').insert({id:deal,listing_id:listing,buyer_id:buyer.id,broker_id:broker.id,subject:'Synthetic browser test',initial_message:'Synthetic test',status:'nda_sent'}));
  const pdf=await readFile('e2e/fixtures/synthetic.pdf');filePath=`${broker.id}/listing-ndas/${randomUUID()}/synthetic.pdf`;
  check(await admin.storage.from('deal-files').upload(filePath,pdf,{contentType:'application/pdf'}));
+ check(await admin.from('listing_nda_templates').insert({listing_id:listing,broker_id:broker.id,document_name:'Synthetic agreement',template_body:'Synthetic agreement for automated testing only.',storage_path:filePath,security_status:'basic_validated',broker_attested:true}));
+ check(await admin.from('billing_entitlements').insert({user_id:broker.id,product_code:'broker_plan',active:true,quantity:1,source_event_id:'synthetic-browser-rehearsal'}));
+ check(await admin.from('marketplace_listings').update({status:'published'}).eq('id',listing));
  check(await admin.from('deal_ndas').insert({id:nda,inquiry_id:deal,buyer_id:buyer.id,broker_id:broker.id,document_name:'Synthetic agreement',template_body:'Synthetic agreement for automated testing only.',storage_path:filePath,status:'sent',template_version:1}));
  const page=buyer.page;page.setDefaultTimeout(60000);
  await page.goto(`${base}/en/dashboard/deals/${deal}`);await expect(page.getByRole('link',{name:/Open the complete NDA PDF/})).toBeVisible();

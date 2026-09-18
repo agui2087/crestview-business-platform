@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
   // Keep browser tests from competing with an already-running developer preview.
   distDir: process.env.CRESTVIEW_E2E === "true" ? ".next-e2e" : ".next",
   poweredByHeader: false,
+  experimental: { serverActions: { bodySizeLimit: "4mb" } },
   async headers() {
     return [
       {

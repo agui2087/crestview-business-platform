@@ -12,6 +12,7 @@ import { canBrokerAdvanceDeal, dealStatuses } from "@/lib/deal-workflow-policy";
 import { maxDealRoomDocumentBytes, maxVaultDocumentBytes, scanUploadedDocument, securityStatusForScan, validateUploadedDocument } from "@/lib/document-security";
 import { logOperationalEvent, reportOperationalEvent } from "@/lib/observability";
 import { runFinancialAccessChange } from "@/lib/financial-access-result";
+import { secureExternalLink } from "@/lib/document-sharing";
 
 const listingSchema = z.object({
   title: z.string().trim().min(5).max(140),
@@ -499,13 +500,15 @@ export async function sendNda(formData: FormData) {
   const { locale, supabase, user } = await context(formData);
   await requireRole(locale, supabase, user.id, "broker");
   const inquiryId = z.string().uuid().parse(formData.get("inquiry_id"));
+  const agreement = z.object({name:z.string().trim().min(2).max(160),terms:z.string().trim().min(20).max(100000)}).safeParse({name:formData.get("document_name"),terms:formData.get("template_body")});
+  if (!agreement.success) redirect(`/${locale}/dashboard/deals/${inquiryId}?error=nda_send`);
   const { data: inquiry } = await supabase.from("deal_inquiries").select("buyer_id,broker_id").eq("id", inquiryId).eq("broker_id", user.id).maybeSingle();
   if (!inquiry) redirect(`/${locale}/dashboard/inbox?error=forbidden`);
   // Never replace an agreement that has already been sent or signed.
   const { error: ndaError } = await supabase.from("deal_ndas").insert({
     inquiry_id: inquiryId, broker_id: user.id, buyer_id: inquiry.buyer_id,
-    document_name: String(formData.get("document_name") ?? "Mutual confidentiality agreement"),
-    template_body: String(formData.get("template_body") ?? ""), status: "sent", sent_at: new Date().toISOString(),
+    document_name: agreement.data.name,
+    template_body: agreement.data.terms, status: "sent", sent_at: new Date().toISOString(),
   });
   if (ndaError) redirect(`/${locale}/dashboard/deals/${inquiryId}?error=nda_send`);
   const [stageUpdate] = await Promise.all([
@@ -524,42 +527,35 @@ export async function signNda(formData: FormData) {
   const signerName = z.string().trim().min(2).max(100).parse(formData.get("signer_name"));
   const accepted = formData.get("accepted") === "on";
   if (!accepted) redirect(`/${locale}/dashboard/deals/${inquiryId}?error=accept`);
-  const now = new Date().toISOString();
   const requestHeaders = await headers();
   const forwardedFor = requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "";
   const ipHash = forwardedFor ? createHash("sha256").update(forwardedFor).digest("hex") : null;
   const { data: currentNda } = await supabase.from("deal_ndas")
-    .select("document_name,template_body,storage_path,template_version")
+    .select("id,status,document_name,template_body,storage_path,template_version")
     .eq("inquiry_id", inquiryId).eq("buyer_id", user.id).maybeSingle();
   if (!currentNda) redirect(`/${locale}/dashboard/deals/${inquiryId}?error=forbidden`);
+  if (currentNda.status === "signed") redirect(`/${locale}/dashboard/deals/${inquiryId}?nda=signed`);
+  if (String(formData.get("nda_id")) !== currentNda.id || Number(formData.get("nda_version")) !== currentNda.template_version) {
+    redirect(`/${locale}/dashboard/deals/${inquiryId}?error=nda_changed`);
+  }
+  let fileSha256: string | null = null;
+  if (currentNda.storage_path) {
+    const {data: file,error} = await supabase.storage.from("deal-files").download(currentNda.storage_path);
+    if (error || !file) redirect(`/${locale}/dashboard/deals/${inquiryId}?error=nda_unavailable`);
+    fileSha256 = createHash("sha256").update(Buffer.from(await file.arrayBuffer())).digest("hex");
+  }
   const fingerprint = createHash("sha256").update(JSON.stringify({
     name: currentNda.document_name,
     body: currentNda.template_body,
     path: currentNda.storage_path,
     version: currentNda.template_version,
+    file_sha256: fileSha256,
   })).digest("hex");
-  const { data: nda } = await supabase.from("deal_ndas").update({
-    status: "signed", signed_at: now, signer_name: signerName,
-    signer_ip_hash: ipHash,
-    document_fingerprint: fingerprint,
-    signature_record: {
-      accepted: true,
-      method: "typed_signature",
-      timestamp: now,
-      document_version: currentNda.template_version,
-      document_fingerprint: fingerprint,
-      user_agent: requestHeaders.get("user-agent"),
-    },
-  }).eq("inquiry_id", inquiryId).eq("buyer_id", user.id).select("broker_id").maybeSingle();
-  if (!nda) redirect(`/${locale}/dashboard/deals/${inquiryId}?error=forbidden`);
-  const [inquiryUpdate] = await Promise.all([
-    supabase.from("deal_inquiries").update({ status: "nda_signed", updated_at: now }).eq("id", inquiryId).select("id").maybeSingle(),
-    supabase.from("marketplace_notifications").insert({ user_id: nda.broker_id, inquiry_id: inquiryId, kind: "nda_signed", title: "NDA signed", body: `${signerName} signed the NDA. The secure deal room is now available.`, href: `/${locale}/dashboard/deals/${inquiryId}` }),
-    supabase.from("marketplace_audit_events").insert({ actor_id: user.id, inquiry_id: inquiryId, event_type: "nda_signed", details: { signer_name: signerName, fingerprint } }),
-  ]);
-  if (inquiryUpdate.error || !inquiryUpdate.data) {
-    redirect(`/${locale}/dashboard/deals/${inquiryId}?error=stage_update`);
-  }
+  const {error: signError} = await supabase.rpc("complete_deal_nda", {
+    target_inquiry:inquiryId, expected_nda:currentNda.id, expected_version:currentNda.template_version,
+    legal_name:signerName, fingerprint, file_sha256:fileSha256, ip_hash:ipHash, locale,
+  });
+  if (signError) redirect(`/${locale}/dashboard/deals/${inquiryId}?error=nda_changed`);
   revalidatePath(`/${locale}/dashboard/deals/${inquiryId}`);
   redirect(`/${locale}/dashboard/deals/${inquiryId}?nda=signed`);
 }
@@ -689,10 +685,11 @@ export async function addDealRoomDocument(formData: FormData) {
   const category = z.string().trim().min(2).max(80).parse(formData.get("category"));
   const externalUrlRaw = String(formData.get("external_url") ?? "").trim();
   const externalUrl = externalUrlRaw
-    ? z.string().url().refine((value) => new URL(value).protocol === "https:").parse(externalUrlRaw)
+    ? z.string().refine(secureExternalLink).parse(externalUrlRaw)
     : null;
   const requestId = z.string().uuid().nullable().catch(null).parse(formData.get("request_id"));
   const documentFile = formData.get("document_file");
+  if (externalUrl && documentFile instanceof File && documentFile.size > 0) redirect(`/${locale}/dashboard/deals/${inquiryId}?error=document_source`);
   let storagePath: string | null = null;
   let originalFilename: string | null = null;
   let mimeType: string | null = null;
@@ -758,7 +755,7 @@ export async function addDealRoomDocument(formData: FormData) {
     supabase.from("marketplace_audit_events").insert({ actor_id: user.id, inquiry_id: inquiryId, event_type: "document_added", details: { title, category, access_level: accessLevel } }),
     supabase.from("deal_status_events").insert({ inquiry_id: inquiryId, actor_id: user.id, to_status: inquiry.status, note: `${title} was added to the secure deal room.` }),
   ]);
-  if (requestId) {
+  if (requestId && accessLevel !== "broker_only") {
     await supabase.from("deal_document_requests").update({ status: "fulfilled", document_id: document.id, resolved_at: new Date().toISOString() }).eq("id", requestId).eq("inquiry_id", inquiryId);
   }
   if (accessLevel === "nda_signed" || (accessLevel === "approved" && inquiry.financial_access_status === "approved")) {
@@ -771,6 +768,23 @@ export async function addDealRoomDocument(formData: FormData) {
     ]);
   }
   revalidatePath(`/${locale}/dashboard/deals/${inquiryId}`);
+  redirect(`/${locale}/dashboard/deals/${inquiryId}?document=saved#deal-documents`);
+}
+
+export async function changeDocumentAccess(formData: FormData) {
+  const {locale,supabase,user}=await context(formData);
+  await requireRole(locale,supabase,user.id,"broker");
+  const inquiryId=z.string().uuid().parse(formData.get("inquiry_id"));
+  const documentId=z.string().uuid().parse(formData.get("document_id"));
+  const {data: document}=await supabase.from("deal_room_documents").select("id").eq("id",documentId).eq("inquiry_id",inquiryId).eq("uploaded_by",user.id).maybeSingle();
+  if(!document) redirect(`/${locale}/dashboard/inbox?error=forbidden`);
+  const {error}=await supabase.rpc("change_deal_document_access",{
+    target_document:documentId,
+    expected_access:z.enum(["broker_only","approved","nda_signed"]).parse(formData.get("expected_access")),
+    new_access:z.enum(["broker_only","approved","nda_signed"]).parse(formData.get("access_level")),
+  });
+  revalidatePath(`/${locale}/dashboard/deals/${inquiryId}`);
+  redirect(`/${locale}/dashboard/deals/${inquiryId}?${error?'error=sharing_changed':'document=sharing'}#deal-documents`);
 }
 
 export async function markNotificationRead(formData: FormData) {

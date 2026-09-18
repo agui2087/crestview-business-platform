@@ -36,6 +36,7 @@ test("financial access transaction, authorization, stale writes and rollback", a
     await db.exec(guards.slice(0, guards.indexOf('drop policy if exists "buyers create inquiries"')));
     await db.exec(guards.slice(guards.indexOf('drop policy if exists "participants create notifications"'), guards.indexOf('drop policy if exists "users create reports"')));
     await db.exec(await migration("0027_atomic_financial_access"));
+    await db.exec(await migration("0052_nonretryable_financial_conflicts"));
     await db.exec(`
       select set_config('request.jwt.claim.role','service_role',false);
       insert into auth.users values ('${buyer}'),('${broker}'),('${outsider}');

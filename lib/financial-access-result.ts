@@ -12,7 +12,7 @@ export async function runFinancialAccessChange(
     if (!result || !("error" in result)) return { ok: false, reason: "unavailable" };
     if (result.error === null) return { ok: true };
     const code = result.error?.code;
-    return { ok: false, reason: code === "40001" ? "conflict" : code === "42501" ? "forbidden" : code === "22023" ? "invalid" : "unavailable" };
+    return { ok: false, reason: code === "40001" || code === "P0001" ? "conflict" : code === "42501" ? "forbidden" : code === "22023" ? "invalid" : "unavailable" };
   } catch {
     // The transaction may have committed before a connection dropped. The UI
     // tells the user to refresh and check the current state, not blindly retry.

@@ -7,8 +7,9 @@ import { dealStages, demoInquiries, demoMarketplaceListings } from "@/lib/market
 import { getCrestviewUser } from "@/lib/current-user";
 import { isLocale } from "@/lib/i18n";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
-import { addDealRoomDocument, advanceInquiry, createDocumentRequest, decideFinancialAccess, reportMarketplaceItem, requestFinancialAccess, resolveDocumentRequest, sendMessage, sendNda, signNda } from "../../marketplace/actions";
+import { addDealRoomDocument, changeDocumentAccess, advanceInquiry, createDocumentRequest, decideFinancialAccess, reportMarketplaceItem, requestFinancialAccess, resolveDocumentRequest, sendMessage, sendNda, signNda } from "../../marketplace/actions";
 import { allowedBrokerTransitions } from "@/lib/deal-workflow-policy";
+import { DealDocumentUpload, PendingAction } from "@/components/deal-document-upload";
 
 export const metadata: Metadata = { title: "Secure deal workspace" };
 
@@ -17,7 +18,7 @@ type WorkspaceData = {
   title: string;
   isBuyer: boolean;
   messages: { id: string; body: string; sender_id: string; created_at: string }[];
-  nda: { status: string; document_name: string; template_body: string | null; storage_path?: string | null; template_version?: number; signed_at: string | null; signer_name: string | null } | null;
+  nda: { id?: string; status: string; document_name: string; template_body: string | null; storage_path?: string | null; template_version?: number; signed_at: string | null; signer_name: string | null } | null;
   ndaUrl: string | null;
   documents: { id: string; title: string; category: string; external_url: string | null; secure_url?: string | null; storage_path?: string | null; original_filename?: string | null; mime_type?: string | null; file_size_bytes?: number | null; access_level?: string; permission_note?: string | null; security_status?: string | null; scan_provider?: string | null; scan_completed_at?: string | null; version: number; created_at: string }[];
   requests: { id: string; item_name: string; note: string | null; status: string; document_id: string | null; created_at: string; resolved_at: string | null }[];
@@ -55,7 +56,7 @@ async function getWorkspace(id: string, userId?: string, locale = "en"): Promise
   if (!inquiry) notFound();
   const results = await Promise.all([
     supabase.from("deal_messages").select("id,body,sender_id,created_at").eq("inquiry_id", id).order("created_at"),
-    supabase.from("deal_ndas").select("status,document_name,template_body,storage_path,template_version,signed_at,signer_name").eq("inquiry_id", id).maybeSingle(),
+    supabase.from("deal_ndas").select("id,status,document_name,template_body,storage_path,template_version,signed_at,signer_name").eq("inquiry_id", id).maybeSingle(),
     supabase.from("deal_room_documents").select("id,title,category,storage_path,original_filename,mime_type,file_size_bytes,external_url,access_level,permission_note,security_status,scan_provider,scan_completed_at,version,created_at").eq("inquiry_id", id).eq("is_active", true).order("created_at"),
     supabase.from("deal_document_requests").select("id,item_name,note,status,document_id,created_at,resolved_at").eq("inquiry_id", id).order("created_at"),
     supabase.from("deal_status_events").select("id,to_status,note,created_at").eq("inquiry_id", id).order("created_at"),
@@ -123,6 +124,8 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
         <div className="workspace-back"><Link href={`/${locale}/dashboard/inbox`}>← Back to deal inbox</Link><span>Private workspace</span></div>
         <PageHeading eyebrow={workspace.isBuyer ? "Buyer workspace" : "Broker workspace"} title={workspace.title} body={workspace.isBuyer ? "Your guided path from first inquiry through diligence and closing." : "Review the buyer, share records securely, and move the deal forward from one place."} />
         {query.nda && <p className="notice">The NDA was {query.nda === "signed" ? "signed and the deal room is unlocked" : "sent successfully"}.</p>}
+        {query.document && <p className="notice" role="status">{query.document === "sharing" ? "Document access updated. Existing download links may remain usable for up to 15 minutes; downloaded copies cannot be recalled." : "Document saved. Check its access setting below before sharing."}</p>}
+        {query.error && ["document_file","document_upload","document_required","document_save","document_source","upload_limit","nda_changed","nda_unavailable","sharing_changed"].includes(String(query.error)) && <p className="notice" role="alert">{query.error === "document_file" ? "The file was not accepted. Use a supported file up to 3.5 MB. Security scanning must succeed before it can be saved." : query.error === "document_source" ? "Choose either a file or an external link, not both." : query.error === "nda_unavailable" ? "The agreement file could not be retrieved. Nothing was signed; please try again." : query.error === "nda_changed" ? "Signing could not be confirmed. Review the current agreement and status before trying again." : query.error === "sharing_changed" ? "Sharing could not be updated. Refresh and check the current permissions before trying again." : "The document could not be saved. Check the file and storage limit, then try again."}</p>}
         {query.error && !String(query.error).startsWith("financial_") && <p className="notice" role="alert">{query.error === "message_invalid" ? "Enter a message between 1 and 5,000 characters." : query.error === "message_failed" ? "Your message was not sent. Please try again." : query.error === "closing_confirmation" ? "Confirm that the closing occurred outside Crestview before marking this deal closed." : query.error === "nda_send" ? "The NDA could not be sent. An existing agreement will not be replaced; review its current status below." : "We could not confirm the requested change. Review the current status and try again. Your documents and signed agreements remain protected."}</p>}
         {query.message === "sent" && <p className="notice" role="status">Your message was sent.</p>}
         {query.stage === "updated" && <p className="notice" role="status">The shared deal stage was updated.</p>}
@@ -227,17 +230,22 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
               {workspace.nda.storage_path && !workspace.ndaUrl && <p role="alert">The complete agreement could not be opened. Refresh or contact the broker before signing.</p>}
               {workspace.nda.template_version && <small>Document version {workspace.nda.template_version}</small>}
               {workspace.nda.signed_at && <small>Signed by {workspace.nda.signer_name} on {new Date(workspace.nda.signed_at).toLocaleDateString()}</small>}
-              {workspace.isBuyer && workspace.nda.status === "sent" && !workspace.isDemo && (!workspace.nda.storage_path || workspace.ndaUrl) && <form action={signNda}>
+              {ndaSigned && !workspace.isDemo && <Link className="button button--light" href={`/${locale}/dashboard/deals/${id}/agreement`}>{locale === "es" ? "Ver registro de firma" : "View signing record"}</Link>}
+              {workspace.isBuyer && ["sent", "viewed"].includes(workspace.nda.status) && !workspace.isDemo && (!workspace.nda.storage_path || workspace.ndaUrl) && <form action={signNda}>
                 <input type="hidden" name="locale" value={locale} /><input type="hidden" name="inquiry_id" value={id} />
-                <label>Type your full legal name<input name="signer_name" required /></label>
-                <label className="signature-consent"><input type="checkbox" name="accepted" required /> I have reviewed and agree to sign this NDA electronically.</label>
-                <button className="button button--primary" type="submit">Sign NDA</button>
+                <input type="hidden" name="nda_id" value={workspace.nda.id}/><input type="hidden" name="nda_version" value={workspace.nda.template_version}/>
+                <p>{locale === "es" ? "1. Revisa el acuerdo completo. 2. Escribe tu nombre legal. 3. Confirma tu consentimiento. Puedes pedir aclaraciones al corredor antes de firmar." : "1. Review the complete agreement above. 2. Enter your legal name. 3. Confirm your consent. You can ask the broker questions before signing."}</p>
+                <label>Type your full legal name<input name="signer_name" autoComplete="name" minLength={2} maxLength={100} required /></label>
+                <label className="signature-consent"><input type="checkbox" name="accepted" required /> I have reviewed the complete agreement and agree to sign it electronically.</label>
+                <small>Your name, account, agreement version, and signing time will be recorded. A signing record remains available to both participants. If you prefer another signing method, contact the broker before continuing.</small>
+                <PendingAction pendingText="Recording signature…">Sign NDA</PendingAction>
               </form>}
               {workspace.isDemo && <button className="button button--primary" type="button" disabled>Sign NDA in live workspace</button>}
             </> : !workspace.isBuyer && !workspace.isDemo ? <form action={sendNda}>
               <input type="hidden" name="locale" value={locale} /><input type="hidden" name="inquiry_id" value={id} />
               <label>Agreement name<input name="document_name" defaultValue="Mutual confidentiality agreement" required /></label>
-              <label>Agreement terms<textarea name="template_body" defaultValue="The parties agree to protect non-public information shared solely for evaluating the potential acquisition described in this workspace." required /></label>
+              <label>Complete reviewed agreement terms<textarea name="template_body" placeholder="Paste the complete agreement approved for this transaction, not a summary." minLength={20} required /></label>
+              <small>For reusable PDF agreements, configure your reviewed NDA on the listing. Crestview does not draft or approve legal terms.</small>
               <button className="button button--primary" type="submit">Send NDA for signature</button>
             </form> : <p>The broker has not sent an NDA yet.</p>}
           </aside>
@@ -307,20 +315,20 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
         </section>}
         <section className={`panel secure-room ${roomUnlocked || workspace.isDemo ? "is-unlocked" : "is-locked"}`}>
           <div className="panel__header"><div><span className="source-label">Permission-controlled documents</span><h2>Secure deal room</h2></div><span className="stage">{roomUnlocked ? financialApproved ? "Financial access approved" : "NDA access only" : "NDA required"}</span></div>
-          {!roomUnlocked && !workspace.isDemo && <div className="room-lock"><span><SiteIcon name="lock" /></span><h3>Sign the NDA to unlock documents</h3><p>Only approved participants can access confidential materials. Every upload and status change remains attached to this deal.</p></div>}
-          {(roomUnlocked || workspace.isDemo) && <div className="document-folders">{documentGroups.map((group) => group.documents.length ? <section key={group.category}><header><strong>{group.category}</strong><span>{group.documents.length} received</span></header><div className="room-documents">{group.documents.map((document) => {
+          {!roomUnlocked && !workspace.isDemo && <div className="room-lock"><span><SiteIcon name="lock" /></span><h3>{workspace.isBuyer ? "Sign the NDA to unlock documents" : "Buyer access is waiting for the NDA"}</h3><p>{workspace.isBuyer ? "Only approved participants can access confidential materials. Every upload and status change remains attached to this deal." : "You can prepare private documents now. The buyer cannot access NDA-protected documents until signing."}</p></div>}
+          {(roomUnlocked || workspace.isDemo || !workspace.isBuyer) && <div className="document-folders">{documentGroups.map((group) => group.documents.length ? <section key={group.category}><header><strong>{group.category}</strong><span>{group.documents.length} received</span></header><div className="room-documents">{group.documents.map((document) => {
             const scanStatus = document.security_status ?? "basic_validated";
-            const scanLabel = scanStatus === "malware_scanned" ? "Managed security scan passed" : scanStatus === "basic_validated" ? "File safety checked" : scanStatus === "blocked" ? "Blocked" : "Security check in progress";
-            return <article key={document.id}><span>▤</span><div><strong>{document.title}</strong><small>{document.original_filename || "Secure record"} · Version {document.version} · {document.permission_note ?? (document.access_level === "approved" ? "Broker approval required" : document.access_level === "broker_only" ? "Broker only" : "Available after NDA")}</small><span className={`document-scan-status ${scanStatus === "quarantined" ? "is-quarantined" : scanStatus === "blocked" ? "is-blocked" : ""}`}>{scanLabel}</span></div>{document.secure_url || document.external_url ? <a href={document.secure_url || document.external_url || "#"} target="_blank" rel="noreferrer">Open securely</a> : <span className="stage">Protected</span>}</article>;
+            const scanLabel = document.external_url ? "External link: not scanned by Crestview" : scanStatus === "malware_scanned" ? "Managed security scan passed" : scanStatus === "basic_validated" ? "File safety checked" : scanStatus === "blocked" ? "Blocked" : "Security check in progress";
+            return <article key={document.id}><span>▤</span><div><strong>{document.title}</strong><small>{document.original_filename || "Secure record"} · Version {document.version} · {document.permission_note ?? (document.access_level === "approved" ? "Broker approval required" : document.access_level === "broker_only" ? "Broker only" : "Available after NDA")}</small><span className={`document-scan-status ${scanStatus === "quarantined" ? "is-quarantined" : scanStatus === "blocked" ? "is-blocked" : ""}`}>{scanLabel}</span>
+              {!workspace.isBuyer && !workspace.isDemo && <details><summary>Manage access</summary><form action={changeDocumentAccess}>
+                <input type="hidden" name="locale" value={locale}/><input type="hidden" name="inquiry_id" value={id}/><input type="hidden" name="document_id" value={document.id}/><input type="hidden" name="expected_access" value={document.access_level}/>
+                <label>Who can access {document.title}?<select name="access_level" defaultValue={document.access_level}><option value="broker_only">Only me (remove buyer access)</option><option value="approved">Buyer after financial-access approval</option><option value="nda_signed">Buyer after signing the NDA</option></select></label>
+                <small>Changes apply to this deal only. Existing download links can remain usable for 15 minutes. Downloads and external-service access cannot be recalled.</small>
+                <PendingAction>Save access</PendingAction>
+              </form></details>}
+            </div>{document.secure_url || document.external_url ? <a href={document.secure_url || document.external_url || "#"} target="_blank" rel="noreferrer">{document.external_url ? "Open external link" : "Open securely"}</a> : <span className="stage">Protected</span>}</article>;
           })}</div></section> : null)}<details className="empty-document-folders"><summary>Show empty folders ({documentGroups.filter((group) => !group.documents.length).length})</summary><div>{documentGroups.filter((group) => !group.documents.length).map((group) => <span key={group.category}>{group.category}</span>)}</div></details></div>}
-          {!workspace.isBuyer && !workspace.isDemo && <details className="room-upload" id="deal-upload" open><summary>Upload a secure document</summary><form action={addDealRoomDocument}>
-            <input type="hidden" name="locale" value={locale} /><input type="hidden" name="inquiry_id" value={id} />
-            <label>Title<input name="title" placeholder="Document title" required /></label><label>Folder<select name="category"><option>Overview</option><option>Financial</option><option>Tax</option><option>Legal</option><option>Employees</option><option>Customers</option><option>Assets</option><option>Closing</option><option>Operations</option><option>Other</option></select></label>
-            <label>Upload file<input name="document_file" type="file" accept=".pdf,.csv,.xls,.xlsx,.doc,.docx" /></label><label>Or secure link<input name="external_url" type="url" placeholder="https://" /></label><label>Buyer access<select name="access_level"><option value="nda_signed">Available after NDA</option><option value="approved">Broker approval required</option><option value="broker_only">Broker only</option></select></label>
-            {workspace.requests.some((request) => request.status === "requested") && <label>Fulfills request<select name="request_id"><option value="">None</option>{workspace.requests.filter((request) => request.status === "requested").map((request) => <option value={request.id} key={request.id}>{request.item_name}</option>)}</select></label>}
-            <button className="button button--primary" type="submit">Add document</button>
-            <small>PDF, CSV, Excel, or Word · maximum 3.5 MB. Files stay private and follow the access level above.</small>
-          </form></details>}
+          {!workspace.isBuyer && !workspace.isDemo && <details className="room-upload" id="deal-upload" open><summary>Upload a secure document</summary><DealDocumentUpload action={addDealRoomDocument} locale={locale} inquiryId={id} ndaSigned={ndaSigned} approved={financialApproved} requests={workspace.requests.filter(r=>r.status==='requested')}/></details>}
         </section>
         </section>
         <div className="deal-bottom-grid">

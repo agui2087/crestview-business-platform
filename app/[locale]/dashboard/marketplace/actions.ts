@@ -427,7 +427,7 @@ export async function createInquiry(formData: FormData) {
       template_version: ndaTemplate.version,
       status: "sent",
       sent_at: now,
-      signature_record: { source: "listing_template", version: ndaTemplate.version },
+      signature_record: {},
     });
     if (ndaError) redirect(`/${locale}/dashboard/marketplace?error=nda`);
     await supabase.from("deal_status_events").insert({

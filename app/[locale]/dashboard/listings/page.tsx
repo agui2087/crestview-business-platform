@@ -144,6 +144,7 @@ export default async function ListingsPage({ params, searchParams }: PageProps<"
                 <small>{new Date(listing.updated_at).getTime() >= currentTime-(listing.confirmation_days??30)*86400000 ? `Confirmed ${new Date(listing.updated_at).toLocaleDateString()} · ${listing.confirmation_days??30}-day confirmation window` : "Confirmation overdue—hidden from buyer search"}</small>
                 <button type="submit">Confirm availability</button>
               </form>}
+              {!listing.id.startsWith('demo-')&&<Link className="button button--light" href={`/${locale}/dashboard/listings/${listing.id}/prepare-nda`}>{locale==='es'?'Colocar campos de firma del NDA':'Place NDA signature fields'}</Link>}
               {listing.id.startsWith("demo-") && <span className="stage">Example listing</span>}
               {!listing.id.startsWith("demo-") && listing.status === "draft" && <ListingDraftEditor listing={listing} locale={locale}/>}
             </article>

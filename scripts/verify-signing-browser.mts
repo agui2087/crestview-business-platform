@@ -34,9 +34,22 @@ try{
  await page.getByLabel('Type your full legal name').fill('Synthetic Browser Buyer');await page.getByRole('checkbox',{name:/I have reviewed the complete agreement/}).check();
  await page.getByRole('button',{name:'Sign NDA',exact:true}).click();await page.waitForURL(/nda=signed/);
  await page.getByRole('link',{name:'View signing record'}).click();await expect(page.getByRole('heading',{name:'NDA signing record',exact:true})).toBeVisible();
+ check(await admin.from('marketplace_listings').update({status:'paused'}).eq('id',listing));
+ await page.reload();await expect(page.getByRole('link',{name:'Download original agreement PDF'})).toBeVisible();
  await expect(page.getByText(createHash('sha256').update(pdf).digest('hex'),{exact:true})).toBeVisible();
  for(const width of [1280,390]){await page.setViewportSize({width,height:900});if(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1))throw Error('Signing record overflows');}
  await broker.page.goto(`${base}/en/dashboard/deals/${deal}/agreement`);await expect(broker.page.getByRole('heading',{name:'NDA signing record',exact:true})).toBeVisible();
+ await page.goto(`${base}/es/dashboard/deals/${deal}/agreement`);
+ await expect(page.getByRole('heading',{name:'Registro de firma del NDA',exact:true})).toBeVisible();
+ await expect(page.getByRole('link',{name:'Descargar el PDF del acuerdo original'})).toBeVisible();
+ await expect(page.getByText('ID de cuenta del firmante',{exact:true})).toBeVisible();
+ await broker.page.goto(`${base}/en/dashboard/deals/${deal}?error=document_link`);
+ await expect(broker.page.getByRole('alert').filter({hasText:'Use a valid HTTPS link'})).toHaveCount(1);
+ const form=broker.page.locator('#deal-upload form');
+ await form.getByLabel('Document source').selectOption('link');await form.getByLabel('HTTPS link').fill('https://example.com/synthetic-private-document');
+ await form.getByLabel('Title',{exact:true}).fill('SYNTHETIC PRIVATE TITLE');await form.getByRole('button',{name:'Save document',exact:true}).click();
+ await broker.page.waitForURL(/document=saved/);await expect(broker.page.getByText('SYNTHETIC PRIVATE TITLE',{exact:true})).toBeVisible();
+ await page.goto(`${base}/en/dashboard/deals/${deal}`);await expect(page.getByText('SYNTHETIC PRIVATE TITLE',{exact:false})).toHaveCount(0);
  const anonymous=await browser.newContext();const denied=await anonymous.newPage();await denied.goto(`${base}/en/dashboard/deals/${deal}/agreement`);await expect(denied.getByRole('heading',{name:'NDA signing record',exact:true})).toHaveCount(0);
  console.log('PASS: browser PDF signing, exact PDF fingerprint, buyer/broker signing record, mobile overflow, and anonymous denial.');
 }finally{

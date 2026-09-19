@@ -12,7 +12,7 @@ import { canBrokerAdvanceDeal, dealStatuses } from "@/lib/deal-workflow-policy";
 import { maxDealRoomDocumentBytes, maxVaultDocumentBytes, scanUploadedDocument, securityStatusForScan, validateUploadedDocument } from "@/lib/document-security";
 import { logOperationalEvent, reportOperationalEvent } from "@/lib/observability";
 import { runFinancialAccessChange } from "@/lib/financial-access-result";
-import { secureExternalLink } from "@/lib/document-sharing";
+import { buyerCanReadDocument, secureExternalLink } from "@/lib/document-sharing";
 
 const listingSchema = z.object({
   title: z.string().trim().min(5).max(140),
@@ -684,9 +684,8 @@ export async function addDealRoomDocument(formData: FormData) {
   const accessLevel = z.enum(["nda_signed","approved","broker_only"]).parse(formData.get("access_level"));
   const category = z.string().trim().min(2).max(80).parse(formData.get("category"));
   const externalUrlRaw = String(formData.get("external_url") ?? "").trim();
-  const externalUrl = externalUrlRaw
-    ? z.string().refine(secureExternalLink).parse(externalUrlRaw)
-    : null;
+  if (externalUrlRaw && !secureExternalLink(externalUrlRaw)) redirect(`/${locale}/dashboard/deals/${inquiryId}?error=document_link`);
+  const externalUrl = externalUrlRaw || null;
   const requestId = z.string().uuid().nullable().catch(null).parse(formData.get("request_id"));
   const documentFile = formData.get("document_file");
   if (externalUrl && documentFile instanceof File && documentFile.size > 0) redirect(`/${locale}/dashboard/deals/${inquiryId}?error=document_source`);
@@ -751,14 +750,16 @@ export async function addDealRoomDocument(formData: FormData) {
     redirect(`/${locale}/dashboard/deals/${inquiryId}?error=document_save`);
   }
   if (documentScan) await admin.from("document_security_events").insert({ scope: "deal_room", document_id: document.id, actor_id: user.id, status: securityStatusForScan(documentScan), provider: documentScan.provider, sha256: documentScan.sha256 });
+  const {data: signedAgreement} = await supabase.from("deal_ndas").select("id").eq("inquiry_id",inquiryId).eq("status","signed").maybeSingle();
+  const buyerCanRead = buyerCanReadDocument(accessLevel,Boolean(signedAgreement),inquiry.financial_access_status === "approved");
   await Promise.all([
-    supabase.from("marketplace_audit_events").insert({ actor_id: user.id, inquiry_id: inquiryId, event_type: "document_added", details: { title, category, access_level: accessLevel } }),
-    supabase.from("deal_status_events").insert({ inquiry_id: inquiryId, actor_id: user.id, to_status: inquiry.status, note: `${title} was added to the secure deal room.` }),
+    supabase.from("marketplace_audit_events").insert({ actor_id: user.id, inquiry_id: inquiryId, event_type: "document_added", details: { document_id: document.id, category, access_level: accessLevel } }),
+    ...(buyerCanRead ? [supabase.from("deal_status_events").insert({ inquiry_id: inquiryId, actor_id: user.id, to_status: inquiry.status, note: `${title} was added to the secure deal room.` })] : []),
   ]);
-  if (requestId && accessLevel !== "broker_only") {
+  if (requestId && buyerCanRead) {
     await supabase.from("deal_document_requests").update({ status: "fulfilled", document_id: document.id, resolved_at: new Date().toISOString() }).eq("id", requestId).eq("inquiry_id", inquiryId);
   }
-  if (accessLevel === "nda_signed" || (accessLevel === "approved" && inquiry.financial_access_status === "approved")) {
+  if (buyerCanRead) {
     await supabase.from("marketplace_notifications").insert({ user_id: inquiry.buyer_id, inquiry_id: inquiryId, kind: "document", title: "New deal-room document", body: `${title} is now available for review.`, href: `/${locale}/dashboard/deals/${inquiryId}` });
   }
   if (category === "Offer / LOI") {

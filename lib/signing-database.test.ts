@@ -7,7 +7,7 @@ const buyer='00000000-0000-4000-8000-000000000001',broker='00000000-0000-4000-80
 test('signing and document sharing enforce authorization, immutability, and atomic evidence',async()=>{
  const db=new PGlite();
  try {
-  await db.exec(`create role authenticated;create role anon;create schema auth;create table auth.users(id uuid primary key);
+  await db.exec(`create role authenticated;create role anon;create role service_role;create schema auth;create table auth.users(id uuid primary key);
    create function auth.uid() returns uuid language sql as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
    create function auth.role() returns text language sql as $$select current_setting('request.jwt.claim.role',true)$$;
    grant usage on schema auth to authenticated,anon;create table public.profiles(user_id uuid primary key,display_name text,locale text);`);
@@ -24,6 +24,7 @@ test('signing and document sharing enforce authorization, immutability, and atom
   await db.exec(guards.slice(guards.indexOf('create or replace function public.guard_deal_nda_write()'),guards.indexOf('create or replace function public.guard_document_request_update()')));
   await db.exec(await migration('0051_signing_and_document_controls'));
   await db.exec((await migration('0053_nda_audit_fixes')).split('-- NDA_FILE_POLICY:')[0]);
+  await db.exec((await migration('0054_signing_workflow')).split('-- DELIVERED_FILE_PROTECTION:')[0]);
   await db.exec(`grant all on all tables in schema public to authenticated;
    select set_config('request.jwt.claim.role','service_role',false);
    insert into auth.users values('${buyer}'),('${broker}'),('${outsider}');
@@ -39,8 +40,19 @@ test('signing and document sharing enforce authorization, immutability, and atom
   await assert.rejects(db.exec(`update deal_ndas set status='signed',signed_at=now(),signer_name='Forged buyer' where id='${nda}'`), 'Broker must not be able to sign for the buyer');
   await actor(buyer);
   await assert.rejects(db.exec(`update deal_ndas set status='signed',signed_at=now(),signer_name='Synthetic Buyer' where id='${nda}'`), 'Signing must use the atomic evidence workflow');
+  const manage=(operation:string,days:number|null=null,reason:string|null=null)=>db.query('select manage_deal_nda($1,1,$2,$3,$4,$5)',[nda,operation,days,reason,'en']);
+  await assert.rejects(manage('remind'));await manage('receipt');await manage('receipt');
+  assert.equal((await db.query<{n:number}>("select count(*)::int n from deal_nda_events where event_type='receipt_acknowledged'")).rows[0].n,1);
+  await assert.rejects(db.query('select complete_deal_nda_core($1,$2,1,$3,$4,null,null,$5)',[deal,nda,'Buyer','a'.repeat(64),'en']));
+  await actor(broker);await manage('remind');await assert.rejects(manage('remind'));await manage('expire',1);
+  await db.exec(`reset role;update deal_nda_controls set expires_at=now()-interval '1 second' where nda_id='${nda}'`);
+  await actor(buyer);await assert.rejects(sign());
+  await actor(broker);await manage('expire',0);await manage('withdraw',null,'Synthetic request no longer needed');
+  await actor(buyer);await assert.rejects(sign());
+  await db.exec(`reset role;delete from deal_nda_controls where nda_id='${nda}'`);
+  await actor(buyer);
   await assert.rejects(db.query('select complete_deal_nda($1,$2,2,$3,$4,null,null,$5)',[deal,nda,'Synthetic Buyer','a'.repeat(64),'en']));
-  await db.exec('reset role;alter table marketplace_notifications add constraint injected_failure check(false)');
+  await db.exec('reset role;alter table marketplace_notifications add constraint injected_failure check(false) not valid');
   await actor(buyer);await assert.rejects(sign());
   await db.exec('reset role');
   assert.equal((await db.query<{status:string}>(`select status from deal_ndas where id='${nda}'`)).rows[0].status,'sent');

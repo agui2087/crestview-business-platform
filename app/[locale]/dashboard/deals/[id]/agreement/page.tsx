@@ -16,7 +16,8 @@ export default async function AgreementRecord({params}:{params:Promise<{locale:s
   if(!user)notFound();
   const {data:nda,error}=await supabase.from('deal_ndas').select('id,buyer_id,broker_id,document_name,template_body,template_version,storage_path,sent_at,signed_at,signer_name,signature_record,document_fingerprint').eq('inquiry_id',id).eq('status','signed').or(`buyer_id.eq.${user.id},broker_id.eq.${user.id}`).maybeSingle();
   if(error||!nda)notFound();
-  const file=nda.storage_path?await supabase.storage.from('deal-files').createSignedUrl(nda.storage_path,900,{download:true}):null;
+  const {data:events,error:eventsError}=await supabase.from('deal_nda_events').select('id,event_type,occurred_at').eq('nda_id',nda.id).order('occurred_at');
+  if(eventsError)throw Error('Signing history temporarily unavailable. Please refresh.');
   const record=(nda.signature_record??{}) as {file_sha256?:string;record_version?:number;consent?:string;method?:string};
   const fields=[
     [t('Agreement ID','ID del acuerdo'),nda.id],
@@ -35,7 +36,10 @@ export default async function AgreementRecord({params}:{params:Promise<{locale:s
     <h1>{locale==='es'?'Registro de firma del NDA':'NDA signing record'}</h1><h2>{nda.document_name}</h2>
     <p>{t('This record documents an electronic acceptance recorded by Crestview. It is not an independent identity verification, legal opinion, or certificate issued by DocuSign.','Este registro documenta una aceptación electrónica registrada por Crestview. No constituye verificación independiente de identidad, asesoría legal ni un certificado emitido por DocuSign.')}</p>
     <dl>{fields.map(([label,value])=><Fragment key={label}><dt>{label}</dt><dd>{value}</dd></Fragment>)}</dl>
-    {file?.data?.signedUrl?<a className="button button--light" href={file.data.signedUrl}>{t('Download original agreement PDF','Descargar el PDF del acuerdo original')}</a>:nda.storage_path?<p role="alert">{t('Original PDF unavailable. Contact the broker; this record does not replace the agreement.','PDF original no disponible. Contacta al corredor; este registro no sustituye el acuerdo.')}</p>:<section><h2>{t('Agreement text','Texto del acuerdo')}</h2><p style={{whiteSpace:'pre-wrap'}}>{nda.template_body}</p></section>}
+    {nda.storage_path?<><a className="button button--light" href={`/api/deals/${id}/signing-record?format=original`}>{t('Download original agreement PDF','Descargar el PDF del acuerdo original')}</a><p>{t('The original download is checked against its recorded PDF fingerprint. Historical PDFs without a recorded fingerprint cannot be verified by this download.','La descarga se comprueba con la huella registrada del PDF. Los PDF históricos sin huella registrada no pueden verificarse mediante esta descarga.')}</p></>:<section><h2>{t('Agreement text','Texto del acuerdo')}</h2><p style={{whiteSpace:'pre-wrap'}}>{nda.template_body}</p></section>}
+    <a className="button button--light" href={`/api/deals/${id}/signing-record`}>{t('Download evidence record (JSON)','Descargar registro de evidencia (JSON)')}</a>
+    <h2>{t('Recorded workflow history','Historial registrado')}</h2><p>{t('Events before this tracking feature was introduced may not appear. Receipt acknowledgment is not a signature or proof that every page was read.','Es posible que no aparezcan eventos anteriores a esta función. Confirmar recepción no es firmar ni probar que se leyó cada página.')}</p>
+    <ol>{(events??[]).map(e=><li key={e.id}>{e.event_type.replaceAll('_',' ')} · {new Date(e.occurred_at).toISOString()}</li>)}</ol>
     <p>{t('Keep the original agreement together with this signing record. Printing this page does not embed the original PDF. Financial-document access still requires the broker’s separate approval.','Conserva el acuerdo original junto con este registro. Imprimir esta página no incluye el PDF original. El acceso a documentos financieros aún requiere aprobación independiente del corredor.')}</p>
     <PrintRecord locale={locale}/>
   </main>;

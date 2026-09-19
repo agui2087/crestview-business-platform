@@ -11,6 +11,8 @@ import { addDealRoomDocument, changeDocumentAccess, advanceInquiry, createDocume
 import { allowedBrokerTransitions } from "@/lib/deal-workflow-policy";
 import { DealDocumentUpload, PendingAction } from "@/components/deal-document-upload";
 import { documentFolders, documentFolder } from "@/lib/document-sharing";
+import {SigningControls} from '@/components/signing-controls';
+import {signingState,type SigningControls as NdaControls} from '@/lib/signing-workflow';
 
 export const metadata: Metadata = { title: "Secure deal workspace" };
 
@@ -21,6 +23,7 @@ type WorkspaceData = {
   messages: { id: string; body: string; sender_id: string; created_at: string }[];
   nda: { id?: string; status: string; document_name: string; template_body: string | null; storage_path?: string | null; template_version?: number; signed_at: string | null; signer_name: string | null } | null;
   ndaUrl: string | null;
+  ndaControls?: NdaControls|null;
   documents: { id: string; title: string; category: string; external_url: string | null; secure_url?: string | null; storage_path?: string | null; original_filename?: string | null; mime_type?: string | null; file_size_bytes?: number | null; access_level?: string; permission_note?: string | null; security_status?: string | null; scan_provider?: string | null; scan_completed_at?: string | null; version: number; created_at: string }[];
   requests: { id: string; item_name: string; note: string | null; status: string; document_id: string | null; created_at: string; resolved_at: string | null }[];
   events: { id: string; to_status: string; note: string | null; created_at: string }[];
@@ -64,6 +67,8 @@ async function getWorkspace(id: string, userId?: string, locale = "en"): Promise
   ]);
   if (results.some(result => result.error)) throw new Error("The complete deal workspace could not be loaded. Please try again.");
   const [{ data: messages }, { data: nda }, { data: documents }, { data: requests }, { data: events }] = results;
+  const {data:ndaControls,error:controlsError}=nda?await supabase.from('deal_nda_controls').select('*').eq('nda_id',nda.id).maybeSingle():{data:null,error:null};
+  if(controlsError)throw new Error('Agreement status could not be verified. Please refresh.');
   const listing = inquiry.marketplace_listings as unknown as { title: string; asking_price?: number | null; annual_revenue?: number | null; cash_flow?: number | null } | null;
   let ndaUrl: string | null = null;
   if (nda?.storage_path) {
@@ -80,7 +85,7 @@ async function getWorkspace(id: string, userId?: string, locale = "en"): Promise
   }));
   return {
     inquiry: inquiry as unknown as typeof demoInquiries[number], title: listing?.title ?? inquiry.subject,
-    isBuyer: inquiry.buyer_id === userId, isDemo: false, messages: messages ?? [], nda, ndaUrl, documents: documentsWithUrls, requests: requests ?? [], events: events ?? [],
+    isBuyer: inquiry.buyer_id === userId, isDemo: false, messages: messages ?? [], nda, ndaUrl, ndaControls, documents: documentsWithUrls, requests: requests ?? [], events: events ?? [],
     listingFinancials: { asking_price: listing?.asking_price ?? null, annual_revenue: listing?.annual_revenue ?? null, cash_flow: listing?.cash_flow ?? null },
   };
 }
@@ -126,6 +131,7 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
         <PageHeading eyebrow={workspace.isBuyer ? "Buyer workspace" : "Broker workspace"} title={workspace.title} body={workspace.isBuyer ? "Your guided path from first inquiry through diligence and closing." : "Review the buyer, share records securely, and move the deal forward from one place."} />
         {query.nda && <p className="notice">The NDA was {query.nda === "signed" ? "signed and the deal room is unlocked" : "sent successfully"}.</p>}
         {query.document && <p className="notice" role="status">{query.document === "sharing" ? "Document access updated. Existing download links may remain usable for up to 15 minutes; downloaded copies cannot be recalled." : "Document saved. Check its access setting below before sharing."}</p>}
+        {query.signing&&<p className="notice" role="status">{['invalid','unavailable'].includes(String(query.signing))?(locale==='es'?'No se confirmó el cambio. Revisa el estado, el plazo y el límite de recordatorios antes de reintentar.':'The change could not be confirmed. Check the current status, deadline, and reminder cooldown before retrying.'):(locale==='es'?'Solicitud actualizada. Los recordatorios se entregan dentro de Crestview, no por correo.':'Signature request updated. Reminders are delivered inside Crestview, not by email.')}</p>}
         {query.error && ["document_file","document_upload","document_required","document_save","document_source","upload_limit","nda_changed","nda_unavailable","sharing_changed"].includes(String(query.error)) && <p className="notice" role="alert">{query.error === "document_file" ? "The file was not accepted. Use a supported file up to 3.5 MB. Security scanning must succeed before it can be saved." : query.error === "document_source" ? "Choose either a file or an external link, not both." : query.error === "nda_unavailable" ? "The agreement file could not be retrieved. Nothing was signed; please try again." : query.error === "nda_changed" ? "Signing could not be confirmed. Review the current agreement and status before trying again." : query.error === "sharing_changed" ? "Sharing could not be updated. Refresh and check the current permissions before trying again." : "The document could not be saved. Check the file and storage limit, then try again."}</p>}
         {query.error === "document_link" && <p className="notice" role="alert">{locale === "es" ? "Usa un enlace HTTPS válido sin usuario ni contraseña en la dirección." : "Use a valid HTTPS link without a username or password in the address."}</p>}
         {query.error && !String(query.error).startsWith("financial_") && !["document_file","document_upload","document_required","document_save","document_source","document_link","upload_limit","nda_changed","nda_unavailable","sharing_changed"].includes(String(query.error)) && <p className="notice" role="alert">{query.error === "message_invalid" ? "Enter a message between 1 and 5,000 characters." : query.error === "message_failed" ? "Your message was not sent. Please try again." : query.error === "closing_confirmation" ? "Confirm that the closing occurred outside Crestview before marking this deal closed." : query.error === "nda_send" ? "The NDA could not be sent. An existing agreement will not be replaced; review its current status below." : "We could not confirm the requested change. Review the current status and try again. Your documents and signed agreements remain protected."}</p>}
@@ -233,7 +239,8 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
               {workspace.nda.template_version && <small>Document version {workspace.nda.template_version}</small>}
               {workspace.nda.signed_at && <small>Signed by {workspace.nda.signer_name} on {new Date(workspace.nda.signed_at).toLocaleDateString()}</small>}
               {ndaSigned && !workspace.isDemo && <Link className="button button--light" href={`/${locale}/dashboard/deals/${id}/agreement`}>{locale === "es" ? "Ver registro de firma" : "View signing record"}</Link>}
-              {workspace.isBuyer && ["sent", "viewed"].includes(workspace.nda.status) && !workspace.isDemo && (!workspace.nda.storage_path || workspace.ndaUrl) && <form action={signNda}>
+              {!workspace.isDemo&&<SigningControls nda={workspace.nda} inquiryId={id} locale={locale} isBuyer={workspace.isBuyer} controls={workspace.ndaControls??null}/>}
+              {workspace.isBuyer && ["sent", "viewed"].includes(signingState(workspace.nda.status,workspace.ndaControls??null)) && !workspace.isDemo && (!workspace.nda.storage_path || workspace.ndaUrl) && <form action={signNda}>
                 <input type="hidden" name="locale" value={locale} /><input type="hidden" name="inquiry_id" value={id} />
                 <input type="hidden" name="nda_id" value={workspace.nda.id}/><input type="hidden" name="nda_version" value={workspace.nda.template_version}/>
                 <p>{locale === "es" ? "1. Revisa el acuerdo completo. 2. Escribe tu nombre legal. 3. Confirma tu consentimiento. Puedes pedir aclaraciones al corredor antes de firmar." : "1. Review the complete agreement above. 2. Enter your legal name. 3. Confirm your consent. You can ask the broker questions before signing."}</p>

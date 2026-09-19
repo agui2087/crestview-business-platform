@@ -1,0 +1,21 @@
+import Link from 'next/link';
+import {manageAgreement} from '@/app/[locale]/dashboard/signing/actions';
+import {PendingAction} from './deal-document-upload';
+import {mayRemind,signingState,type SigningControls as Controls} from '@/lib/signing-workflow';
+export function SigningControls({nda,inquiryId,locale,isBuyer,controls}:{nda:{id?:string;status:string;template_version?:number};inquiryId:string;locale:string;isBuyer:boolean;controls:Controls|null}) {
+ const t=(en:string,es:string)=>locale==='es'?es:en;const state=signingState(nda.status,controls);
+ const hidden=<><input type="hidden" name="locale" value={locale}/><input type="hidden" name="inquiry_id" value={inquiryId}/><input type="hidden" name="nda_id" value={nda.id}/><input type="hidden" name="nda_version" value={nda.template_version}/></>;
+ return <section aria-label={t('Signature request controls','Controles de solicitud de firma')}>
+  <Link href={`/${locale}/dashboard/signing`}>{t('Open signing center','Abrir centro de firmas')}</Link>
+  {controls?.received_at&&<p>{t('Buyer acknowledged receipt (UTC):','El comprador confirmó recepción (UTC):')} {new Date(controls.received_at).toISOString()}</p>}
+  {controls?.expires_at&&<p>{t('Signature deadline (UTC):','Fecha límite de firma (UTC):')} {new Date(controls.expires_at).toISOString()}</p>}
+  {state==='expired'&&<p role="status">{t('This unsigned request has expired. Ask the broker to extend the deadline.','Esta solicitud sin firmar venció. Solicita al corredor ampliar el plazo.')}</p>}
+  {state==='withdrawn'&&<p role="status">{t('Unsigned request withdrawn:','Solicitud sin firmar retirada:')} {controls?.withdrawal_reason}</p>}
+  {isBuyer&&['sent','viewed'].includes(state)&&!controls?.received_at&&<form action={manageAgreement}>{hidden}<input type="hidden" name="operation" value="receipt"/><PendingAction>{t('Acknowledge receipt (not a signature)','Confirmar recepción (no es una firma)')}</PendingAction></form>}
+  {!isBuyer&&['sent','viewed','expired'].includes(state)&&<>
+   <form action={manageAgreement}>{hidden}<input type="hidden" name="operation" value="remind"/><PendingAction disabled={!mayRemind(nda.status,controls)}>{t('Send in-app reminder','Enviar recordatorio en la aplicación')}</PendingAction><small>{t('At most once per 24 hours. This does not send an email.','Máximo una vez cada 24 horas. No envía correo electrónico.')}</small></form>
+   <details><summary>{t('Set or extend signing deadline','Establecer o ampliar el plazo')}</summary><form action={manageAgreement}>{hidden}<input type="hidden" name="operation" value="expire"/><label>{t('Deadline from now','Plazo desde ahora')}<select name="expiry_days" defaultValue="14">{[1,7,14,30].map(n=><option value={n} key={n}>{n} {t('days','días')}</option>)}<option value="0">{t('No deadline','Sin fecha límite')}</option></select></label><PendingAction>{t('Save deadline','Guardar plazo')}</PendingAction></form></details>
+   <details><summary>{t('Withdraw unsigned request','Retirar solicitud sin firmar')}</summary><form action={manageAgreement}>{hidden}<input type="hidden" name="operation" value="withdraw"/><p>{t('This stops signing permanently for this request. It does not delete the agreement or cancel any signed contract.','Esto impide firmar permanentemente esta solicitud. No elimina el acuerdo ni cancela contratos firmados.')}</p><label>{t('Reason shown to buyer','Motivo visible para el comprador')}<textarea name="reason" minLength={10} maxLength={1000} required/></label><label><input name="confirmed" type="checkbox" required/>{t('I confirm withdrawal of this unsigned request.','Confirmo el retiro de esta solicitud sin firmar.')}</label><PendingAction>{t('Withdraw request','Retirar solicitud')}</PendingAction></form></details>
+  </>}
+ </section>;
+}

@@ -13,6 +13,7 @@ const navItems = [
   ["marketplace", "Marketplace", "Mercado", "search"],
   ["listings", "My listings", "Mis anuncios", "list"],
   ["inbox", "Deal inbox", "Bandeja de negocios", "inbox"],
+  ["signing", "Signing center", "Centro de firmas", "document"],
   ["opportunities", "Browse listings", "Explorar anuncios", "search"],
   ["lists", "Saved lists", "Listas guardadas", "heart"],
   ["pipeline", "Pipeline", "Proceso", "pipeline"],
@@ -27,7 +28,7 @@ const navItems = [
 ] as const;
 
 const navGroups = [
-  { label: ["Home", "Inicio"], slugs: ["overview", "inbox"] },
+  { label: ["Home", "Inicio"], slugs: ["overview", "inbox", "signing"] },
   { label: ["Explore", "Explorar"], slugs: ["marketplace", "opportunities", "lists"] },
   { label: ["Workspace", "Espacio de trabajo"], slugs: ["pipeline", "tasks", "documents", "reports"] },
   { label: ["Sell", "Vender"], slugs: ["listings", "workforce"] },

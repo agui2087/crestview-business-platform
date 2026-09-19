@@ -49,13 +49,20 @@ try{
  check(await buyer.auth.from('deal_ndas').insert({id:nda,inquiry_id:deal,buyer_id:buyer.id,broker_id:broker.id,document_name:template.document_name,template_body:template.template_body,storage_path:filePath,status:'sent',template_version:template.version,signature_record:{}}));
  expect((await buyer.auth.rpc('complete_deal_nda',{target_inquiry:deal,expected_nda:nda,expected_version:2,legal_name:'Forged bypass',fingerprint:'a'.repeat(64),file_sha256:'b'.repeat(64),ip_hash:null,locale:'en'})).error).toBeTruthy();
  await buyer.page.goto(`${base}/en/dashboard/deals/${deal}`);await buyer.page.getByRole('link',{name:'Review and sign on the PDF',exact:true}).click();
+ const consent=buyer.page.getByRole('checkbox',{name:/I have reviewed the complete agreement/});
+ await consent.check();await buyer.page.getByLabel('Full legal name',{exact:true}).fill('Changed name');await expect(consent).not.toBeChecked();
+ await consent.check();await buyer.page.getByLabel('Your initials',{exact:true}).fill('XX');await expect(consent).not.toBeChecked();
  await buyer.page.getByLabel('Full legal name',{exact:true}).fill('Synthetic Buyer');await buyer.page.getByLabel('Your initials',{exact:true}).fill('SB');
  await expect(buyer.page.getByRole('button',{name:'Confirm and sign NDA',exact:true})).toBeDisabled();
  await buyer.page.getByRole('button',{name:'Apply Signature 1',exact:true}).click();await buyer.page.getByRole('button',{name:'Apply Date (UTC) 2',exact:true}).click();
- await buyer.page.getByRole('button',{name:'Go to next required field',exact:true}).click();await buyer.page.getByRole('button',{name:'Apply Initials 3',exact:true}).click();
+ await buyer.page.getByRole('button',{name:'Go to next required field',exact:true}).click();await expect(buyer.page.getByRole('button',{name:'Apply Initials 3',exact:true})).toBeFocused();await buyer.page.getByRole('button',{name:'Apply Initials 3',exact:true}).click();
  for(const width of [1280,390]){await buyer.page.setViewportSize({width,height:900});expect(await buyer.page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);await buyer.page.screenshot({path:`/private/tmp/crestview-visual-sign-${width}.png`,fullPage:true});}
  await buyer.page.getByRole('combobox',{name:/PDF zoom/}).selectOption('2');await expect(buyer.page.getByRole('button',{name:'Apply Initials 3',exact:true})).toBeVisible();expect(await buyer.page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);await buyer.page.getByRole('combobox',{name:/PDF zoom/}).selectOption('1');
  const violations=(await new AxeBuilder({page:buyer.page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze()).violations;expect(violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>n.target)}))).toEqual([]);
+ // Simulate a page-render failure after all fields and consent were completed.
+ await consent.check();await buyer.page.locator('canvas').evaluate(canvas=>Object.defineProperty(canvas,'width',{configurable:true,set(){throw Error('Synthetic render failure');}}));
+ await buyer.page.getByRole('combobox',{name:/PDF zoom/}).selectOption('2');await expect(buyer.page.getByRole('alert').filter({hasText:'This page could not be rendered'})).toContainText('could not be rendered');await expect(buyer.page.getByRole('button',{name:'Confirm and sign NDA',exact:true})).toBeDisabled();
+ await buyer.page.locator('canvas').evaluate(canvas=>Reflect.deleteProperty(canvas,'width'));await buyer.page.getByRole('combobox',{name:/PDF zoom/}).selectOption('1');await expect(buyer.page.getByRole('button',{name:'Confirm and sign NDA',exact:true})).toBeEnabled();
  await buyer.page.getByRole('checkbox',{name:/I have reviewed the complete agreement/}).check();await buyer.page.getByRole('button',{name:'Confirm and sign NDA',exact:true}).click();await buyer.page.waitForURL(/\/agreement$/);
  await expect(buyer.page.getByRole('link',{name:'Download signed PDF',exact:true})).toBeVisible();
  const evidence=await(await buyer.context.request.get(`${base}/api/deals/${deal}/signing-record`)).json();expect(Object.values(evidence.visual.field_values)).toContain('Synthetic Buyer');
@@ -66,6 +73,14 @@ try{
  await broker.page.goto(`${base}/en/dashboard/deals/${deal}/agreement`);await expect(broker.page.getByRole('link',{name:'Download signed PDF',exact:true})).toBeVisible();
  const row=await admin.from('deal_nda_pdf_records').select('storage_path').eq('nda_id',nda).single();check(row);signedPath=row.data!.storage_path;
  expect((await buyer.auth.storage.from('signed-agreements').download(signedPath!)).error).toBeTruthy();
+ // A storage replacement must not masquerade as the delivered original or signed copy.
+ check(await admin.storage.from('deal-files').update(filePath!,Buffer.from('%PDF-1.4 synthetic changed bytes'),{contentType:'application/pdf'}));
+ const changedOriginal=await buyer.context.request.get(`${base}/api/nda-pdf/${nda}`);
+ // Storage may temporarily retain the old, correctly hashed copy in its CDN.
+ if(changedOriginal.status()===200)expect(createHash('sha256').update(await changedOriginal.body()).digest('hex')).toBe(template.signing_layout.sha256);else expect(changedOriginal.status()).toBe(409);
+ check(await admin.storage.from('signed-agreements').update(signedPath!,Buffer.from('%PDF-1.4 synthetic changed bytes'),{contentType:'application/pdf'}));
+ const changedSigned=await buyer.context.request.get(`${base}/api/deals/${deal}/signing-record?format=signed`);
+ if(changedSigned.status()===200)expect(createHash('sha256').update(await changedSigned.body()).digest('hex')).toBe(evidence.visual.sha256);else expect(changedSigned.status()).toBe(409);
  console.log('PASS: field placement, keyboard adjustment, immutable snapshot, buyer signing, 2-page completed PDF, evidence hashes, role isolation, accessibility, mobile and desktop.');
 }finally{
  await browser.close();

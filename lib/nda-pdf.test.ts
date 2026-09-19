@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {PDFDocument,degrees,StandardFonts} from 'pdf-lib';
+import {PDFDocument,degrees,StandardFonts,PDFName} from 'pdf-lib';
 import {completeSigningPdf,pdfHash,pdfPoint,inspectSigningPdf} from './nda-pdf.ts';
 import type {NdaLayout} from './nda-fields.ts';
 test('PDF completion preserves originals and supports cropped/rotated pages',async()=>{
@@ -19,4 +19,21 @@ test('PDF completion preserves originals and supports cropped/rotated pages',asy
 test('interactive forms are not silently modified',async()=>{
  const doc=await PDFDocument.create();const page=doc.addPage();doc.getForm().createTextField('existing').addToPage(page);
  await assert.rejects(inspectSigningPdf(await doc.save()),/flat, unsigned PDF/);
+});
+test('crop areas extending outside the displayed page are rejected',async()=>{
+ const doc=await PDFDocument.create(),page=doc.addPage([612,792]);
+ page.setCropBox(-20,0,612,792);
+ await assert.rejects(inspectSigningPdf(await doc.save()),/Unsupported PDF page geometry/);
+ page.setCropBox(0,0,700,792);
+ await assert.rejects(inspectSigningPdf(await doc.save()),/Unsupported PDF page geometry/);
+ page.setCropBox(0,0,612,792);
+ assert.equal((await inspectSigningPdf(await doc.save())).pages,1);
+});
+test('orphaned form widgets and certification permissions are not silently modified',async()=>{
+ const doc=await PDFDocument.create(),page=doc.addPage();
+ doc.getForm().createTextField('orphan').addToPage(page);
+ doc.catalog.delete(PDFName.of('AcroForm'));
+ await assert.rejects(inspectSigningPdf(await doc.save()),/flat, unsigned PDF/);
+ const certified=await PDFDocument.create();certified.addPage();certified.catalog.set(PDFName.of('Perms'),certified.context.obj({}));
+ await assert.rejects(inspectSigningPdf(await certified.save()),/flat, unsigned PDF/);
 });

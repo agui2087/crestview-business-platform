@@ -1,4 +1,4 @@
-import {PDFDocument,StandardFonts,degrees,rgb,PDFName} from 'pdf-lib';
+import {PDFDocument,StandardFonts,degrees,rgb,PDFName,PDFDict} from 'pdf-lib';
 import {createHash} from 'node:crypto';
 import {parseNdaLayout,type NdaLayout} from './nda-fields.ts';
 export const pdfHash=(bytes:Uint8Array)=>createHash('sha256').update(bytes).digest('hex');
@@ -8,10 +8,15 @@ export async function inspectSigningPdf(bytes:Uint8Array) {
  if(pdf.getPageCount()<1||pdf.getPageCount()>50)throw Error('Visual signing supports 1 to 50 pages');
  // Existing cryptographic signatures and interactive forms must not silently
  // become invalid or change appearances when a completed copy is produced.
- if(pdf.catalog.has(PDFName.of('AcroForm')))throw Error('Use a flat, unsigned PDF without interactive form fields');
+ if(pdf.catalog.has(PDFName.of('AcroForm'))||pdf.catalog.has(PDFName.of('Perms')))throw Error('Use a flat, unsigned PDF without interactive form fields');
  for(const page of pdf.getPages()) {
-  const b=page.getCropBox(),r=((page.getRotation().angle%360)+360)%360;
-  if(![0,90,180,270].includes(r)||b.width<100||b.height<100||b.width>5000||b.height>5000)throw Error('Unsupported PDF page geometry');
+  for(const annotation of page.node.Annots()?.asArray()??[]) {
+   if(pdf.context.lookup(annotation,PDFDict).get(PDFName.of('Subtype'))?.toString()==='/Widget')throw Error('Use a flat, unsigned PDF without interactive form fields');
+  }
+  const b=page.getCropBox(),m=page.getMediaBox(),r=((page.getRotation().angle%360)+360)%360;
+  // PDF viewers clip CropBox to MediaBox. Reject a mismatched visible area so
+  // normalized browser field positions cannot shift in the completed file.
+  if(![b.x,b.y,b.width,b.height,m.x,m.y,m.width,m.height].every(Number.isFinite)||![0,90,180,270].includes(r)||b.width<100||b.height<100||b.width>5000||b.height>5000||b.x<m.x||b.y<m.y||b.x+b.width>m.x+m.width||b.y+b.height>m.y+m.height)throw Error('Unsupported PDF page geometry. Export a flat PDF with its crop inside the page boundaries.');
  }
  return {pdf,pages:pdf.getPageCount(),sha256:pdfHash(bytes)};
 }

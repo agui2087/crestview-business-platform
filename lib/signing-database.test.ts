@@ -25,6 +25,8 @@ test('signing and document sharing enforce authorization, immutability, and atom
   await db.exec(await migration('0051_signing_and_document_controls'));
   await db.exec((await migration('0053_nda_audit_fixes')).split('-- NDA_FILE_POLICY:')[0]);
   await db.exec((await migration('0054_signing_workflow')).split('-- DELIVERED_FILE_PROTECTION:')[0]);
+  await db.exec(`create schema storage;create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);`);
+  await db.exec(await migration('0055_visual_nda_signing'));
   await db.exec(`grant all on all tables in schema public to authenticated;
    select set_config('request.jwt.claim.role','service_role',false);
    insert into auth.users values('${buyer}'),('${broker}'),('${outsider}');
@@ -69,5 +71,24 @@ test('signing and document sharing enforce authorization, immutability, and atom
   assert.equal((await db.query(`select id from deal_room_documents where id='${doc}'`)).rows.length,0);
   await db.exec('reset role');
   assert.equal((await db.query<{n:number}>("select count(*)::int n from marketplace_audit_events where event_type='document_access_changed'")).rows[0].n,2);
+  // New visual agreements must use a snapshotted layout and server-produced PDF.
+  const visualDeal='00000000-0000-4000-8000-000000000008',visualNda='00000000-0000-4000-8000-000000000009';
+  const layout={fields:[{id:doc,type:'signature',page:1,x:.1,y:.1,width:.4,height:.05}],sha256:'b'.repeat(64),pages:1,revision:doc};
+  await db.exec(`select set_config('request.jwt.claim.role','service_role',false);insert into listing_nda_templates(listing_id,broker_id,template_body,storage_path,version)values('${listing}','${broker}','Test','synthetic.pdf',1);`);
+  await db.query('select save_nda_layout($1,$2,1,$3)',[broker,listing,layout]);
+  await db.exec(`insert into deal_inquiries(id,listing_id,buyer_id,broker_id,subject,initial_message,status) values('${visualDeal}','${listing}','${outsider}','${broker}','Test visual','Test','nda_sent');
+  insert into deal_ndas(id,inquiry_id,buyer_id,broker_id,document_name,storage_path,status,template_version) values('${visualNda}','${visualDeal}','${outsider}','${broker}','Test','synthetic.pdf','sent',2);`);
+  assert.deepEqual((await db.query<{signing_layout:unknown}>(`select signing_layout from deal_ndas where id='${visualNda}'`)).rows[0].signing_layout,layout);
+  await actor(outsider);
+  await assert.rejects(db.query('select complete_deal_nda($1,$2,2,$3,$4,$5,null,$6)',[visualDeal,visualNda,'Visual Buyer','a'.repeat(64),'b'.repeat(64),'en']));
+  const finish=()=>db.query('select complete_visual_nda($1,$2,$3,$4,$5,$6,$7,$8,clock_timestamp(),$9)',[outsider,visualNda,layout,'Visual Buyer','a'.repeat(64),`${visualNda}/synthetic.pdf`,'c'.repeat(64),{[doc]:'Visual Buyer'},'en']);
+  await assert.rejects(finish());await assert.rejects(db.query('select save_nda_layout($1,$2,2,$3)',[broker,listing,layout]));
+  await actor(broker);await assert.rejects(db.query('update deal_ndas set signing_layout=null where id=$1',[visualNda]));
+  await db.exec("reset role;select set_config('request.jwt.claim.role','service_role',false)");
+  await db.query('select save_nda_layout($1,$2,2,$3)',[broker,listing,{...layout,revision:nda}]);
+  assert.deepEqual((await db.query<{signing_layout:unknown}>(`select signing_layout from deal_ndas where id='${visualNda}'`)).rows[0].signing_layout,layout,'Template changes must not alter a delivered agreement');
+  await finish();await assert.rejects(finish());
+  assert.equal((await db.query(`select * from deal_nda_pdf_records where nda_id='${visualNda}'`)).rows.length,1);
+  await actor(buyer);assert.equal((await db.query(`select * from deal_nda_pdf_records where nda_id='${visualNda}'`)).rows.length,0);
  } finally {await db.close();}
 });

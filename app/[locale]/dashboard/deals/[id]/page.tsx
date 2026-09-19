@@ -21,7 +21,7 @@ type WorkspaceData = {
   title: string;
   isBuyer: boolean;
   messages: { id: string; body: string; sender_id: string; created_at: string }[];
-  nda: { id?: string; status: string; document_name: string; template_body: string | null; storage_path?: string | null; template_version?: number; signed_at: string | null; signer_name: string | null } | null;
+  nda: { id?: string; status: string; document_name: string; template_body: string | null; storage_path?: string | null; template_version?: number; signing_layout?: unknown; signed_at: string | null; signer_name: string | null } | null;
   ndaUrl: string | null;
   ndaControls?: NdaControls|null;
   documents: { id: string; title: string; category: string; external_url: string | null; secure_url?: string | null; storage_path?: string | null; original_filename?: string | null; mime_type?: string | null; file_size_bytes?: number | null; access_level?: string; permission_note?: string | null; security_status?: string | null; scan_provider?: string | null; scan_completed_at?: string | null; version: number; created_at: string }[];
@@ -60,7 +60,7 @@ async function getWorkspace(id: string, userId?: string, locale = "en"): Promise
   if (!inquiry) notFound();
   const results = await Promise.all([
     supabase.from("deal_messages").select("id,body,sender_id,created_at").eq("inquiry_id", id).order("created_at"),
-    supabase.from("deal_ndas").select("id,status,document_name,template_body,storage_path,template_version,signed_at,signer_name").eq("inquiry_id", id).maybeSingle(),
+    supabase.from("deal_ndas").select("id,status,document_name,template_body,storage_path,template_version,signing_layout,signed_at,signer_name").eq("inquiry_id", id).maybeSingle(),
     supabase.from("deal_room_documents").select("id,title,category,storage_path,original_filename,mime_type,file_size_bytes,external_url,access_level,permission_note,security_status,scan_provider,scan_completed_at,version,created_at").eq("inquiry_id", id).eq("is_active", true).order("created_at"),
     supabase.from("deal_document_requests").select("id,item_name,note,status,document_id,created_at,resolved_at").eq("inquiry_id", id).order("created_at"),
     supabase.from("deal_status_events").select("id,to_status,note,created_at").eq("inquiry_id", id).order("created_at"),
@@ -240,7 +240,8 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
               {workspace.nda.signed_at && <small>Signed by {workspace.nda.signer_name} on {new Date(workspace.nda.signed_at).toLocaleDateString()}</small>}
               {ndaSigned && !workspace.isDemo && <Link className="button button--light" href={`/${locale}/dashboard/deals/${id}/agreement`}>{locale === "es" ? "Ver registro de firma" : "View signing record"}</Link>}
               {!workspace.isDemo&&<SigningControls nda={workspace.nda} inquiryId={id} locale={locale} isBuyer={workspace.isBuyer} controls={workspace.ndaControls??null}/>}
-              {workspace.isBuyer && ["sent", "viewed"].includes(signingState(workspace.nda.status,workspace.ndaControls??null)) && !workspace.isDemo && (!workspace.nda.storage_path || workspace.ndaUrl) && <form action={signNda}>
+              {workspace.isBuyer && !!workspace.nda.signing_layout && ["sent","viewed"].includes(signingState(workspace.nda.status,workspace.ndaControls??null)) && <Link className="button button--primary" href={`/${locale}/dashboard/deals/${id}/sign`}>{locale==='es'?'Revisar y firmar en el PDF':'Review and sign on the PDF'}</Link>}
+              {workspace.isBuyer && !workspace.nda.signing_layout && ["sent", "viewed"].includes(signingState(workspace.nda.status,workspace.ndaControls??null)) && !workspace.isDemo && (!workspace.nda.storage_path || workspace.ndaUrl) && <form action={signNda}>
                 <input type="hidden" name="locale" value={locale} /><input type="hidden" name="inquiry_id" value={id} />
                 <input type="hidden" name="nda_id" value={workspace.nda.id}/><input type="hidden" name="nda_version" value={workspace.nda.template_version}/>
                 <p>{locale === "es" ? "1. Revisa el acuerdo completo. 2. Escribe tu nombre legal. 3. Confirma tu consentimiento. Puedes pedir aclaraciones al corredor antes de firmar." : "1. Review the complete agreement above. 2. Enter your legal name. 3. Confirm your consent. You can ask the broker questions before signing."}</p>

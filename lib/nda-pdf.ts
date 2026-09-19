@@ -1,0 +1,43 @@
+import {PDFDocument,StandardFonts,degrees,rgb,PDFName} from 'pdf-lib';
+import {createHash} from 'node:crypto';
+import {parseNdaLayout,type NdaLayout} from './nda-fields.ts';
+export const pdfHash=(bytes:Uint8Array)=>createHash('sha256').update(bytes).digest('hex');
+export async function inspectSigningPdf(bytes:Uint8Array) {
+ if(bytes.length>3_500_000)throw Error('PDF exceeds the signing size limit');
+ const pdf=await PDFDocument.load(bytes,{updateMetadata:false});
+ if(pdf.getPageCount()<1||pdf.getPageCount()>50)throw Error('Visual signing supports 1 to 50 pages');
+ // Existing cryptographic signatures and interactive forms must not silently
+ // become invalid or change appearances when a completed copy is produced.
+ if(pdf.catalog.has(PDFName.of('AcroForm')))throw Error('Use a flat, unsigned PDF without interactive form fields');
+ for(const page of pdf.getPages()) {
+  const b=page.getCropBox(),r=((page.getRotation().angle%360)+360)%360;
+  if(![0,90,180,270].includes(r)||b.width<100||b.height<100||b.width>5000||b.height>5000)throw Error('Unsupported PDF page geometry');
+ }
+ return {pdf,pages:pdf.getPageCount(),sha256:pdfHash(bytes)};
+}
+export function pdfPoint(x:number,y:number,box:{x:number;y:number;width:number;height:number},rotation:number) {
+ const r=((rotation%360)+360)%360;
+ if(r===90)return {x:box.x+y,y:box.y+x};
+ if(r===180)return {x:box.x+box.width-x,y:box.y+y};
+ if(r===270)return {x:box.x+box.width-y,y:box.y+box.height-x};
+ return {x:box.x+x,y:box.y+box.height-y};
+}
+export async function completeSigningPdf(bytes:Uint8Array,rawLayout:NdaLayout,values:Record<string,string>) {
+ const layout=parseNdaLayout(rawLayout),{pdf,pages,sha256}=await inspectSigningPdf(bytes);
+ if(sha256!==layout.sha256||pages!==layout.pages)throw Error('The PDF changed. Nothing was signed.');
+ const regular=await pdf.embedFont(StandardFonts.Helvetica),signature=await pdf.embedFont(StandardFonts.TimesRomanItalic);
+ for(const field of layout.fields) {
+  const page=pdf.getPage(field.page-1),box=page.getCropBox(),rotation=((page.getRotation().angle%360)+360)%360;
+  const width=rotation%180?box.height:box.width,height=rotation%180?box.width:box.height;
+  const text=values[field.id];if(!text||/[\r\n\t]/.test(text)||text.length>100)throw Error('Invalid signing value');
+  const font=field.type==='signature'?signature:regular;
+  let measured:number;try{measured=font.widthOfTextAtSize(text,1);}catch{throw Error('This name contains characters not supported by the PDF font. Ask the broker for an alternative signing method.');}
+  const size=Math.min(field.type==='signature'?24:14,(field.height*height-6)*.75,(field.width*width-8)/measured);
+  if(size<7)throw Error('A field is too small for your name. Ask the broker to prepare a larger field.');
+  const point=pdfPoint(field.x*width+4,field.y*height+field.height*height/2+size*.32,box,rotation);
+  page.drawText(text,{...point,size,font,rotate:degrees(rotation),color:rgb(.05,.12,.09)});
+ }
+ const output=await pdf.save({useObjectStreams:false,updateFieldAppearances:false});
+ if(output.length>10_000_000)throw Error('Completed PDF exceeds the size limit');
+ return output;
+}

@@ -18,6 +18,8 @@ export default async function AgreementRecord({params}:{params:Promise<{locale:s
   if(error||!nda)notFound();
   const {data:events,error:eventsError}=await supabase.from('deal_nda_events').select('id,event_type,occurred_at').eq('nda_id',nda.id).order('occurred_at');
   if(eventsError)throw Error('Signing history temporarily unavailable. Please refresh.');
+  const {data:visual,error:visualError}=await supabase.from('deal_nda_pdf_records').select('sha256').eq('nda_id',nda.id).maybeSingle();
+  if(visualError)throw Error('Completed PDF evidence temporarily unavailable.');
   const record=(nda.signature_record??{}) as {file_sha256?:string;record_version?:number;consent?:string;method?:string};
   const fields=[
     [t('Agreement ID','ID del acuerdo'),nda.id],
@@ -36,6 +38,7 @@ export default async function AgreementRecord({params}:{params:Promise<{locale:s
     <h1>{locale==='es'?'Registro de firma del NDA':'NDA signing record'}</h1><h2>{nda.document_name}</h2>
     <p>{t('This record documents an electronic acceptance recorded by Crestview. It is not an independent identity verification, legal opinion, or certificate issued by DocuSign.','Este registro documenta una aceptación electrónica registrada por Crestview. No constituye verificación independiente de identidad, asesoría legal ni un certificado emitido por DocuSign.')}</p>
     <dl>{fields.map(([label,value])=><Fragment key={label}><dt>{label}</dt><dd>{value}</dd></Fragment>)}</dl>
+    {visual&&<section><h2>{t('Completed agreement','Acuerdo completado')}</h2><a className="button button--primary" href={`/api/deals/${id}/signing-record?format=signed`}>{t('Download signed PDF','Descargar PDF firmado')}</a><p>{t('Completed PDF SHA-256','SHA-256 del PDF completado')}: {visual.sha256}</p></section>}
     {nda.storage_path?<><a className="button button--light" href={`/api/deals/${id}/signing-record?format=original`}>{t('Download original agreement PDF','Descargar el PDF del acuerdo original')}</a><p>{t('The original download is checked against its recorded PDF fingerprint. Historical PDFs without a recorded fingerprint cannot be verified by this download.','La descarga se comprueba con la huella registrada del PDF. Los PDF históricos sin huella registrada no pueden verificarse mediante esta descarga.')}</p></>:<section><h2>{t('Agreement text','Texto del acuerdo')}</h2><p style={{whiteSpace:'pre-wrap'}}>{nda.template_body}</p></section>}
     <a className="button button--light" href={`/api/deals/${id}/signing-record`}>{t('Download evidence record (JSON)','Descargar registro de evidencia (JSON)')}</a>
     <h2>{t('Recorded workflow history','Historial registrado')}</h2><p>{t('Events before this tracking feature was introduced may not appear. Receipt acknowledgment is not a signature or proof that every page was read.','Es posible que no aparezcan eventos anteriores a esta función. Confirmar recepción no es firmar ni probar que se leyó cada página.')}</p>

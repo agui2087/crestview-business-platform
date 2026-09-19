@@ -23,6 +23,7 @@ test('signing and document sharing enforce authorization, immutability, and atom
   await db.exec(guards.slice(guards.indexOf('drop policy if exists "participants create notifications"'),guards.indexOf('drop policy if exists "users create reports"')));
   await db.exec(guards.slice(guards.indexOf('create or replace function public.guard_deal_nda_write()'),guards.indexOf('create or replace function public.guard_document_request_update()')));
   await db.exec(await migration('0051_signing_and_document_controls'));
+  await db.exec((await migration('0053_nda_audit_fixes')).split('-- NDA_FILE_POLICY:')[0]);
   await db.exec(`grant all on all tables in schema public to authenticated;
    select set_config('request.jwt.claim.role','service_role',false);
    insert into auth.users values('${buyer}'),('${broker}'),('${outsider}');
@@ -34,7 +35,10 @@ test('signing and document sharing enforce authorization, immutability, and atom
   const sign=()=>db.query('select complete_deal_nda($1,$2,1,$3,$4,null,null,$5)',[deal,nda,'Synthetic Buyer','a'.repeat(64),'en']);
   await actor(outsider);await assert.rejects(sign());
   await actor(broker);await assert.rejects(sign());
+  await assert.rejects(db.exec(`update deal_ndas set template_body='Changed after delivery' where id='${nda}'`));
+  await assert.rejects(db.exec(`update deal_ndas set status='signed',signed_at=now(),signer_name='Forged buyer' where id='${nda}'`), 'Broker must not be able to sign for the buyer');
   await actor(buyer);
+  await assert.rejects(db.exec(`update deal_ndas set status='signed',signed_at=now(),signer_name='Synthetic Buyer' where id='${nda}'`), 'Signing must use the atomic evidence workflow');
   await assert.rejects(db.query('select complete_deal_nda($1,$2,2,$3,$4,null,null,$5)',[deal,nda,'Synthetic Buyer','a'.repeat(64),'en']));
   await db.exec('reset role;alter table marketplace_notifications add constraint injected_failure check(false)');
   await actor(buyer);await assert.rejects(sign());

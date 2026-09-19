@@ -32,6 +32,8 @@ try{
  const signature={target_inquiry:deal,expected_nda:nda,expected_version:1,legal_name:'Synthetic Buyer',fingerprint:'a'.repeat(64),file_sha256:null,ip_hash:null,locale:'en'};
  assert.ok((await outsider.client.rpc('complete_deal_nda',signature)).error);
  assert.ok((await broker.client.rpc('complete_deal_nda',signature)).error);
+ assert.equal((await broker.client.from('deal_ndas').update({status:'signed',signed_at:new Date().toISOString(),signer_name:'Forged buyer'}).eq('id',nda)).error?.code,'42501');
+ assert.equal((await buyer.client.from('deal_ndas').update({status:'signed',signed_at:new Date().toISOString(),signer_name:'Synthetic Buyer'}).eq('id',nda)).error?.code,'42501');
  assert.equal((await buyer.client.rpc('complete_deal_nda',{...signature,expected_version:2})).error?.code,'P0001');
  check(await buyer.client.rpc('complete_deal_nda',signature));
  assert.equal((await buyer.client.rpc('complete_deal_nda',signature)).error?.code,'P0001');

@@ -1,6 +1,10 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {buyerCanReadDocument,suggestedDocumentTitle,secureExternalLink} from './document-sharing.ts';
+import {buyerCanReadDocument,suggestedDocumentTitle,secureExternalLink,documentFolders,documentFolder} from './document-sharing.ts';
+test('every legacy and custom document category has a visible folder',()=>{
+  for(const category of documentFolders)assert.equal(documentFolder(category),category);
+  for(const category of ['Offer / LOI','Offering materials','Other','Custom folder',''])assert.equal(documentFolder(category),'Overview');
+});
 test('sharing preview stays private until the selected conditions are met',()=>{
   for(const nda of [false,true])for(const approved of [false,true])assert.equal(buyerCanReadDocument('broker_only',nda,approved),false);
   assert.equal(buyerCanReadDocument('approved',true,false),false);

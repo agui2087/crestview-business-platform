@@ -10,6 +10,7 @@ import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase
 import { addDealRoomDocument, changeDocumentAccess, advanceInquiry, createDocumentRequest, decideFinancialAccess, reportMarketplaceItem, requestFinancialAccess, resolveDocumentRequest, sendMessage, sendNda, signNda } from "../../marketplace/actions";
 import { allowedBrokerTransitions } from "@/lib/deal-workflow-policy";
 import { DealDocumentUpload, PendingAction } from "@/components/deal-document-upload";
+import { documentFolders, documentFolder } from "@/lib/document-sharing";
 
 export const metadata: Metadata = { title: "Secure deal workspace" };
 
@@ -107,9 +108,9 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
   const financials = workspace.listingFinancials;
   const priceToCashFlow = financials?.asking_price && financials.cash_flow ? financials.asking_price / financials.cash_flow : null;
   const cashFlowMargin = financials?.annual_revenue && financials.cash_flow ? financials.cash_flow / financials.annual_revenue : null;
-  const documentGroups = ["Overview","Financial","Tax","Legal","Employees","Customers","Assets","Closing","Operations"].map((category) => ({
+  const documentGroups = documentFolders.map((category) => ({
     category,
-    documents: workspace.documents.filter((document) => document.category === category || (category === "Overview" && ["Offering materials","Other"].includes(document.category))),
+    documents: workspace.documents.filter((document) => documentFolder(document.category) === category),
   }));
   const requestedDocumentNames = new Set(workspace.requests.map((request) => request.item_name));
   const availableRequestOptions = [
@@ -126,7 +127,8 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
         {query.nda && <p className="notice">The NDA was {query.nda === "signed" ? "signed and the deal room is unlocked" : "sent successfully"}.</p>}
         {query.document && <p className="notice" role="status">{query.document === "sharing" ? "Document access updated. Existing download links may remain usable for up to 15 minutes; downloaded copies cannot be recalled." : "Document saved. Check its access setting below before sharing."}</p>}
         {query.error && ["document_file","document_upload","document_required","document_save","document_source","upload_limit","nda_changed","nda_unavailable","sharing_changed"].includes(String(query.error)) && <p className="notice" role="alert">{query.error === "document_file" ? "The file was not accepted. Use a supported file up to 3.5 MB. Security scanning must succeed before it can be saved." : query.error === "document_source" ? "Choose either a file or an external link, not both." : query.error === "nda_unavailable" ? "The agreement file could not be retrieved. Nothing was signed; please try again." : query.error === "nda_changed" ? "Signing could not be confirmed. Review the current agreement and status before trying again." : query.error === "sharing_changed" ? "Sharing could not be updated. Refresh and check the current permissions before trying again." : "The document could not be saved. Check the file and storage limit, then try again."}</p>}
-        {query.error && !String(query.error).startsWith("financial_") && <p className="notice" role="alert">{query.error === "message_invalid" ? "Enter a message between 1 and 5,000 characters." : query.error === "message_failed" ? "Your message was not sent. Please try again." : query.error === "closing_confirmation" ? "Confirm that the closing occurred outside Crestview before marking this deal closed." : query.error === "nda_send" ? "The NDA could not be sent. An existing agreement will not be replaced; review its current status below." : "We could not confirm the requested change. Review the current status and try again. Your documents and signed agreements remain protected."}</p>}
+        {query.error === "document_link" && <p className="notice" role="alert">{locale === "es" ? "Usa un enlace HTTPS válido sin usuario ni contraseña en la dirección." : "Use a valid HTTPS link without a username or password in the address."}</p>}
+        {query.error && !String(query.error).startsWith("financial_") && !["document_file","document_upload","document_required","document_save","document_source","document_link","upload_limit","nda_changed","nda_unavailable","sharing_changed"].includes(String(query.error)) && <p className="notice" role="alert">{query.error === "message_invalid" ? "Enter a message between 1 and 5,000 characters." : query.error === "message_failed" ? "Your message was not sent. Please try again." : query.error === "closing_confirmation" ? "Confirm that the closing occurred outside Crestview before marking this deal closed." : query.error === "nda_send" ? "The NDA could not be sent. An existing agreement will not be replaced; review its current status below." : "We could not confirm the requested change. Review the current status and try again. Your documents and signed agreements remain protected."}</p>}
         {query.message === "sent" && <p className="notice" role="status">Your message was sent.</p>}
         {query.stage === "updated" && <p className="notice" role="status">The shared deal stage was updated.</p>}
         {terminal && <p className="data-notice"><strong>{effectiveStatus === "closed" ? "Reported closed" : "This inquiry was declined"}</strong><span>{effectiveStatus === "closed" ? "The broker marked this deal closed. Crestview records progress; it does not transfer ownership, process the purchase price, or confirm legal closing. Keep your final agreements and professional confirmations." : "No further purchase steps are expected unless the broker reopens screening. Existing records remain available according to their permissions."}</span></p>}

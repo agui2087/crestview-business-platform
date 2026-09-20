@@ -12,6 +12,9 @@
 .controls p { line-height:1.6; margin:12px 0; color:#466150; }
 .controls label { display:grid; gap:6px; margin:12px 0; font-weight:600; }
 .controls input { min-width:0; width:100%; padding:9px; border:1px solid #8da998; border-radius:7px; background:#fff; color:#173e2d; }
+.controls input[type=checkbox] { width:20px; height:20px; accent-color:#225a3d; }
+.controls select { width:100%; min-width:0; padding:9px; border:1px solid #8da998; border-radius:7px; background:#fff; color:#173e2d; font:inherit; }
+.workspace select:focus-visible { outline:3px solid #356c50; outline-offset:3px; }
 .controls fieldset { margin:20px 0; padding:12px; border:1px solid #b8c8be; border-radius:8px; }
 .controls progress { width:100%; accent-color:#225a3d; }
 .controls .consent { display:flex; align-items:start; line-height:1.6; font-weight:400; }

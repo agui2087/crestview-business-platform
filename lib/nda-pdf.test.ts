@@ -3,6 +3,19 @@ import assert from 'node:assert/strict';
 import {PDFDocument,degrees,StandardFonts,PDFName} from 'pdf-lib';
 import {completeSigningPdf,pdfHash,pdfPoint,inspectSigningPdf} from './nda-pdf.ts';
 import type {NdaLayout} from './nda-fields.ts';
+test('two-party PDFs support drawn and uploaded signatures without premature completion',async()=>{
+ const doc=await PDFDocument.create();doc.addPage([612,792]);const bytes=await doc.save();
+ const fields=[{id:'00000000-0000-4000-8000-000000000001',type:'signature' as const,role:'buyer' as const,page:1,x:.1,y:.3,width:.4,height:.08},{id:'00000000-0000-4000-8000-000000000002',type:'signature' as const,role:'broker' as const,page:1,x:.1,y:.5,width:.4,height:.08}];
+ const layout:NdaLayout={fields,pages:1,sha256:pdfHash(bytes),revision:fields[0].id,order:'buyer_first'};
+ const values={[fields[0].id]:'Buyer',[fields[1].id]:'Broker'};
+ const drawn={mode:'drawn' as const,strokes:[[[.1,.2],[.4,.8],[.8,.1]] as [number,number][]]};
+ const image='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==';
+ assert.ok((await completeSigningPdf(bytes,layout,values,{buyer:drawn,broker:{mode:'uploaded',image}})).length>bytes.length);
+ await assert.rejects(completeSigningPdf(bytes,layout,{[fields[0].id]:'Buyer'},{buyer:drawn}));
+ assert.ok((await completeSigningPdf(bytes,layout,{[fields[0].id]:'Buyer'},{buyer:drawn},true)).length);
+ const oversized=Buffer.alloc(24);Buffer.from('89504e470d0a1a0a','hex').copy(oversized);oversized.writeUInt32BE(100000,16);oversized.writeUInt32BE(100000,20);
+ await assert.rejects(completeSigningPdf(bytes,layout,values,{broker:{mode:'uploaded',image:'data:image/png;base64,'+oversized.toString('base64')}}),/2000 pixels/);
+});
 test('PDF completion preserves originals and supports cropped/rotated pages',async()=>{
  const doc=await PDFDocument.create();const font=await doc.embedFont(StandardFonts.Helvetica);
  for(const rotation of [0,90,180,270]){const p=doc.addPage([612,792]);p.setCropBox(20,30,550,700);p.setRotation(degrees(rotation));p.drawText('SYNTHETIC AGREEMENT',{x:60,y:650,size:16,font});}

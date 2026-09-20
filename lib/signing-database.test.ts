@@ -27,6 +27,7 @@ test('signing and document sharing enforce authorization, immutability, and atom
   await db.exec((await migration('0054_signing_workflow')).split('-- DELIVERED_FILE_PROTECTION:')[0]);
   await db.exec(`create schema storage;create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);`);
   await db.exec(await migration('0055_visual_nda_signing'));
+  await db.exec(await migration('0056_nda_countersigning'));
   await db.exec(`grant all on all tables in schema public to authenticated;
    select set_config('request.jwt.claim.role','service_role',false);
    insert into auth.users values('${buyer}'),('${broker}'),('${outsider}');
@@ -90,5 +91,48 @@ test('signing and document sharing enforce authorization, immutability, and atom
   await finish();await assert.rejects(finish());
   assert.equal((await db.query(`select * from deal_nda_pdf_records where nda_id='${visualNda}'`)).rows.length,1);
   await actor(buyer);assert.equal((await db.query(`select * from deal_nda_pdf_records where nda_id='${visualNda}'`)).rows.length,0);
+  // A first signature must never release NDA-gated files. Both roles and order
+  // are enforced inside one database transaction, not just by the screen.
+  for(const [index,order] of ['buyer_first','broker_first','any'].entries()) {
+   await db.exec("reset role;select set_config('request.jwt.claim.role','service_role',false)");
+   const id=(n:number)=>`00000000-0000-4000-8000-${String(100+index*10+n).padStart(12,'0')}`;
+   const l=id(0),d=id(1),n=id(2),f1=id(3),f2=id(4),file=id(5);
+   const dual={...layout,order,fields:[{...layout.fields[0],id:f1,role:'buyer'},{...layout.fields[0],id:f2,role:'broker',y:.3}]};
+   await db.query(`insert into marketplace_listings(id,broker_id,title,summary,industry,city,state_code,status)values($1,$2,'Test','Test','Test','Test','CA','published')`,[l,broker]);
+   await db.query(`insert into listing_nda_templates(listing_id,broker_id,template_body,storage_path,version,signing_layout) values($1,$2,'Test','synthetic.pdf',1,$3)`,[l,broker,dual]);
+   await db.query(`insert into deal_inquiries(id,listing_id,buyer_id,broker_id,subject,initial_message,status)values($1,$2,$3,$4,'Test','Test','nda_sent')`,[d,l,buyer,broker]);
+   await db.query(`insert into deal_ndas(id,inquiry_id,buyer_id,broker_id,document_name,storage_path,status,template_version)values($1,$2,$3,$4,'Test','synthetic.pdf','sent',1)`,[n,d,buyer,broker]);
+   await db.query(`insert into deal_room_documents(id,inquiry_id,uploaded_by,title,access_level)values($1,$2,$3,'Protected','nda_signed')`,[file,d,broker]);
+   const first=order==='broker_first'?broker:buyer,second=first===buyer?broker:buyer;
+   const signParty=(who:string,count:number,final=false,values:Record<string,unknown>={[who===buyer?f1:f2]:'Synthetic Signer'})=>db.query('select record_nda_signature($1,$2,$3,$4,$5,$6,$7,clock_timestamp(),$8,$9,$10,$11)',[who,n,dual,count,'Synthetic Signer',values,{mode:'typed'},final?`${n}/completed.pdf`:null,final?'c'.repeat(64):null,final?'d'.repeat(64):null,'en']);
+   if(order!=='any')await assert.rejects(signParty(second,0));
+   await assert.rejects(signParty(outsider,0));
+   await assert.rejects(signParty(first,0,false,{[first===buyer?f1:f2]:null}));
+   await assert.rejects(signParty(first,0,false,{[f1]:'Forged',[f2]:'Forged'}));
+   await assert.rejects(db.query('select complete_visual_nda($1,$2,$3,$4,$5,$6,$7,$8,clock_timestamp(),$9)',[buyer,n,dual,'Buyer','a'.repeat(64),`${n}/x.pdf`,'c'.repeat(64),{[f1]:'Buyer',[f2]:'Broker'},'en']));
+   await signParty(first,0);
+   assert.equal((await db.query<{status:string}>('select status from deal_ndas where id=$1',[n])).rows[0].status,'sent');
+   assert.equal((await db.query('select * from deal_nda_pdf_records where nda_id=$1',[n])).rows.length,0);
+   await assert.rejects(signParty(first,1));await assert.rejects(signParty(second,0,true));
+   await actor(buyer);assert.equal((await db.query('select * from deal_room_documents where id=$1',[file])).rows.length,0);
+   await assert.rejects(signParty(second,1,true));
+   await actor(outsider);assert.equal((await db.query('select * from deal_nda_signatures where nda_id=$1',[n])).rows.length,0);
+   await db.exec("reset role;select set_config('request.jwt.claim.role','service_role',false)");
+   await db.query('insert into deal_nda_controls(nda_id,expires_at)values($1,now()-interval \'1 second\')',[n]);
+   await assert.rejects(signParty(second,1,true));
+   await db.query('delete from deal_nda_controls where nda_id=$1',[n]);
+   await assert.rejects(signParty(second,1,false));
+   assert.equal((await db.query('select * from deal_nda_signatures where nda_id=$1',[n])).rows.length,1,'Failed completion rolls back second signature');
+   await signParty(second,1,true);
+   assert.equal((await db.query<{status:string}>('select status from deal_ndas where id=$1',[n])).rows[0].status,'signed');
+   assert.equal((await db.query('select * from deal_nda_signatures where nda_id=$1',[n])).rows.length,2);
+   await actor(buyer);assert.equal((await db.query('select * from deal_room_documents where id=$1',[file])).rows.length,1);
+  }
+  await db.exec("reset role;select set_config('request.jwt.claim.role','service_role',false)");
+  for(let i=0;i<20;i++)await db.query('select save_nda_preset($1,$2,$3)',[broker,`Preset ${i}`,layout]);
+  await assert.rejects(db.query('select save_nda_preset($1,$2,$3)',[broker,'Overflow',layout]));
+  await db.query('select save_nda_preset($1,$2,$3)',[broker,'Preset 0',layout]);
+  await actor(outsider);assert.equal((await db.query('select * from nda_layout_presets')).rows.length,0);
+  await assert.rejects(db.query('select save_nda_preset($1,$2,$3)',[broker,'Forged',layout]));
  } finally {await db.close();}
 });

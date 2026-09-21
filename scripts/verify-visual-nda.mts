@@ -19,7 +19,6 @@ async function actor(role:string){
  check(await auth.auth.signInWithPassword({email,password}));const context=await browser.newContext();await context.addCookies([...jar].map(([name,value])=>({name,value,url:base,httpOnly:false,sameSite:'Lax'})));
  const page=await context.newPage();page.setDefaultTimeout(60000);
  page.on('pageerror',error=>console.error('Synthetic browser error:',error.message));
- page.on('requestfailed',request=>console.error('Synthetic request failed:',new URL(request.url()).pathname,request.failure()?.errorText));
  return {id,page,context,auth};
 }
 try{
@@ -41,8 +40,6 @@ try{
  await broker.page.getByRole('button',{name:'Add Date (UTC)',exact:true}).click();await broker.page.getByLabel('Top (%)',{exact:true}).fill('80');
  await broker.page.getByRole('button',{name:'Next page',exact:true}).click();
  await broker.page.getByRole('button',{name:'Add Initials',exact:true}).click();await broker.page.getByLabel('Top (%)',{exact:true}).fill('75');
- await broker.page.screenshot({path:'/private/tmp/crestview-preparation-rehearsal.png',fullPage:true});
- console.log('Synthetic preparation fields:',await broker.page.locator('[data-nda-field]').evaluateAll(nodes=>nodes.map(n=>n.getAttribute('aria-label'))));
  await broker.page.getByRole('button',{name:'Position Initials 3',exact:true}).press('ArrowRight');
  if(dual){
   await broker.page.getByRole('button',{name:'Add Signature',exact:true}).click();await broker.page.getByLabel('Top (%)',{exact:true}).fill('55');await broker.page.getByLabel('Assigned signer',{exact:true}).selectOption('broker');

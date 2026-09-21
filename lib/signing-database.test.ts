@@ -99,14 +99,15 @@ test('signing and document sharing enforce authorization, immutability, and atom
    await db.exec("reset role;select set_config('request.jwt.claim.role','service_role',false)");
    const id=(n:number)=>`00000000-0000-4000-8000-${String(100+index*10+n).padStart(12,'0')}`;
    const l=id(0),d=id(1),n=id(2),f1=id(3),f2=id(4),file=id(5);
-   const dual={...layout,order,fields:[{...layout.fields[0],id:f1,role:'buyer'},{...layout.fields[0],id:f2,role:'broker',y:.3}]};
+   const optional=id(6);
+   const dual={...layout,order,fields:[{...layout.fields[0],id:f1,role:'buyer'},{...layout.fields[0],id:f2,role:'broker',y:.3},{...layout.fields[0],id:optional,type:'text',role:'buyer',required:false,y:.5}]};
    await db.query(`insert into marketplace_listings(id,broker_id,title,summary,industry,city,state_code,status)values($1,$2,'Test','Test','Test','Test','CA','published')`,[l,broker]);
    await db.query(`insert into listing_nda_templates(listing_id,broker_id,template_body,storage_path,version,signing_layout) values($1,$2,'Test','synthetic.pdf',1,$3)`,[l,broker,dual]);
    await db.query(`insert into deal_inquiries(id,listing_id,buyer_id,broker_id,subject,initial_message,status)values($1,$2,$3,$4,'Test','Test','nda_sent')`,[d,l,buyer,broker]);
    await db.query(`insert into deal_ndas(id,inquiry_id,buyer_id,broker_id,document_name,storage_path,status,template_version)values($1,$2,$3,$4,'Test','synthetic.pdf','sent',1)`,[n,d,buyer,broker]);
    await db.query(`insert into deal_room_documents(id,inquiry_id,uploaded_by,title,access_level)values($1,$2,$3,'Protected','nda_signed')`,[file,d,broker]);
    const first=order==='broker_first'?broker:buyer,second=first===buyer?broker:buyer;
-   const signParty=(who:string,count:number,final=false,values:Record<string,unknown>={[who===buyer?f1:f2]:'Synthetic Signer'})=>db.query('select record_nda_signature($1,$2,$3,$4,$5,$6,$7,clock_timestamp(),$8,$9,$10,$11)',[who,n,dual,count,'Synthetic Signer',values,{mode:'typed'},final?`${n}/completed.pdf`:null,final?'c'.repeat(64):null,final?'d'.repeat(64):null,'en']);
+   const signParty=(who:string,count:number,final=false,values:Record<string,unknown>={...(who===buyer?{[optional]:''}:{}),[who===buyer?f1:f2]:'Synthetic Signer'})=>db.query('select record_nda_signature($1,$2,$3,$4,$5,$6,$7,clock_timestamp(),$8,$9,$10,$11)',[who,n,dual,count,'Synthetic Signer',values,{mode:'typed'},final?`${n}/completed.pdf`:null,final?'c'.repeat(64):null,final?'d'.repeat(64):null,'en']);
    const decline=(who:string,reason='Synthetic signer declines these terms')=>db.query('select decline_nda_request($1,$2,1,$3,$4)',[who,n,reason,'en']);
    await assert.rejects(decline(outsider));await assert.rejects(decline(buyer,'short'));
    await db.exec('begin');await decline(buyer);

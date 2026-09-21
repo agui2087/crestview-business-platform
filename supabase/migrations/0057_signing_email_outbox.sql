@@ -26,17 +26,24 @@ revoke all on public.signing_email_outbox from public,anon,authenticated;
 grant all on public.signing_email_outbox to service_role;
 
 create function public.enqueue_signing_email() returns trigger language plpgsql security definer set search_path='' as $$
-declare recipient uuid; kind text; key text;
+declare recipient uuid; recipients uuid[]; kind text; key text;
 begin
  if tg_table_name='deal_ndas' then
   if new.status='sent' and (tg_op='INSERT' or old.status is distinct from 'sent') then
-   recipient:=case when new.signing_layout->>'order'='broker_first' then new.broker_id else new.buyer_id end;
-   insert into public.signing_email_outbox(nda_id,recipient_id,kind,event_key)
-   values(new.id,recipient,'invitation','invitation:'||new.id||':'||recipient) on conflict(event_key) do nothing;
+   recipients:=case when new.signing_layout->>'order'='broker_first' then array[new.broker_id] else array[new.buyer_id] end;
+   if new.signing_layout->>'order'='any' and exists(select 1 from jsonb_array_elements(new.signing_layout->'fields') f where f->>'role'='broker') then
+    recipients:=array[new.buyer_id,new.broker_id];
+   end if;
+   foreach recipient in array recipients loop
+    insert into public.signing_email_outbox(nda_id,recipient_id,kind,event_key,locale)
+    values(new.id,recipient,'invitation','invitation:'||new.id||':'||recipient,
+     case when (select p.locale from public.profiles p where p.user_id=recipient)='es' then 'es' else 'en' end) on conflict(event_key) do nothing;
+   end loop;
   elsif tg_op='UPDATE' and new.status='signed' and old.status is distinct from 'signed' then
    foreach recipient in array array[new.buyer_id,new.broker_id] loop
-    insert into public.signing_email_outbox(nda_id,recipient_id,kind,event_key)
-    values(new.id,recipient,'completed','completed:'||new.id||':'||recipient) on conflict(event_key) do nothing;
+    insert into public.signing_email_outbox(nda_id,recipient_id,kind,event_key,locale)
+    values(new.id,recipient,'completed','completed:'||new.id||':'||recipient,
+     case when (select p.locale from public.profiles p where p.user_id=recipient)='es' then 'es' else 'en' end) on conflict(event_key) do nothing;
    end loop;
   end if;
  else
@@ -44,7 +51,7 @@ begin
   kind:=case when new.kind='nda_reminder' then 'reminder' else 'invitation' end;
   key:='notification:'||new.id;
   insert into public.signing_email_outbox(nda_id,recipient_id,kind,event_key,locale)
-   select n.id,new.user_id,kind,key,case when new.href like '/es/%' then 'es' else 'en' end
+   select n.id,new.user_id,kind,case when kind='invitation' then 'invitation:'||n.id||':'||new.user_id else key end,case when new.href like '/es/%' then 'es' else 'en' end
    from public.deal_ndas n where n.inquiry_id=new.inquiry_id and n.status in ('sent','viewed')
     and new.user_id in (n.buyer_id,n.broker_id)
    on conflict(event_key) do nothing;

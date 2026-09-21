@@ -6,6 +6,7 @@ test('email outbox isolates recipients, reserves free quotas, recovers leases an
  const db=new PGlite();
  try{
   await db.exec(`create role anon;create role authenticated;create role service_role;create schema auth;create table auth.users(id uuid primary key);
+   create table profiles(user_id uuid primary key,locale text);
    create table deal_ndas(id uuid primary key,inquiry_id uuid,buyer_id uuid,broker_id uuid,status text,signing_layout jsonb);
    create table deal_nda_controls(nda_id uuid,withdrawn_at timestamptz,expires_at timestamptz);
    create table marketplace_notifications(id uuid primary key default gen_random_uuid(),user_id uuid,inquiry_id uuid,kind text,href text);`);
@@ -43,5 +44,12 @@ test('email outbox isolates recipients, reserves free quotas, recovers leases an
   assert.equal((await db.query<{state:string}>('select state from signing_email_outbox where id=$1',[row.id])).rows[0].state,'failed');
   assert.equal((await db.query<{ok:boolean}>("select record_signing_delivery('unknown','unknown','delivered',now(),'email.delivered') ok")).rows[0].ok,false);
   await assert.rejects(db.exec('select * from claim_signing_emails(1000)'));
+  await db.query("insert into profiles values($1,'es')",[ids.b]);
+  const parallel=(await db.query<{id:string}>('select gen_random_uuid() id')).rows[0].id;
+  await db.query("insert into deal_ndas values($1,$2,$3,$4,'sent',$5)",[parallel,parallel,ids.a,ids.b,{order:'any',fields:[{role:'buyer'},{role:'broker'}]}]);
+  assert.equal((await db.query('select * from signing_email_outbox where nda_id=$1',[parallel])).rows.length,2);
+  assert.equal((await db.query<{locale:string}>('select locale from signing_email_outbox where nda_id=$1 and recipient_id=$2',[parallel,ids.b])).rows[0].locale,'es');
+  await db.query("insert into marketplace_notifications(user_id,inquiry_id,kind,href)values($1,$2,'nda_signature_needed','/es/dashboard')",[ids.b,parallel]);
+  assert.equal((await db.query('select * from signing_email_outbox where nda_id=$1',[parallel])).rows.length,2,'An already-invited parallel signer must not get a duplicate invitation');
  }finally{await db.close();}
 });

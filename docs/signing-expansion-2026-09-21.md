@@ -7,7 +7,7 @@ This is a work-in-progress checklist, not a production completion claim.
 | Email invitations and reminders | Provider adapter, durable outbox, signed delivery callbacks and worker implemented with local tests; provider signup, verified sender, scheduling and live verification remain. Disabled in production. |
 | Outside signers | Not yet implemented; existing signing links require the assigned account. |
 | Multi-document / multi-recipient packets | Not yet implemented; existing NDA supports buyer and broker only. |
-| Preparation | Optional non-identity fields, dropdown choices, text/email/number validation and non-signing buyer/broker previews implemented. Connected browser verification is in progress. |
+| Preparation | Optional non-identity fields, dropdown choices, text/email/number validation and non-signing buyer/broker previews implemented. Connected buyer/broker browser rehearsal passed on a production build against the isolated test database. |
 | Request management | Decline reasons and paginated name search implemented; safe correction/reissue remains. |
 | Evidence | Existing hashes, signatures, printable record and JSON export remain. Ed25519 export sealing and offline verifier implemented and unit-tested; secure key provisioning, publication and live verification remain. This is not a certificate-authority identity seal. |
 | Operational proof | Local delivery failure/lease/quota checks added; independent review and real broker trials require other people. |
@@ -40,6 +40,10 @@ Run worker with an approved private environment using `node --import tsx scripts
 ## Verification recorded so far
 
 261 automated tests passed before adding the export-seal unit test; that additional test also passed. Type checking, scoped lint and production build passed. Runtime dependency audit: zero vulnerabilities. Connected browser rehearsal exposed a progress-state initialization issue, corrected before release. Development-mode PDF testing was blocked by the production security policy; testing returned to a production build without weakening the policy.
+
+The connected two-party rehearsal now passes: saved eight-field layout, non-signing preview, optional blank value, dropdown choice, buyer drawn signature and broker uploaded signature, signing order, withdrawn/expired rejection, original/final hash checks, outsider denial, mobile/desktop overflow and automated accessibility. Both completed PDF pages were rendered and visually inspected. Page-transition readiness and stable dropdown accessible labels were corrected during the rehearsal. Synthetic accounts/documents were cleaned up. This is controlled testing, not a real broker trial.
+
+Database tests also cover optional blank fields in buyer-first, broker-first and parallel orders. Email queue tests cover Spanish recipient preferences and deduplicated invitations for both parallel signers.
 
 ## Export seal operation
 

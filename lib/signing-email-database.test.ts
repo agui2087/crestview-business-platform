@@ -7,13 +7,13 @@ test('email outbox isolates recipients, reserves free quotas, recovers leases an
  try{
   await db.exec(`create role anon;create role authenticated;create role service_role;create schema auth;create table auth.users(id uuid primary key);
    create table profiles(user_id uuid primary key,locale text);
-   create table deal_ndas(id uuid primary key,inquiry_id uuid,buyer_id uuid,broker_id uuid,status text,signing_layout jsonb);
+   create table deal_ndas(id uuid primary key,inquiry_id uuid,buyer_id uuid,broker_id uuid,status text,signing_layout jsonb,template_version integer default 1);
    create table deal_nda_controls(nda_id uuid,withdrawn_at timestamptz,expires_at timestamptz);
    create table marketplace_notifications(id uuid primary key default gen_random_uuid(),user_id uuid,inquiry_id uuid,kind text,href text);`);
   await db.exec(await readFile(new URL('../supabase/migrations/0057_signing_email_outbox.sql',import.meta.url),'utf8'));
   const ids=(await db.query<{a:string;b:string;n:string;i:string}>('select gen_random_uuid() a,gen_random_uuid() b,gen_random_uuid() n,gen_random_uuid() i')).rows[0];
   await db.query('insert into auth.users values($1),($2)',[ids.a,ids.b]);
-  await db.query("insert into deal_ndas values($1,$2,$3,$4,'sent',null)",[ids.n,ids.i,ids.a,ids.b]);
+  await db.query("insert into deal_ndas values($1,$2,$3,$4,'sent',null,1)",[ids.n,ids.i,ids.a,ids.b]);
   await db.query("insert into marketplace_notifications(user_id,inquiry_id,kind,href)values($1,$2,'nda_sent','/es/dashboard')",[ids.a,ids.i]);
   const row=(await db.query<{id:string;locale:string}>('select * from signing_email_outbox')).rows[0];assert.equal(row.locale,'en');
   assert.equal((await db.query('select * from signing_email_outbox')).rows.length,1,'Invitation is queued atomically, not duplicated by an in-app notice');
@@ -46,10 +46,14 @@ test('email outbox isolates recipients, reserves free quotas, recovers leases an
   await assert.rejects(db.exec('select * from claim_signing_emails(1000)'));
   await db.query("insert into profiles values($1,'es')",[ids.b]);
   const parallel=(await db.query<{id:string}>('select gen_random_uuid() id')).rows[0].id;
-  await db.query("insert into deal_ndas values($1,$2,$3,$4,'sent',$5)",[parallel,parallel,ids.a,ids.b,{order:'any',fields:[{role:'buyer'},{role:'broker'}]}]);
+  await db.query("insert into deal_ndas values($1,$2,$3,$4,'sent',$5,1)",[parallel,parallel,ids.a,ids.b,{order:'any',fields:[{role:'buyer'},{role:'broker'}]}]);
   assert.equal((await db.query('select * from signing_email_outbox where nda_id=$1',[parallel])).rows.length,2);
   assert.equal((await db.query<{locale:string}>('select locale from signing_email_outbox where nda_id=$1 and recipient_id=$2',[parallel,ids.b])).rows[0].locale,'es');
   await db.query("insert into marketplace_notifications(user_id,inquiry_id,kind,href)values($1,$2,'nda_signature_needed','/es/dashboard')",[ids.b,parallel]);
   assert.equal((await db.query('select * from signing_email_outbox where nda_id=$1',[parallel])).rows.length,2,'An already-invited parallel signer must not get a duplicate invitation');
+  await db.query('update deal_ndas set template_version=2 where id=$1',[parallel]);
+  await db.exec('select * from claim_signing_emails()');
+  assert.equal((await db.query("select * from signing_email_outbox where nda_id=$1 and nda_version=1 and state='cancelled'",[parallel])).rows.length,2);
+  assert.equal((await db.query('select * from signing_email_outbox where nda_id=$1 and nda_version=2',[parallel])).rows.length,2);
  }finally{await db.close();}
 });

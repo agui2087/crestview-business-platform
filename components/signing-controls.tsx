@@ -7,6 +7,7 @@ export function SigningControls({nda,inquiryId,locale,isBuyer,controls}:{nda:{id
  const hidden=<><input type="hidden" name="locale" value={locale}/><input type="hidden" name="inquiry_id" value={inquiryId}/><input type="hidden" name="nda_id" value={nda.id}/><input type="hidden" name="nda_version" value={nda.template_version}/></>;
  return <section aria-label={t('Signature request controls','Controles de solicitud de firma')}>
   <Link href={`/${locale}/dashboard/signing`}>{t('Open signing center','Abrir centro de firmas')}</Link>
+  {' · '}<Link href={`/${locale}/dashboard/deals/${inquiryId}/reissue`}>{t('Revision history and corrections','Historial de revisiones y correcciones')}</Link>
   {controls?.received_at&&<p>{t('Buyer acknowledged receipt (UTC):','El comprador confirmó recepción (UTC):')} {new Date(controls.received_at).toISOString()}</p>}
   {controls?.expires_at&&<p>{t('Signature deadline (UTC):','Fecha límite de firma (UTC):')} {new Date(controls.expires_at).toISOString()}</p>}
   {state==='expired'&&<p role="status">{t('This unsigned request has expired. Ask the broker to extend the deadline.','Esta solicitud sin firmar venció. Solicita al corredor ampliar el plazo.')}</p>}

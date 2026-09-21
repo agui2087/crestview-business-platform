@@ -11,10 +11,10 @@ const {data:jobs,error}=await db.rpc('claim_signing_emails',{batch_size:5});
 if(error)throw Error('Could not claim email jobs');
 const counts={claimed:jobs?.length??0,sent:0,retry:0,failed:0,cancelled:0,leaseLost:0};
 for(const job of jobs??[]){
- const {data:nda,error:ndaError}=await db.from('deal_ndas').select('inquiry_id,status,buyer_id,broker_id').eq('id',job.nda_id).maybeSingle();
+ const {data:nda,error:ndaError}=await db.from('deal_ndas').select('inquiry_id,status,buyer_id,broker_id,template_version').eq('id',job.nda_id).maybeSingle();
  const {data:controls,error:controlError}=await db.from('deal_nda_controls').select('withdrawn_at,expires_at').eq('nda_id',job.nda_id).maybeSingle();
  if(ndaError||controlError)throw Error('Could not verify signing request');
- const unavailable=!nda||![nda.buyer_id,nda.broker_id].includes(job.recipient_id)||(job.kind==='completed'?nda.status!=='signed':!['sent','viewed'].includes(nda.status)||!!controls?.withdrawn_at||!!controls?.expires_at&&Date.parse(controls.expires_at)<=Date.now());
+ const unavailable=!nda||nda.template_version!==job.nda_version||![nda.buyer_id,nda.broker_id].includes(job.recipient_id)||(job.kind==='completed'?nda.status!=='signed':!['sent','viewed'].includes(nda.status)||!!controls?.withdrawn_at||!!controls?.expires_at&&Date.parse(controls.expires_at)<=Date.now());
  let update:Record<string,unknown>;
  if(unavailable){update={state:'cancelled',last_error:'agreement_unavailable'};counts.cancelled++;}
  else {

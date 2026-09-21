@@ -9,7 +9,7 @@ const url=process.env.NEXT_PUBLIC_SUPABASE_URL,key=process.env.SUPABASE_SERVICE_
 const dual=process.env.NDA_COUNTERSIGN_TEST==='1';
 if(url!=='https://bxtrkycetuoqooammgpp.supabase.co'||!key)throw Error('Only the isolated synthetic test project is allowed');
 const admin=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}}),browser=await chromium.launch();
-const ids:string[]=[];let listing:string|undefined,filePath:string|undefined,signedPath:string|undefined;
+const ids:string[]=[];let listing:string|undefined,filePath:string|undefined,signedPath:string|undefined,replacementPath:string|undefined;
 const check=(r:{error:unknown})=>{if(r.error)throw Error(JSON.stringify(r.error));};
 async function actor(role:string){
  const email=`visual-nda-${randomUUID()}@crestview.test`,password=randomUUID()+randomUUID();
@@ -114,18 +114,51 @@ try{
  await broker.page.goto(`${base}/en/dashboard/deals/${deal}/agreement`);await expect(broker.page.getByRole('link',{name:'Download signed PDF',exact:true})).toBeVisible();
  const row=await admin.from('deal_nda_pdf_records').select('storage_path').eq('nda_id',nda).single();check(row);signedPath=row.data!.storage_path;
  expect((await buyer.auth.storage.from('signed-agreements').download(signedPath!)).error).toBeTruthy();
+ // Separate unsigned request proves the actual decline form and route, not
+ // only the database procedure. This synthetic buyer remains an outsider to
+ // the completed agreement checked above.
+ const declinedDeal=randomUUID(),declinedNda=randomUUID();
+ check(await admin.from('deal_inquiries').insert({id:declinedDeal,listing_id:listing,buyer_id:outsider.id,broker_id:broker.id,subject:'Synthetic decline workflow',initial_message:'Synthetic test only',status:'nda_sent'}));
+ check(await admin.from('deal_ndas').insert({id:declinedNda,inquiry_id:declinedDeal,buyer_id:outsider.id,broker_id:broker.id,document_name:template.document_name,template_body:template.template_body,storage_path:filePath,status:'sent',template_version:template.version,signature_record:{}}));
+ await outsider.page.goto(`${base}/en/dashboard/deals/${declinedDeal}`);
+ await outsider.page.getByText('Decline to sign',{exact:true}).click();
+ await outsider.page.getByLabel('Reason shared with the broker',{exact:true}).fill('Synthetic rehearsal: terms require revision.');
+ await outsider.page.getByRole('checkbox',{name:'I confirm that I decline this signing request.',exact:true}).check();
+ await outsider.page.getByRole('button',{name:'Confirm decline',exact:true}).click();
+ await outsider.page.waitForURL(/signing=declined/);
+ await expect(outsider.page.getByText('Signature request declined:',{exact:false})).toContainText('terms require revision');
+ await outsider.page.goto(`${base}/en/dashboard/deals/${declinedDeal}/sign`);
+ await expect(outsider.page.getByRole('button',{name:'Confirm and sign NDA',exact:true})).toHaveCount(0);
+ const declined=await admin.from('deal_ndas').select('status').eq('id',declinedNda).single();check(declined);expect(declined.data!.status).toBe('declined');
+ replacementPath=`${broker.id}/listing-ndas/${randomUUID()}/replacement.pdf`;
+ check(await admin.storage.from('deal-files').upload(replacementPath,bytes,{contentType:'application/pdf'}));
+ check(await admin.from('listing_nda_templates').update({storage_path:replacementPath,version:template.version+1}).eq('listing_id',listing));
+ await broker.page.goto(`${base}/en/dashboard/deals/${declinedDeal}/reissue`);
+ await broker.page.getByLabel('Explain the correction to the buyer',{exact:true}).fill('Synthetic correction: fresh review of the current template.');
+ await broker.page.getByRole('checkbox',{name:'I reviewed the replacement and understand that the buyer must review it again.',exact:true}).check();
+ await broker.page.getByRole('button',{name:'Preserve old version and reissue',exact:true}).click();await broker.page.waitForURL(/reissued=1/);
+ const archive=await admin.from('deal_nda_revisions').select('id,agreement,revision').eq('nda_id',declinedNda).single();check(archive);expect(archive.data!.revision).toBe(template.version);expect(archive.data!.agreement.status).toBe('declined');
+ const replacement=await admin.from('deal_ndas').select('status,template_version,signing_layout').eq('id',declinedNda).single();check(replacement);expect(replacement.data!.status).toBe('sent');expect(replacement.data!.template_version).toBe(template.version+1);expect(replacement.data!.signing_layout.revision).not.toBe(template.signing_layout.revision);
+ const priorPdf=await outsider.context.request.get(`${base}/api/deals/${declinedDeal}/nda-history/${archive.data!.id}?format=original`);expect(priorPdf.status()).toBe(200);expect(createHash('sha256').update(await priorPdf.body()).digest('hex')).toBe(template.signing_layout.sha256);
+ expect((await buyer.context.request.get(`${base}/api/deals/${declinedDeal}/nda-history/${archive.data!.id}`)).status()).toBe(404);
+ await broker.auth.storage.from('deal-files').remove([filePath!]);
+ const retainedOriginal=await admin.storage.from('deal-files').download(filePath!);check(retainedOriginal);expect(retainedOriginal.data).toBeTruthy();
+ await outsider.page.goto(`${base}/en/dashboard/deals/${declinedDeal}/sign`);await expect(outsider.page.getByRole('button',{name:'Confirm and sign NDA',exact:true})).toBeVisible();
+ await broker.page.goto(`${base}/en/dashboard/deals/${deal}/reissue`);await expect(broker.page.getByRole('button',{name:'Preserve old version and reissue',exact:true})).toHaveCount(0);
  // A storage replacement must not masquerade as the delivered original or signed copy.
  check(await admin.storage.from('deal-files').update(filePath!,Buffer.from('%PDF-1.4 synthetic changed bytes'),{contentType:'application/pdf'}));
  const changedOriginal=await buyer.context.request.get(`${base}/api/nda-pdf/${nda}`);
  // Storage may temporarily retain the old, correctly hashed copy in its CDN.
  if(changedOriginal.status()===200)expect(createHash('sha256').update(await changedOriginal.body()).digest('hex')).toBe(template.signing_layout.sha256);else expect(changedOriginal.status()).toBe(409);
+ const changedArchive=await outsider.context.request.get(`${base}/api/deals/${declinedDeal}/nda-history/${archive.data!.id}?format=original`);
+ if(changedArchive.status()===200)expect(createHash('sha256').update(await changedArchive.body()).digest('hex')).toBe(template.signing_layout.sha256);else expect(changedArchive.status()).toBe(409);
  check(await admin.storage.from('signed-agreements').update(signedPath!,Buffer.from('%PDF-1.4 synthetic changed bytes'),{contentType:'application/pdf'}));
  const changedSigned=await buyer.context.request.get(`${base}/api/deals/${deal}/signing-record?format=signed`);
  if(changedSigned.status()===200)expect(createHash('sha256').update(await changedSigned.body()).digest('hex')).toBe(evidence.visual.sha256);else expect(changedSigned.status()).toBe(409);
- console.log('PASS: field placement, keyboard adjustment, immutable snapshot, buyer signing, 2-page completed PDF, evidence hashes, role isolation, accessibility, mobile and desktop.');
+ console.log('PASS: field placement, keyboard adjustment, immutable snapshot, buyer signing, decline and safe reissue forms, preserved originals, 2-page completed PDF, evidence hashes, role isolation, accessibility, mobile and desktop.');
 }finally{
  await browser.close();
  // Capture any completed artifact even if a later assertion failed.
  if(listing&&!signedPath){const {data:deals}=await admin.from('deal_inquiries').select('id').eq('listing_id',listing);if(deals?.length){const {data:ndas}=await admin.from('deal_ndas').select('id').in('inquiry_id',deals.map(d=>d.id));if(ndas?.length){const {data:records}=await admin.from('deal_nda_pdf_records').select('storage_path').in('nda_id',ndas.map(n=>n.id));for(const r of records??[])check(await admin.storage.from('signed-agreements').remove([r.storage_path]));}}}
- if(signedPath)check(await admin.storage.from('signed-agreements').remove([signedPath]));if(listing)check(await admin.from('marketplace_listings').delete().eq('id',listing));if(filePath)check(await admin.storage.from('deal-files').remove([filePath]));for(const id of ids){check(await admin.from('nda_layout_presets').delete().eq('broker_id',id));check(await admin.auth.admin.deleteUser(id));}console.log('Synthetic visual rehearsal cleanup complete.');
+ if(signedPath)check(await admin.storage.from('signed-agreements').remove([signedPath]));if(listing)check(await admin.from('marketplace_listings').delete().eq('id',listing));if(filePath)check(await admin.storage.from('deal-files').remove([filePath]));if(replacementPath)check(await admin.storage.from('deal-files').remove([replacementPath]));for(const id of ids){check(await admin.from('nda_layout_presets').delete().eq('broker_id',id));check(await admin.auth.admin.deleteUser(id));}console.log('Synthetic visual rehearsal cleanup complete.');
 }

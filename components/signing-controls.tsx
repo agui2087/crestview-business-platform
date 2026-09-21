@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import {manageAgreement} from '@/app/[locale]/dashboard/signing/actions';
+import {manageAgreement,declineAgreement} from '@/app/[locale]/dashboard/signing/actions';
 import {PendingAction} from './deal-document-upload';
 import {mayRemind,signingState,type SigningControls as Controls} from '@/lib/signing-workflow';
 export function SigningControls({nda,inquiryId,locale,isBuyer,controls}:{nda:{id?:string;status:string;template_version?:number};inquiryId:string;locale:string;isBuyer:boolean;controls:Controls|null}) {
@@ -11,6 +11,8 @@ export function SigningControls({nda,inquiryId,locale,isBuyer,controls}:{nda:{id
   {controls?.expires_at&&<p>{t('Signature deadline (UTC):','Fecha límite de firma (UTC):')} {new Date(controls.expires_at).toISOString()}</p>}
   {state==='expired'&&<p role="status">{t('This unsigned request has expired. Ask the broker to extend the deadline.','Esta solicitud sin firmar venció. Solicita al corredor ampliar el plazo.')}</p>}
   {state==='withdrawn'&&<p role="status">{t('Unsigned request withdrawn:','Solicitud sin firmar retirada:')} {controls?.withdrawal_reason}</p>}
+  {state==='declined'&&<p role="status">{t('Signature request declined:','Solicitud de firma rechazada:')} {controls?.decline_reason}</p>}
+  {isBuyer&&['sent','viewed'].includes(state)&&<details><summary>{t('Decline to sign','Rechazar la firma')}</summary><form action={declineAgreement}>{hidden}<p>{t('Declining stops this request and records your reason. It does not erase any previous signatures or cancel a signed contract.','El rechazo detiene esta solicitud y registra el motivo. No borra firmas anteriores ni cancela contratos firmados.')}</p><label>{t('Reason shared with the broker','Motivo compartido con el corredor')}<textarea name="reason" minLength={10} maxLength={1000} required/></label><label><input type="checkbox" name="confirmed" required/>{t('I confirm that I decline this signing request.','Confirmo que rechazo esta solicitud de firma.')}</label><PendingAction>{t('Confirm decline','Confirmar rechazo')}</PendingAction></form></details>}
   {isBuyer&&['sent','viewed'].includes(state)&&!controls?.received_at&&<form action={manageAgreement}>{hidden}<input type="hidden" name="operation" value="receipt"/><PendingAction>{t('Acknowledge receipt (not a signature)','Confirmar recepción (no es una firma)')}</PendingAction></form>}
   {!isBuyer&&['sent','viewed','expired'].includes(state)&&<>
    <form action={manageAgreement}>{hidden}<input type="hidden" name="operation" value="remind"/><PendingAction disabled={!mayRemind(nda.status,controls)}>{t('Send in-app reminder','Enviar recordatorio en la aplicación')}</PendingAction><small>{t('At most once per 24 hours. This does not send an email.','Máximo una vez cada 24 horas. No envía correo electrónico.')}</small></form>

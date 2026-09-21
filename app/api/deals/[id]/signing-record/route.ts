@@ -1,3 +1,4 @@
+import {sealSigningEvidence} from '@/lib/signing-seal';
 import {matchesRecordedPdf} from '@/lib/signing-integrity';
 import {createSupabaseServerClient} from '@/lib/supabase/server';
 import {createSupabaseAdminClient} from '@/lib/supabase/admin';
@@ -38,5 +39,10 @@ export async function GET(request:Request,{params}:{params:Promise<{id:string}>}
  void storagePath;
  const visual=completed?{sha256:completed.sha256,original_sha256:completed.original_sha256,layout:completed.layout,field_values:completed.field_values,completed_at:completed.completed_at}:null;
  const {data:participants,error:participantError}=await supabase.from('deal_nda_signatures').select('role,signer_id,legal_name,field_values,appearance,signed_at').eq('nda_id',nda.id).order('signed_at');if(participantError)return fail('Participant evidence unavailable',503);
- return Response.json({format:'crestview-signing-evidence-v2',exported_at:new Date().toISOString(),record,visual,participants,events:events??[],notice:'Crestview account-based electronic acceptance. Participant records contain the actual signature method for each party. Not independent identity verification or a certificate-authority digital seal. Historical events before workflow tracking may be absent. Preserve this record and the original agreement together.'},{headers:{...privateHeaders,'Content-Disposition':`attachment; filename="crestview-signing-evidence-${nda.id}.json"`}});
+ const evidence={format:'crestview-signing-evidence-v2',exported_at:new Date().toISOString(),record,visual,participants,events:events??[],notice:'Crestview account-based electronic acceptance. Participant records contain the actual signature method for each party. Not independent identity verification or a certificate-authority digital seal. Historical events before workflow tracking may be absent. Preserve this record and the original agreement together.'};
+ if(new URL(request.url).searchParams.get('format')==='sealed') {
+  const key=process.env.SIGNING_EVIDENCE_PRIVATE_KEY;if(!key)return fail('Export sealing is not configured',503);
+  try{return Response.json(sealSigningEvidence(evidence,key.replaceAll('\\n','\n')),{headers:{...privateHeaders,'Content-Disposition':`attachment; filename="crestview-evidence-seal-${nda.id}.json"`}});}catch{return fail('Export seal temporarily unavailable',503);}
+ }
+ return Response.json(evidence,{headers:{...privateHeaders,'Content-Disposition':`attachment; filename="crestview-signing-evidence-${nda.id}.json"`}});
 }

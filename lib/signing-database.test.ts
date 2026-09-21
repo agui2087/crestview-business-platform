@@ -28,6 +28,8 @@ test('signing and document sharing enforce authorization, immutability, and atom
   await db.exec(`create schema storage;create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);`);
   await db.exec(await migration('0055_visual_nda_signing'));
   await db.exec(await migration('0056_nda_countersigning'));
+  await db.exec(await migration('0058_optional_signing_fields'));
+  await db.exec(await migration('0059_signing_decline'));
   await db.exec(`grant all on all tables in schema public to authenticated;
    select set_config('request.jwt.claim.role','service_role',false);
    insert into auth.users values('${buyer}'),('${broker}'),('${outsider}');
@@ -105,12 +107,19 @@ test('signing and document sharing enforce authorization, immutability, and atom
    await db.query(`insert into deal_room_documents(id,inquiry_id,uploaded_by,title,access_level)values($1,$2,$3,'Protected','nda_signed')`,[file,d,broker]);
    const first=order==='broker_first'?broker:buyer,second=first===buyer?broker:buyer;
    const signParty=(who:string,count:number,final=false,values:Record<string,unknown>={[who===buyer?f1:f2]:'Synthetic Signer'})=>db.query('select record_nda_signature($1,$2,$3,$4,$5,$6,$7,clock_timestamp(),$8,$9,$10,$11)',[who,n,dual,count,'Synthetic Signer',values,{mode:'typed'},final?`${n}/completed.pdf`:null,final?'c'.repeat(64):null,final?'d'.repeat(64):null,'en']);
+   const decline=(who:string,reason='Synthetic signer declines these terms')=>db.query('select decline_nda_request($1,$2,1,$3,$4)',[who,n,reason,'en']);
+   await assert.rejects(decline(outsider));await assert.rejects(decline(buyer,'short'));
+   await db.exec('begin');await decline(buyer);
+   assert.equal((await db.query<{status:string}>('select status from deal_ndas where id=$1',[n])).rows[0].status,'declined');
+   assert.equal((await db.query('select * from deal_nda_events where nda_id=$1 and event_type=\'declined\'',[n])).rows.length,1);
+   await db.exec('rollback');
    if(order!=='any')await assert.rejects(signParty(second,0));
    await assert.rejects(signParty(outsider,0));
    await assert.rejects(signParty(first,0,false,{[first===buyer?f1:f2]:null}));
    await assert.rejects(signParty(first,0,false,{[f1]:'Forged',[f2]:'Forged'}));
    await assert.rejects(db.query('select complete_visual_nda($1,$2,$3,$4,$5,$6,$7,$8,clock_timestamp(),$9)',[buyer,n,dual,'Buyer','a'.repeat(64),`${n}/x.pdf`,'c'.repeat(64),{[f1]:'Buyer',[f2]:'Broker'},'en']));
    await signParty(first,0);
+   await assert.rejects(decline(first),'Recorded signatures cannot be retracted through decline');
    assert.equal((await db.query<{status:string}>('select status from deal_ndas where id=$1',[n])).rows[0].status,'sent');
    assert.equal((await db.query('select * from deal_nda_pdf_records where nda_id=$1',[n])).rows.length,0);
    await assert.rejects(signParty(first,1));await assert.rejects(signParty(second,0,true));

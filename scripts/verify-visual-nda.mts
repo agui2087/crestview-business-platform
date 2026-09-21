@@ -17,7 +17,10 @@ async function actor(role:string){
  check(await admin.from('profiles').update({account_roles:[role]}).eq('user_id',id));
  const jar=new Map<string,string>();const auth=createServerClient(url!,key!,{cookies:{getAll:()=>[...jar].map(([name,value])=>({name,value})),setAll:values=>values.forEach(({name,value})=>jar.set(name,value))}});
  check(await auth.auth.signInWithPassword({email,password}));const context=await browser.newContext();await context.addCookies([...jar].map(([name,value])=>({name,value,url:base,httpOnly:false,sameSite:'Lax'})));
- const page=await context.newPage();page.setDefaultTimeout(60000);return {id,page,context,auth};
+ const page=await context.newPage();page.setDefaultTimeout(60000);
+ page.on('pageerror',error=>console.error('Synthetic browser error:',error.message));
+ page.on('requestfailed',request=>console.error('Synthetic request failed:',new URL(request.url()).pathname,request.failure()?.errorText));
+ return {id,page,context,auth};
 }
 try{
  const buyer=await actor('buyer'),broker=await actor('broker'),outsider=await actor('buyer');listing=randomUUID();
@@ -38,14 +41,19 @@ try{
  await broker.page.getByRole('button',{name:'Add Date (UTC)',exact:true}).click();await broker.page.getByLabel('Top (%)',{exact:true}).fill('80');
  await broker.page.getByRole('button',{name:'Next page',exact:true}).click();
  await broker.page.getByRole('button',{name:'Add Initials',exact:true}).click();await broker.page.getByLabel('Top (%)',{exact:true}).fill('75');
+ await broker.page.screenshot({path:'/private/tmp/crestview-preparation-rehearsal.png',fullPage:true});
+ console.log('Synthetic preparation fields:',await broker.page.locator('[data-nda-field]').evaluateAll(nodes=>nodes.map(n=>n.getAttribute('aria-label'))));
  await broker.page.getByRole('button',{name:'Position Initials 3',exact:true}).press('ArrowRight');
  if(dual){
   await broker.page.getByRole('button',{name:'Add Signature',exact:true}).click();await broker.page.getByLabel('Top (%)',{exact:true}).fill('55');await broker.page.getByLabel('Assigned signer',{exact:true}).selectOption('broker');
   await broker.page.getByRole('button',{name:'Add Company',exact:true}).click();await broker.page.getByLabel('Top (%)',{exact:true}).fill('40');
   await broker.page.getByRole('button',{name:'Add Checkbox',exact:true}).click();await broker.page.getByLabel('Top (%)',{exact:true}).fill('30');await broker.page.getByLabel('Field label',{exact:true}).fill('Required acknowledgement');
+  await broker.page.getByRole('button',{name:'Add Text',exact:true}).click();await broker.page.getByLabel('Top (%)',{exact:true}).fill('10');await broker.page.getByLabel('Field label',{exact:true}).fill('Optional reference');await broker.page.getByLabel('Required field',{exact:true}).uncheck();
+  await broker.page.getByRole('button',{name:'Add Dropdown',exact:true}).click();await broker.page.getByLabel('Top (%)',{exact:true}).fill('20');await broker.page.getByLabel('Field label',{exact:true}).fill('Signing capacity');await broker.page.getByLabel('Choices, one per line (2–12)',{exact:true}).fill('Individual\nCompany');
  }
  await broker.page.getByRole('button',{name:'Save fields for future NDAs',exact:true}).click();await broker.page.waitForURL(/saved=1/);
- const {data:template,error:templateError}=await admin.from('listing_nda_templates').select('*').eq('listing_id',listing).single();check({error:templateError});expect(template.signing_layout.fields).toHaveLength(dual?6:3);expect(template.version).toBe(2);
+ const {data:template,error:templateError}=await admin.from('listing_nda_templates').select('*').eq('listing_id',listing).single();check({error:templateError});expect(template.signing_layout.fields).toHaveLength(dual?8:3);expect(template.version).toBe(2);
+ if(dual){await broker.page.getByRole('link',{name:'Preview as buyer',exact:true}).click();await expect(broker.page.getByText('Signer preview only.',{exact:false})).toBeVisible();await expect(broker.page.getByRole('button',{name:'Finish preview (does not sign)',exact:true})).toBeDisabled();await broker.page.getByRole('link',{name:'Back to editor',exact:true}).click();}
  if(dual){await broker.page.getByLabel('Preset name',{exact:true}).fill('Synthetic reusable layout');await broker.page.getByRole('button',{name:'Save current saved layout as preset',exact:true}).click();await expect(broker.page.getByLabel('Preset name',{exact:true})).toHaveValue('');await broker.page.getByLabel('Reuse a saved layout for this PDF',{exact:true}).selectOption({label:'Synthetic reusable layout'});}
  expect(template.signing_layout.fields[2].x).toBeCloseTo(.085);
  await broker.page.goto(`${base}/es/dashboard/listings/${listing}/prepare-nda`);await expect(broker.page.getByRole('heading',{name:'Preparar campos de firma',exact:true})).toBeVisible();
@@ -63,12 +71,13 @@ try{
  await buyer.page.getByLabel('Full legal name',{exact:true}).fill('Synthetic Buyer');await buyer.page.getByLabel('Your initials',{exact:true}).fill('SB');
  if(dual){
   await buyer.page.getByLabel('Company',{exact:true}).fill('Synthetic Company');await buyer.page.getByLabel('Required acknowledgement',{exact:true}).check();
+  await buyer.page.getByLabel('Signing capacity',{exact:true}).selectOption('Company');
   await buyer.page.getByLabel('Method',{exact:true}).selectOption('drawn');const pad=buyer.page.getByRole('img',{name:'Draw your signature here',exact:true});await pad.scrollIntoViewIfNeeded();const b=await pad.boundingBox();if(!b)throw Error('Missing signature pad');await buyer.page.mouse.move(b.x+b.width*.1,b.y+b.height*.2);await buyer.page.mouse.down();await buyer.page.mouse.move(b.x+b.width*.5,b.y+b.height*.8,{steps:10});await buyer.page.mouse.move(b.x+b.width*.8,b.y+b.height*.1,{steps:10});await buyer.page.mouse.up();
  }
  await expect(buyer.page.getByRole('button',{name:'Confirm and sign NDA',exact:true})).toBeDisabled();
  await buyer.page.getByRole('button',{name:'Apply Signature 1',exact:true}).click();await buyer.page.getByRole('button',{name:'Apply Date (UTC) 2',exact:true}).click();
  await buyer.page.getByRole('button',{name:'Go to next required field',exact:true}).click();await expect(buyer.page.getByRole('button',{name:'Apply Initials 3',exact:true})).toBeFocused();await buyer.page.getByRole('button',{name:'Apply Initials 3',exact:true}).click();
- if(dual){await buyer.page.getByRole('button',{name:'Apply Company 5',exact:true}).click();await buyer.page.getByRole('button',{name:'Apply Checkbox 6',exact:true}).click();await expect(buyer.page.getByRole('button',{name:'Apply Signature 4',exact:true})).toBeDisabled();}
+ if(dual){await buyer.page.getByRole('button',{name:'Apply Company 5',exact:true}).click();await buyer.page.getByRole('button',{name:'Apply Checkbox 6',exact:true}).click();await buyer.page.getByRole('button',{name:'Apply Dropdown 8',exact:true}).click();await expect(buyer.page.getByRole('button',{name:'Apply Signature 4',exact:true})).toBeDisabled();}
  for(const width of [1280,390]){await buyer.page.setViewportSize({width,height:900});expect(await buyer.page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);await buyer.page.screenshot({path:`/private/tmp/crestview-visual-sign-${width}.png`,fullPage:true});}
  await buyer.page.getByRole('combobox',{name:/PDF zoom/}).selectOption('2');await expect(buyer.page.getByRole('button',{name:'Apply Initials 3',exact:true})).toBeVisible();expect(await buyer.page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);await buyer.page.getByRole('combobox',{name:/PDF zoom/}).selectOption('1');
  const violations=(await new AxeBuilder({page:buyer.page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze()).violations;expect(violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>n.target)}))).toEqual([]);

@@ -29,6 +29,7 @@
 .sheet .field { position:absolute; padding:2px; min-height:0; line-height:1; border:2px solid #416c37; border-radius:3px; background:rgba(225,245,163,.8); color:#14381e; font-size:clamp(7px,1vw,14px); overflow:hidden; touch-action:none; }
 .sheet .field[aria-pressed=true] { outline:2px solid #123c2b; outline-offset:2px; }
 .sheet .completed { background:rgba(233,245,235,.55); border:1px solid #457358; }
+.sheet .completed:disabled { opacity:1; }
 .document details { margin-top:16px; font-size:.85rem; line-height:1.6; overflow-wrap:anywhere; }
 .fieldList { list-style:none; padding:0; display:grid; gap:6px; }
 .fieldList button { width:100%; text-align:left; font-size:.78rem; }

@@ -3,6 +3,7 @@
 create table public.signing_email_outbox (
  id uuid primary key default gen_random_uuid(),
  nda_id uuid not null references public.deal_ndas(id) on delete cascade,
+ nda_version integer not null default 1,
  recipient_id uuid not null references auth.users(id) on delete cascade,
  kind text not null check(kind in ('invitation','reminder','completed')),
  event_key text not null unique,
@@ -29,20 +30,20 @@ create function public.enqueue_signing_email() returns trigger language plpgsql 
 declare recipient uuid; recipients uuid[]; kind text; key text;
 begin
  if tg_table_name='deal_ndas' then
-  if new.status='sent' and (tg_op='INSERT' or old.status is distinct from 'sent') then
+  if new.status='sent' and (tg_op='INSERT' or old.status is distinct from 'sent' or new.template_version is distinct from old.template_version) then
    recipients:=case when new.signing_layout->>'order'='broker_first' then array[new.broker_id] else array[new.buyer_id] end;
    if new.signing_layout->>'order'='any' and exists(select 1 from jsonb_array_elements(new.signing_layout->'fields') f where f->>'role'='broker') then
     recipients:=array[new.buyer_id,new.broker_id];
    end if;
    foreach recipient in array recipients loop
-    insert into public.signing_email_outbox(nda_id,recipient_id,kind,event_key,locale)
-    values(new.id,recipient,'invitation','invitation:'||new.id||':'||recipient,
+    insert into public.signing_email_outbox(nda_id,nda_version,recipient_id,kind,event_key,locale)
+    values(new.id,new.template_version,recipient,'invitation','invitation:'||new.id||':'||new.template_version||':'||recipient,
      case when (select p.locale from public.profiles p where p.user_id=recipient)='es' then 'es' else 'en' end) on conflict(event_key) do nothing;
    end loop;
   elsif tg_op='UPDATE' and new.status='signed' and old.status is distinct from 'signed' then
    foreach recipient in array array[new.buyer_id,new.broker_id] loop
-    insert into public.signing_email_outbox(nda_id,recipient_id,kind,event_key,locale)
-    values(new.id,recipient,'completed','completed:'||new.id||':'||recipient,
+    insert into public.signing_email_outbox(nda_id,nda_version,recipient_id,kind,event_key,locale)
+    values(new.id,new.template_version,recipient,'completed','completed:'||new.id||':'||new.template_version||':'||recipient,
      case when (select p.locale from public.profiles p where p.user_id=recipient)='es' then 'es' else 'en' end) on conflict(event_key) do nothing;
    end loop;
   end if;
@@ -50,8 +51,8 @@ begin
   if new.kind not in ('nda_reminder','nda_signature_needed') then return new; end if;
   kind:=case when new.kind='nda_reminder' then 'reminder' else 'invitation' end;
   key:='notification:'||new.id;
-  insert into public.signing_email_outbox(nda_id,recipient_id,kind,event_key,locale)
-   select n.id,new.user_id,kind,case when kind='invitation' then 'invitation:'||n.id||':'||new.user_id else key end,case when new.href like '/es/%' then 'es' else 'en' end
+  insert into public.signing_email_outbox(nda_id,nda_version,recipient_id,kind,event_key,locale)
+   select n.id,n.template_version,new.user_id,kind,case when kind='invitation' then 'invitation:'||n.id||':'||n.template_version||':'||new.user_id else key end,case when new.href like '/es/%' then 'es' else 'en' end
    from public.deal_ndas n where n.inquiry_id=new.inquiry_id and n.status in ('sent','viewed')
     and new.user_id in (n.buyer_id,n.broker_id)
    on conflict(event_key) do nothing;
@@ -59,7 +60,7 @@ begin
  return new;
 end; $$;
 revoke all on function public.enqueue_signing_email() from public,anon,authenticated;
-create trigger signing_email_completion after insert or update of status on public.deal_ndas for each row execute function public.enqueue_signing_email();
+create trigger signing_email_completion after insert or update of status,template_version on public.deal_ndas for each row execute function public.enqueue_signing_email();
 create trigger signing_email_notification after insert on public.marketplace_notifications for each row execute function public.enqueue_signing_email();
 
 create function public.claim_signing_emails(batch_size integer default 5)
@@ -74,7 +75,7 @@ begin
  where state in ('queued','retry','sending') and (attempts>=8 or first_attempt_at<clock_timestamp()-interval '23 hours');
  update public.signing_email_outbox o set state='cancelled',last_error='agreement_unavailable',lease_until=null,lease_id=null
  where o.state in ('queued','retry','sending') and exists(select 1 from public.deal_ndas n left join public.deal_nda_controls c on c.nda_id=n.id
-  where n.id=o.nda_id and ((o.kind<>'completed' and (n.status not in ('sent','viewed') or c.withdrawn_at is not null or c.expires_at<=clock_timestamp())) or (o.kind='completed' and n.status<>'signed')));
+  where n.id=o.nda_id and (n.template_version<>o.nda_version or (o.kind<>'completed' and (n.status not in ('sent','viewed') or c.withdrawn_at is not null or c.expires_at<=clock_timestamp())) or (o.kind='completed' and n.status<>'signed')));
  select count(*) into used_today from public.signing_email_outbox where first_attempt_at>=date_trunc('day',clock_timestamp() at time zone 'UTC') at time zone 'UTC';
  select count(*) into used_month from public.signing_email_outbox where first_attempt_at>=date_trunc('month',clock_timestamp() at time zone 'UTC') at time zone 'UTC';
  quota:=greatest(0,least(90-used_today,2700-used_month,batch_size));

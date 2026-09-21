@@ -14,6 +14,8 @@
 .controls input { min-width:0; width:100%; padding:9px; border:1px solid #8da998; border-radius:7px; background:#fff; color:#173e2d; }
 .controls input[type=checkbox] { width:20px; height:20px; accent-color:#225a3d; }
 .controls select { width:100%; min-width:0; padding:9px; border:1px solid #8da998; border-radius:7px; background:#fff; color:#173e2d; font:inherit; }
+.controls textarea { width:100%; min-height:90px; padding:9px; border:1px solid #8da998; border-radius:7px; font:inherit; }
+.controls textarea:focus-visible { outline:3px solid #356c50; outline-offset:3px; }
 .workspace select:focus-visible { outline:3px solid #356c50; outline-offset:3px; }
 .controls fieldset { margin:20px 0; padding:12px; border:1px solid #b8c8be; border-radius:8px; }
 .controls progress { width:100%; accent-color:#225a3d; }

@@ -35,7 +35,7 @@ export async function completeSigningPdf(bytes:Uint8Array,rawLayout:NdaLayout,va
  for(const field of layout.fields) {
   const page=pdf.getPage(field.page-1),box=page.getCropBox(),rotation=((page.getRotation().angle%360)+360)%360;
   const width=rotation%180?box.height:box.width,height=rotation%180?box.width:box.height;
-  const text=values[field.id];if(partial&&text===undefined)continue;if(!text||/[\r\n\t]/.test(text)||text.length>100)throw Error('Invalid signing value');
+  const text=values[field.id];if(partial&&text===undefined)continue;if(field.required===false&&text==='')continue;if(!text||/[\r\n\t]/.test(text)||text.length>100)throw Error('Invalid signing value');
   const appearance=parseSignatureAppearance(appearances[fieldRole(field)]??{mode:'typed'});
   if(field.type==='signature'&&appearance.mode==='drawn') {
    const scale=Math.min(field.width*width/600,field.height*height/180),w=600*scale,h=180*scale;

@@ -108,7 +108,8 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
   const terminal = effectiveStatus === "closed" || effectiveStatus === "declined";
   const canChangeStage = !workspace.isBuyer && !workspace.isDemo && allowedBrokerTransitions(effectiveStatus).length > 0;
   const currentStageIndex = Math.max(0, dealStages.findIndex(([key]) => key === effectiveStatus));
-  const roomUnlocked = ndaSigned || ["nda_signed","document_review","meeting","offer","closed"].includes(effectiveStatus);
+  // A workflow label is not evidence of a signed agreement.
+  const roomUnlocked = ndaSigned;
   const financialStatus = workspace.inquiry.financial_access_status ?? "not_requested";
   const financialApproved = financialStatus === "approved";
   const financials = workspace.listingFinancials;

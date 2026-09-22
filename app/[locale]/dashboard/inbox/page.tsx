@@ -8,6 +8,7 @@ import { isLocale } from "@/lib/i18n";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { markNotificationRead, sendMessage } from "../marketplace/actions";
 import { indexInquirySummaries } from "@/lib/inquiry-summary";
+import { filterInquiryPipeline, normalizeInquiryFilter } from "@/lib/inquiry-pipeline";
 
 export const metadata: Metadata = { title: "Deal inbox" };
 
@@ -40,7 +41,10 @@ export default async function InboxPage({ params, searchParams }: PageProps<"/[l
     const summaries = await Promise.all(brokerInquiries.map(async (inquiry) => ({ inquiry, result: await supabase.rpc("get_broker_buyer_summary", { target_inquiry: inquiry.id }) })));
     buyerProfiles = indexInquirySummaries(summaries.map(({ inquiry, result }) => ({ inquiry, result: { data: result.data as BrokerBuyerSummary | null } })));
   }
-  const featured = inquiries[0];
+  const pipelineFilter = normalizeInquiryFilter(query.stage);
+  const search = typeof query.search === "string" ? query.search.slice(0,150) : "";
+  const visibleInquiries = filterInquiryPipeline(inquiries, pipelineFilter, search);
+  const featured = visibleInquiries.find(inquiry => inquiry.id === query.inquiry) ?? visibleInquiries[0];
   const brokerQueue = isBroker && userId ? inquiries.filter((inquiry) => inquiry.broker_id === userId && (
     ["submitted", "nda_signed", "offer"].includes(inquiry.status) || inquiry.financial_access_status === "requested"
   )) : [];
@@ -49,17 +53,18 @@ export default async function InboxPage({ params, searchParams }: PageProps<"/[l
       <div className="dashboard-content">
         <PageHeading eyebrow="Messages and notifications" title="Deal inbox" body="Keep buyer requests, broker responses, NDA notices, and document updates connected to the right opportunity." />
         {query.sent && <p className="notice">Your information request was sent to the broker.</p>}
+        {query.error === "notification" && <p className="notice" role="alert">{locale === "es" ? "No se pudo marcar la notificación como leída. Actualiza la página e inténtalo de nuevo." : "The notification could not be marked as read. Refresh and try again."}</p>}
         {query.draft && <p className="notice">This example request is ready. A live broker listing will send it directly into the broker’s inbox.</p>}
         {isBroker && <section className="broker-action-queue">
           <div className="section-inline-heading"><div><span className="source-label">Broker workspace</span><h2>Action queue</h2></div><span>{brokerQueue.length} need attention</span></div>
           {brokerQueue.length ? <div className="broker-queue-grid">{brokerQueue.map((inquiry) => {
             const buyer = buyerProfiles.get(inquiry.id);
-            const action = inquiry.financial_access_status === "requested" ? "Review financial request" : inquiry.status === "submitted" ? "Review new buyer" : inquiry.status === "nda_signed" ? "NDA signed — decide next step" : "Review offer or LOI";
+            const action = inquiry.financial_access_status === "requested" ? "Review financial request" : inquiry.status === "submitted" ? inquiry.requested_items?.includes("Public listing question") ? "Answer introductory question" : "Review new inquiry" : inquiry.status === "nda_signed" ? "NDA signed — decide next step" : "Review offer or LOI";
             return <Link href={`/${locale}/dashboard/deals/${inquiry.id}`} key={inquiry.id}>
               <div><span>{action}</span><strong>{inquiry.marketplace_listings?.title ?? inquiry.subject}</strong></div>
               <p>{buyer?.display_name ?? "Prospective buyer"} · {buyer?.acquisition_timeline ?? inquiry.financial_request_timeline ?? "Timeline private or not provided"}</p>
               <div className="buyer-readiness-tags"><small>{buyer?.funding_status ?? "Funding details private"}</small><small>Funds: {buyer?.proof_of_funds_status === 'available' ? 'buyer says evidence is available' : buyer?.proof_of_funds_status === 'verified' ? 'review the supporting evidence' : buyer?.proof_of_funds_status === 'not_provided' ? 'not provided yet' : 'private'}</small>{buyer?.experience_level && <small>Experience: {buyer.experience_level.replaceAll("_", " ")}</small>}</div>
-              {buyer?.available_cash && <p className="buyer-financial-disclosure">Buyer-provided available cash: ${Number(buyer.available_cash).toLocaleString("en-US")} · not lender verified</p>}
+              {buyer?.available_cash !== null && buyer?.available_cash !== undefined && <p className="buyer-financial-disclosure">Buyer-provided available cash: ${Number(buyer.available_cash).toLocaleString("en-US")} · not lender verified</p>}
               {buyer?.buyer_summary && <blockquote>{buyer.buyer_summary}</blockquote>}
               <small className="buyer-source-label">{buyer?.labels?.profile ?? "Buyer provided"} · Readiness is not loan approval. Missing funding today does not mean a buyer cannot prepare.</small>
               <b>Open workspace →</b>
@@ -67,7 +72,7 @@ export default async function InboxPage({ params, searchParams }: PageProps<"/[l
           })}</div> : <p className="panel-empty broker-queue-empty">Nothing needs your attention right now. Automated NDA requests and routine updates stay out of your queue.</p>}
         </section>}
         <section className="notification-center" id="notifications">
-          <div className="section-inline-heading"><div><span className="source-label">Updates</span><h2>Notifications</h2></div><span>{notifications.filter((item) => !item.read_at).length} unread</span></div>
+          <div className="section-inline-heading"><div><span className="source-label">Latest 25 updates</span><h2>Notifications</h2></div><span>{notifications.filter((item) => !item.read_at).length} unread shown</span></div>
           <div className="notification-list">
             {notifications.map((notification) => <article className={notification.read_at ? "" : "is-unread"} key={notification.id}>
               <span aria-hidden="true">{notification.read_at ? "○" : "●"}</span>
@@ -78,10 +83,24 @@ export default async function InboxPage({ params, searchParams }: PageProps<"/[l
             {!notifications.length && <p className="panel-empty">Deal updates will appear here. Important changes are also shown inside each secure workspace.</p>}
           </div>
         </section>
+        <form className="marketplace-filter" method="get" aria-label={locale === "es" ? "Filtrar conversaciones" : "Filter conversations"}>
+          <label>{locale === "es" ? "Buscar negocio" : "Find a business"}<input name="search" maxLength={150} defaultValue={search} placeholder={locale === "es" ? "Nombre del anuncio" : "Listing name"}/></label>
+          <label>{locale === "es" ? "Etapa" : "Conversation stage"}<select name="stage" defaultValue={pipelineFilter}>
+            <option value="all">{locale === "es" ? "Todas las conversaciones" : "All conversations"}</option>
+            <option value="questions">{locale === "es" ? "Preguntas iniciales" : "Introductory questions"}</option>
+            <option value="needs_review">{locale === "es" ? "Requieren revisión" : "Needs review"}</option>
+            <option value="nda">{locale === "es" ? "NDA pendiente" : "NDA pending"}</option>
+            <option value="documents">{locale === "es" ? "Revisión de documentos" : "Document review"}</option>
+            <option value="offer">{locale === "es" ? "Oferta" : "Offer"}</option>
+            <option value="finished">{locale === "es" ? "Finalizadas" : "Closed or declined"}</option>
+          </select></label>
+          <button className="button button--primary" type="submit">{locale === "es" ? "Aplicar filtros" : "Apply filters"}</button>
+          {(search || pipelineFilter !== "all") && <Link href={`/${locale}/dashboard/inbox`}>{locale === "es" ? "Borrar filtros" : "Clear filters"}</Link>}
+        </form>
         <div className="inbox-layout">
           <aside className="conversation-list">
-            <header><strong>Conversations</strong><span>{inquiries.length} active</span></header>
-            {inquiries.map((inquiry) => (
+            <header><strong>Conversations</strong><span>{visibleInquiries.length} of {inquiries.length} shown</span></header>
+            {visibleInquiries.map((inquiry) => (
               <Link href={`/${locale}/dashboard/deals/${inquiry.id}`} key={inquiry.id}>
                 <span className="conversation-avatar">CV</span>
                 <div><strong>{inquiry.marketplace_listings?.title ?? inquiry.subject}</strong><span>{inquiry.marketplace_listings ? `${inquiry.marketplace_listings.city}, ${inquiry.marketplace_listings.state_code}` : "Deal workspace"}</span><small>{inquiry.initial_message.slice(0, 95)}</small></div>
@@ -109,7 +128,7 @@ export default async function InboxPage({ params, searchParams }: PageProps<"/[l
                 <p>Messages, signatures, documents, and status changes stay together in one protected record.</p>
               </div>
               <Link className="button button--primary inbox-open-workspace" href={`/${locale}/dashboard/deals/${featured.id}`}>Open secure workspace →</Link>
-            </> : <div className="empty-state"><strong>Your deal inbox is ready</strong><p>Request information from a marketplace listing to start a secure conversation.</p><Link className="button button--primary" href={`/${locale}/dashboard/marketplace`}>Browse marketplace</Link></div>}
+            </> : <div className="empty-state"><strong>{inquiries.length ? "No conversations match these filters" : "Your deal inbox is ready"}</strong><p>{inquiries.length ? "Clear or change your filters to see other conversations." : "Ask a question or request information from a marketplace listing to start a secure conversation."}</p><Link className="button button--primary" href={inquiries.length ? `/${locale}/dashboard/inbox` : `/${locale}/dashboard/marketplace`}>{inquiries.length ? "Clear filters" : "Browse marketplace"}</Link></div>}
             {featured && !featured.id.startsWith("demo-") && <>
               <form className="quick-reply" action={sendMessage}>
                 <input type="hidden" name="locale" value={locale} /><input type="hidden" name="inquiry_id" value={featured.id} />

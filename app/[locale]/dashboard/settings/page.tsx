@@ -89,6 +89,7 @@ export default async function SettingsPage({
           <input type="hidden" name="locale" value={locale}/>
           <div><span>{es ? "Cuenta y organización" : "Account and organization"}</span><h2>{es ? "Tu perfil de Crestview" : "Your Crestview profile"}</h2><p>{es ? "Tu nombre se usa en mensajes y borradores en toda la plataforma. La organización y el teléfono son opcionales. Esto no publica un perfil de corredor." : "Your name is used in messages and drafts throughout the platform. Organization and phone are optional. This does not publish a broker profile."}</p></div>
           {messages.profile === "1" && <p className="auth-success" role="status">{es ? "Tu perfil se guardó." : "Your profile was saved."}</p>}
+          {messages.error === "roles" && <p className="auth-error" role="alert">{es ? "No se pudieron guardar tus espacios de trabajo. Inténtalo de nuevo." : "Your workspace choices could not be saved. Please try again."}</p>}
           {messages.error?.startsWith("profile_") && <p className="auth-error" role="alert">{es ? "No se pudo guardar el perfil. Revisa los campos e inténtalo de nuevo." : "Your profile could not be saved. Check the fields and try again."}</p>}
           <div className="preference-grid">
             <label>{es ? "Nombre" : "Display name"}<input name="display_name" maxLength={100} autoComplete="name" defaultValue={profile.display_name}/></label>

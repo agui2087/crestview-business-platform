@@ -137,13 +137,28 @@ export async function saveMarketplaceRoles(formData: FormData) {
   const roles = ["buyer", "broker", "advisor", "workforce"].filter((role) => formData.get(role) === "on");
   const savedRoles = roles.length ? roles : ["buyer"];
   const primaryRole = savedRoles.includes("broker") ? "broker" : savedRoles.includes("buyer") ? "buyer" : savedRoles.includes("advisor") ? "advisor" : "workforce";
-  await supabase.from("profiles").update({
+  const { data, error } = await supabase.from("profiles").update({
     account_roles: savedRoles,
     primary_role: primaryRole,
     onboarding_completed: true,
-  }).eq("user_id", user.id);
+  }).eq("user_id", user.id).select("user_id").maybeSingle();
+  if (error || !data) redirect(`/${locale}/dashboard/settings?error=roles`);
   revalidatePath(`/${locale}/dashboard`, "layout");
   redirect(`/${locale}/dashboard/settings?roles=1`);
+}
+
+export async function savePrivateListingNote(formData: FormData) {
+  const { locale, supabase, user } = await context(formData);
+  await requireRole(locale, supabase, user.id, "broker");
+  const id = z.string().uuid().safeParse(formData.get("listing_id"));
+  const note = z.string().trim().max(10000).safeParse(formData.get("private_note"));
+  if (!id.success || !note.success) redirect(`/${locale}/dashboard/listings?error=private_note`);
+  // The database trigger moves this value to owner-only storage before commit.
+  const { data, error } = await supabase.from("marketplace_listings").update({ confidential_notes: note.data })
+    .eq("id", id.data).eq("broker_id", user.id).select("id").maybeSingle();
+  if (error || !data) redirect(`/${locale}/dashboard/listings?error=private_note`);
+  revalidatePath(`/${locale}/dashboard/listings`);
+  redirect(`/${locale}/dashboard/listings?notes_saved=1`);
 }
 
 export async function createListing(formData: FormData) {
@@ -803,9 +818,11 @@ export async function changeDocumentAccess(formData: FormData) {
 
 export async function markNotificationRead(formData: FormData) {
   const { locale, supabase, user } = await context(formData);
-  const notificationId = z.string().uuid().parse(formData.get("notification_id"));
-  await supabase.from("marketplace_notifications").update({ read_at: new Date().toISOString() })
-    .eq("id", notificationId).eq("user_id", user.id);
+  const notificationId = z.string().uuid().safeParse(formData.get("notification_id"));
+  if (!notificationId.success) redirect(`/${locale}/dashboard/inbox?error=notification`);
+  const { data, error } = await supabase.from("marketplace_notifications").update({ read_at: new Date().toISOString() })
+    .eq("id", notificationId.data).eq("user_id", user.id).select("id").maybeSingle();
+  if (error || !data) redirect(`/${locale}/dashboard/inbox?error=notification`);
   revalidatePath(`/${locale}/dashboard/inbox`);
 }
 

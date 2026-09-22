@@ -1,6 +1,7 @@
 import { SiteIcon } from "@/components/site-icon";
 import type { Metadata } from "next";
 import Link from "next/link";
+import {DealFollowupPreferences} from '@/components/deal-followup-preferences';
 import { notFound } from "next/navigation";
 import { PageHeading, PlatformShell } from "@/components/platform-shell";
 import { dealStages, demoInquiries, demoMarketplaceListings } from "@/lib/marketplace";
@@ -141,6 +142,8 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
         {query.message === "sent" && <p className="notice" role="status">Your message was sent.</p>}
         {introductoryQuestion && <p className="notice">{locale === "es" ? "Esta conversación comenzó con una pregunta sobre información pública. No se solicitó un NDA ni se concedió acceso a documentos privados. Puedes conversar antes de decidir el siguiente paso." : "This conversation started with a question about public information. No NDA was requested and no private document access was granted. You can discuss the opportunity before deciding on the next step."}</p>}
         {query.stage === "updated" && <p className="notice" role="status">The shared deal stage was updated.</p>}
+        {query.followup&&<p role={query.followup==='saved'?'status':'alert'}>{query.followup==='saved'?(locale==='es'?'Preferencia de seguimiento guardada.':'Follow-up preference saved.'):(locale==='es'?'No se pudo guardar. Inténtalo de nuevo.':'Could not save. Please retry.')}</p>}
+        {!workspace.isDemo&&<DealFollowupPreferences id={id} locale={locale} isBuyer={workspace.isBuyer}/>}
         {query.error==='stage_reason'&&<p role="alert">{locale==='es'?'Incluye una explicación de 10 a 1.000 caracteres al rechazar. Se comparte con el comprador.':'Include an explanation of 10–1,000 characters when declining. It is shared with the buyer.'}</p>}
         {terminal && <p className="data-notice"><strong>{effectiveStatus === "closed" ? "Reported closed" : "This inquiry was declined"}</strong><span>{effectiveStatus === "closed" ? "The broker marked this deal closed. Crestview records progress; it does not transfer ownership, process the purchase price, or confirm legal closing. Keep your final agreements and professional confirmations." : "No further purchase steps are expected unless the broker reopens screening. Existing records remain available according to their permissions."}</span></p>}
         {declineExplanation&&<blockquote className="decline-explanation"><strong>{locale==='es'?'Explicación del corredor':'Broker’s explanation'}</strong><p>{declineExplanation}</p></blockquote>}

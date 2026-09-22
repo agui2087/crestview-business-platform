@@ -121,6 +121,7 @@ export default async function SettingsPage({
           </div>
           {messages.saved && <p className="auth-success">{es ? "Tus preferencias fueron guardadas." : "Your buyer preferences were saved."}</p>}
           {messages.error === "save" && <p className="auth-error" role="alert">{es ? "No se pudieron guardar tus preferencias. Inténtalo de nuevo." : "Crestview could not save these preferences. Please try again."}</p>}
+          {messages.error === "buyer_invalid" && <p className="auth-error" role="alert">{es ? "Revisa los importes y el rango de precios. Usa números positivos o cero, con un máximo de dos decimales. No se guardó ningún cambio." : "Check your amounts and price range. Use nonnegative amounts with at most two decimal places, and a maximum price at least as large as the minimum. No changes were saved."}</p>}
           <div className="preference-grid">
             <label>Cash available for an acquisition
               <input name="available_cash" defaultValue={financialProfile.available_cash ?? ""} inputMode="numeric" placeholder="100000" />

@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { PageHeading, PlatformShell } from "@/components/platform-shell";
 import { getMarketplaceListings, formatMoney } from "@/lib/marketplace";
 import { isLocale } from "@/lib/i18n";
-import { createInquiry } from "./actions";
+import { askListingQuestion, createInquiry } from "./actions";
 import {ListingPromotionLabel} from '@/components/listing-promotion-label';
 import {PromotionAnalytics,PromotionEngagement} from '@/components/promotion-engagement';
 
@@ -27,6 +27,7 @@ export default async function MarketplacePage({ params, searchParams }: PageProp
   return (
     <PlatformShell locale={locale} active="marketplace">
       <div className="dashboard-content marketplace-page">
+        {query.error === "question" && <p className="notice" role="alert">{locale === "es" ? "No se envió la pregunta. Revisa que tenga entre 10 y 5000 caracteres y que la conversación siga abierta. Si enviaste muchos mensajes, espera antes de reintentar." : "Your question was not sent. Check that it contains 10–5,000 characters and the conversation is still open. If you sent many messages, wait before retrying."}</p>}
         <PageHeading
           eyebrow="Crestview marketplace"
           title="Explore businesses at your own pace"
@@ -88,6 +89,19 @@ export default async function MarketplacePage({ params, searchParams }: PageProp
                 <div><span>Cash flow</span><strong>{formatMoney(listing.cash_flow)}</strong></div>
               </div>
               <ul>{listing.public_highlights.map((item) => <li key={item}>✓ {item}</li>)}</ul>
+              <details className="request-panel">
+                <summary>{locale === "es" ? "Hacer una pregunta antes de continuar" : "Ask a question before moving forward"}</summary>
+                <form action={askListingQuestion}>
+                  <input type="hidden" name="locale" value={locale} />
+                  <input type="hidden" name="listing_id" value={listing.id} />
+                  <p>{locale === "es" ? "Puedes estar empezando o explorando financiación. Pregunta sobre la información pública; no necesitas declarar fondos disponibles." : "First-time buyers and people exploring financing are welcome. Ask about public listing information without declaring funds available."}</p>
+                  <label className="request-message">{locale === "es" ? "Tu pregunta" : "Your question"}
+                    <textarea name="question" required minLength={10} maxLength={5000} placeholder={locale === "es" ? "¿Qué experiencia necesita el nuevo propietario?" : "What operating experience would help a new owner succeed?"} />
+                  </label>
+                  <p className="advisor-note">{locale === "es" ? "Esto no solicita un NDA ni acceso a documentos privados. Se aplican tus preferencias actuales de compartir el perfil." : "This does not request an NDA or access to private documents. Your existing profile-sharing preferences apply."}</p>
+                  <button className="button button--primary" type="submit">{locale === "es" ? "Enviar pregunta" : "Send question"}</button>
+                </form>
+              </details>
               <details className="request-panel">
                 <summary>{listing.nda_automatic ? "Review the NDA instantly" : "Request the listing NDA"} <span>→</span></summary>
                 <form action={createInquiry}>

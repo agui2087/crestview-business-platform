@@ -13,7 +13,7 @@ PR 96 implemented separate public-safe data, draft/publish controls, broker-only
 |3|Reusable buyer profile|Account-profile validation and optional organization/contact values shipped. Follow-up adds strict buyer-preference validation, atomic self-only saves, zero/blank financial inputs, price-range checks and preservation of the explicitly chosen budget. Unit/database tests and connected browser save/reload passed; release tracked separately.|
 |4|Readiness checklist|Private reversible eight-step preparation checklist, progress and next step added. No readiness/rejection score or proof-of-funds gate. Further contextual education remains.|
 |5|Financial readiness/privacy|Self-asserted verified-account/funds claims blocked at database level. Inbox labels no longer imply proof or lender approval. Evidence provenance and expiry remain.|
-|6|Financing preparation|Existing financial scenarios; audit assumptions and lender-preparation workflow.|
+|6|Financing preparation|Existing financial scenarios and text lender summary remain explicitly illustrative, not approval. Fixed explicit zero cash being treated as missing; missing/invalid asking price now has its own explanation. Focused regression tests passed. Broader lender-preparation and evidence-provenance audit remains.|
 |7|Listing clarity|Added explicit period, actual/projected/mixed classification, cash-flow basis and public explanation. Unknowns remain unknown; unsupported verified-financial marketing removed. Database constraints and isolated browser save/reload/public display passed. Included assets and correction-history audit remain.|
 |8|Inquiry types|Separate public-question action added without financial declarations, automatic NDA delivery or confidential access. Transactional message/notification, duplicate retry protection, bounded submissions and closed-conversation protection. Connected buyer/broker rehearsal passed; release tracked separately. Existing NDA path remains.|
 |9|Broker pipeline|Stage and listing-name filters added, with introductory questions distinct from NDA, document review, offers and finished conversations. Shared zero cash remains visible; no wealth-ranking score. Corrected misleading active count. Follow-up batch verification/release tracked separately.|
@@ -32,7 +32,7 @@ PR 96 implemented separate public-safe data, draft/publish controls, broker-only
 |22|Fairness/privacy|No payment-linked credibility or opaque rejection scores. Review retention, sharing and human overrides.|
 |23|End-to-end testing|Extend synthetic rehearsals to both buyer paths and failure cases, EN/ES, accessibility and roles.|
 |24|Operations|Audit backup/restore evidence, monitoring, worker recovery, rollback, security and disclosures.|
-|25|Human validation|Requires real brokers/buyers and observed sessions; cannot simulate completion.|
+|25|Human validation|Separate preparing-buyer, active-buyer and broker task scripts added to the trial plan, including privacy, pause, exports, revocation and permission comprehension. Requires actual participants and observations; cannot simulate completion.|
 
 ## External dependencies
 - Specific Resend OAuth email-access approval remains unresolved; do not retry rejected authorization based on general permission.

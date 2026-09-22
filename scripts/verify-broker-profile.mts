@@ -183,6 +183,12 @@ try{
  await expect(buyer.page.getByRole('status').filter({hasText:'Follow-up preference saved.'})).toBeVisible();
  await buyer.page.reload();await expect(buyer.page.getByRole('checkbox',{name:'Request a pause in routine follow-up',exact:true})).toBeChecked();
  await broker.page.reload();await expect(broker.page.getByRole('heading',{name:'Buyer requests a pause',exact:true})).toBeVisible();
+ await broker.page.goto(`${base}/en/dashboard/inbox?inquiry=${inquiry.data!.id}`);
+ await expect(broker.page.getByRole('status').filter({hasText:'The buyer requested a pause in routine follow-up.'})).toBeVisible();
+ await expect(broker.page.getByText('Follow-up paused',{exact:true})).toBeVisible();
+ expect(await broker.page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+ expect((await new AxeBuilder({page:broker.page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze()).violations.map(v=>v.id)).toEqual([]);
+ await broker.page.screenshot({path:'/private/tmp/crestview-paused-broker-inbox.png',fullPage:true});
  expect((await broker.auth.from('buyer_followup_preferences').update({paused:false}).eq('inquiry_id',inquiry.data!.id).select()).data).toEqual([]);
  check(await broker.auth.from('deal_messages').insert({inquiry_id:inquiry.data!.id,sender_id:broker.id,recipient_id:buyer.id,body:'Synthetic paused follow-up test'}));
  check(await broker.auth.from('marketplace_notifications').insert({inquiry_id:inquiry.data!.id,user_id:buyer.id,kind:'message',title:'Synthetic paused test',body:'Synthetic paused test',href:`/en/dashboard/deals/${inquiry.data!.id}`}));
@@ -209,5 +215,14 @@ try{
  const unresolvedText=await unresolved.text();expect(unresolvedText).toContain('Notas privadas');expect(unresolvedText).toContain('Private research received');expect(unresolvedText).not.toContain('Private research verified');expect(unresolvedText).not.toContain('Private research not_applicable');
  expect(await (await broker.page.request.get(diligenceUrl)).text()).not.toContain('Private research');
  expect((await visitor.request.get(diligenceUrl)).status()).toBe(401);
- console.log('PASS: broker/buyer/seller/task/notification journeys, explained decline/reopen, buyer pause/resume, private diligence/unresolved exports and isolation, EN/ES desktop/mobile accessibility.');
+ check(await buyer.auth.from('buyer_financial_profiles').update({available_cash:0}).eq('user_id',buyer.id));
+ check(await buyer.auth.from('saved_opportunities').upsert({user_id:buyer.id,opportunity_key:diligenceKey,stage:'diligence'},{onConflict:'user_id,opportunity_key'}));
+ await buyer.page.goto(`${base}/en/dashboard/opportunities/${diligenceKey}`);
+ await expect(buyer.page.getByRole('link',{name:'Download unresolved items (CSV)',exact:true})).toHaveAttribute('href',`/api/export/diligence?opportunity=${diligenceKey}&locale=en&unresolved=1`);
+ await expect(buyer.page.locator('.deal-score-suite article').last()).toContainText('A positive asking price is needed to estimate.');
+ check(await broker.auth.from('marketplace_listings').update({asking_price:100000}).eq('id',listing.data!.id));
+ await buyer.page.goto(`${base}/en/dashboard/opportunities/${diligenceKey}`);
+ await expect(buyer.page.locator('.deal-score-suite article').last()).toContainText('Crestview estimate; lender review required');
+ await expect(buyer.page.locator('.deal-score-suite article').last()).not.toContainText('Save private assumptions');
+ console.log('PASS: broker/buyer/seller/task/notification journeys, explained decline/reopen, buyer pause/resume and inbox notice, private diligence exports, explicit zero cash retained, EN/ES desktop/mobile accessibility.');
 }finally{for(const id of ids)check(await admin.auth.admin.deleteUser(id));await browser.close();}

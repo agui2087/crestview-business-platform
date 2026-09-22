@@ -150,6 +150,7 @@ export default async function ListingsPage({ params, searchParams }: PageProps<"
                 <button type="submit">Confirm availability</button>
               </form>}
               {!listing.id.startsWith('demo-')&&<Link className="button button--light" href={`/${locale}/dashboard/listings/${listing.id}/prepare-nda`}>{locale==='es'?'Colocar campos de firma del NDA':'Place NDA signature fields'}</Link>}
+              {!listing.id.startsWith('demo-')&&<Link className="button button--light" href={`/${locale}/dashboard/listings/${listing.id}/preparation`}>{locale==='es'?'Preparación del vendedor':'Seller preparation checklist'}</Link>}
               {listing.id.startsWith("demo-") && <span className="stage">Example listing</span>}
               {!listing.id.startsWith("demo-") && listing.status === "draft" && <ListingDraftEditor listing={listing} locale={locale}/>}
               {!listing.id.startsWith("demo-") && <details className="request-panel"><summary>{locale === "es" ? "Tus notas privadas" : "Your private notes"}</summary><form action={savePrivateListingNote}>

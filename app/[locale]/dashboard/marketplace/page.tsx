@@ -7,6 +7,7 @@ import { isLocale } from "@/lib/i18n";
 import { askListingQuestion, createInquiry } from "./actions";
 import {ListingPromotionLabel} from '@/components/listing-promotion-label';
 import {PromotionAnalytics,PromotionEngagement} from '@/components/promotion-engagement';
+import {ListingFinancialContext} from '@/components/listing-financial-context';
 
 export const metadata: Metadata = { title: "Marketplace" };
 
@@ -89,6 +90,7 @@ export default async function MarketplacePage({ params, searchParams }: PageProp
                 <div><span>Cash flow</span><strong>{formatMoney(listing.cash_flow)}</strong></div>
               </div>
               <ul>{listing.public_highlights.map((item) => <li key={item}>✓ {item}</li>)}</ul>
+              <ListingFinancialContext listing={listing} locale={locale}/>
               <details className="request-panel">
                 <summary>{locale === "es" ? "Hacer una pregunta antes de continuar" : "Ask a question before moving forward"}</summary>
                 <form action={askListingQuestion}>

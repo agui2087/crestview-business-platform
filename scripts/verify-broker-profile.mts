@@ -72,8 +72,34 @@ try{
  await broker.page.getByRole('button',{name:'Save private note',exact:true}).click();
  await expect(broker.page.getByRole('status')).toContainText('Private note saved.');
  expect((await buyer.auth.from('listing_private_notes').select('notes').eq('listing_id',listing.data!.id)).data).toEqual([]);
+ const preparationUrl=`${base}/en/dashboard/listings/${listing.data!.id}/preparation`;
+ await broker.page.goto(preparationUrl);
+ await broker.page.getByRole('checkbox').first().check();
+ await broker.page.getByRole('button',{name:'Save seller preparation',exact:true}).click();
+ await expect(broker.page.getByRole('progressbar')).toHaveAttribute('value','1');
+ await broker.page.reload();await expect(broker.page.getByRole('checkbox').first()).toBeChecked();
+ expect((await buyer.auth.from('seller_preparation').select('*').eq('listing_id',listing.data!.id)).data).toEqual([]);
+ await buyer.page.goto(preparationUrl);
+ await expect(buyer.page.getByRole('heading',{name:'404',exact:true})).toBeVisible();
+ await expect(buyer.page.getByRole('checkbox')).toHaveCount(0);
+ await broker.page.getByLabel('Period start',{exact:true}).fill('2025-01-01');
+ await broker.page.getByLabel('Period end',{exact:true}).fill('2025-12-31');
+ await broker.page.getByRole('combobox',{name:/^Earnings or cash-flow basis/}).selectOption('sde');
+ await broker.page.getByRole('combobox',{name:/^Actual or projected/}).selectOption('actual');
+ await broker.page.getByLabel('Public explanation of figures',{exact:true}).fill('Synthetic reported period, not independently verified.');
+ await broker.page.getByRole('button',{name:'Save public financial context',exact:true}).click();
+ await expect(broker.page).toHaveURL(/saved=1/);
+ await broker.page.reload();await expect(broker.page.getByLabel('Period start',{exact:true})).toHaveValue('2025-01-01');
+ for(const locale of ['en','es'])for(const width of [1280,390]){
+  await broker.page.setViewportSize({width,height:900});await broker.page.goto(`${base}/${locale}/dashboard/listings/${listing.data!.id}/preparation`);
+  await expect(broker.page.getByRole('checkbox')).toHaveCount(8);
+  expect(await broker.page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+  expect((await new AxeBuilder({page:broker.page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze()).violations.map(v=>v.id)).toEqual([]);
+  await broker.page.screenshot({path:`/private/tmp/crestview-seller-preparation-${locale}-${width}.png`,fullPage:true});
+ }
  await buyer.page.goto(`${base}/en/dashboard/marketplace`);
  const card=buyer.page.locator(`#listing-${listing.data!.id}`);
+ await expect(card).toContainText('Synthetic reported period, not independently verified.');
  await card.getByText('Ask a question before moving forward',{exact:true}).click();
  await card.getByLabel('Your question',{exact:true}).fill('What experience would help a first-time owner?');
  await card.getByRole('button',{name:'Send question',exact:true}).click();

@@ -14,13 +14,13 @@ PR 96 implemented separate public-safe data, draft/publish controls, broker-only
 |4|Readiness checklist|Private reversible eight-step preparation checklist, progress and next step added. No readiness/rejection score or proof-of-funds gate. Further contextual education remains.|
 |5|Financial readiness/privacy|Self-asserted verified-account/funds claims blocked at database level. Inbox labels no longer imply proof or lender approval. Evidence provenance and expiry remain.|
 |6|Financing preparation|Existing financial scenarios; audit assumptions and lender-preparation workflow.|
-|7|Listing clarity|Audit financial periods, included assets, requirements and corrections.|
+|7|Listing clarity|Added explicit period, actual/projected/mixed classification, cash-flow basis and public explanation. Unknowns remain unknown; unsupported verified-financial marketing removed. Database constraints and isolated browser save/reload/public display passed. Included assets and correction-history audit remain.|
 |8|Inquiry types|Separate public-question action added without financial declarations, automatic NDA delivery or confidential access. Transactional message/notification, duplicate retry protection, bounded submissions and closed-conversation protection. Connected buyer/broker rehearsal passed; release tracked separately. Existing NDA path remains.|
 |9|Broker pipeline|Stage and listing-name filters added, with introductory questions distinct from NDA, document review, offers and finished conversations. Shared zero cash remains visible; no wealth-ranking score. Corrected misleading active count. Follow-up batch verification/release tracked separately.|
 |10|Respectful follow-up|Audit pause/decline/reopen and preferences; no pressure or unlimited reminders.|
 |11|NDA/signing|Account signing and safe corrections live. External signers, packets and email activation unfinished.|
 |12|Confidential sharing|Existing protected documents. Found private broker notes on buyer-readable listing rows; migration 0067 preserves them in owner-only storage and sanitizes future writes. Isolated direct-access tests passed; production RLS enabled, anonymous access denied and zero notes remain on listing rows. Historical access not assessed. Owner read/edit UI and strict signed-NDA display added in follow-up. Full lifecycle audit remains.|
-|13|Seller preparation|Audit requests, financial periods, add-backs and provenance.|
+|13|Seller preparation|Eight-step owner-only reversible checklist covers authority, financial periods, reconciliation, add-backs, included assets, transfer questions, confidentiality and unresolved questions. Database owner/isolation tests and connected buyer denial, save/reload, EN/ES desktop/mobile accessibility passed. It is self-reported preparation, not a verification badge.|
 |14|Acquisition checklist|Existing tailored tasks/NA/evidence/owners/deadlines; audit dependencies and reopening.|
 |15|Due-diligence questions|Audit linking, answers, unresolved exports and advisor permissions.|
 |16|Buyer education|Existing guides; audit contextual explanations and EN/ES consistency.|

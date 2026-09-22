@@ -106,6 +106,7 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
     ? "nda_signed"
     : workspace.inquiry.status;
   const terminal = effectiveStatus === "closed" || effectiveStatus === "declined";
+  const declineExplanation=effectiveStatus==='declined'?[...workspace.events].reverse().find(event=>event.to_status==='declined')?.note:null;
   const canChangeStage = !workspace.isBuyer && !workspace.isDemo && allowedBrokerTransitions(effectiveStatus).length > 0;
   const currentStageIndex = Math.max(0, dealStages.findIndex(([key]) => key === effectiveStatus));
   // A workflow label is not evidence of a signed agreement.
@@ -140,7 +141,9 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
         {query.message === "sent" && <p className="notice" role="status">Your message was sent.</p>}
         {introductoryQuestion && <p className="notice">{locale === "es" ? "Esta conversación comenzó con una pregunta sobre información pública. No se solicitó un NDA ni se concedió acceso a documentos privados. Puedes conversar antes de decidir el siguiente paso." : "This conversation started with a question about public information. No NDA was requested and no private document access was granted. You can discuss the opportunity before deciding on the next step."}</p>}
         {query.stage === "updated" && <p className="notice" role="status">The shared deal stage was updated.</p>}
+        {query.error==='stage_reason'&&<p role="alert">{locale==='es'?'Incluye una explicación de 10 a 1.000 caracteres al rechazar. Se comparte con el comprador.':'Include an explanation of 10–1,000 characters when declining. It is shared with the buyer.'}</p>}
         {terminal && <p className="data-notice"><strong>{effectiveStatus === "closed" ? "Reported closed" : "This inquiry was declined"}</strong><span>{effectiveStatus === "closed" ? "The broker marked this deal closed. Crestview records progress; it does not transfer ownership, process the purchase price, or confirm legal closing. Keep your final agreements and professional confirmations." : "No further purchase steps are expected unless the broker reopens screening. Existing records remain available according to their permissions."}</span></p>}
+        {declineExplanation&&<blockquote className="decline-explanation"><strong>{locale==='es'?'Explicación del corredor':'Broker’s explanation'}</strong><p>{declineExplanation}</p></blockquote>}
         {query.error && String(query.error).startsWith("financial_") && <p className="notice" role="alert">{query.error === "financial_conflict"
           ? "This deal changed or the form expired. Review its current status before submitting again."
           : query.error === "financial_forbidden"
@@ -191,12 +194,12 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
               <button name="decision" value="approved" className="button button--primary" type="submit">Approve access</button>
             </form>}
           </div> : <div className="broker-next-step__action">
-            <a className="button button--primary" href={!workspace.nda ? "#deal-conversation" : financialApproved ? "#deal-upload" : "#deal-conversation"}>{!workspace.nda ? "Send NDA" : financialApproved ? "Upload requested records" : "Open conversation"}</a>
+            <a className="button button--primary" href={!workspace.nda ? "#deal-conversation" : financialApproved ? "#deal-upload" : "#deal-conversation"}>{introductoryQuestion ? "Answer the buyer’s question" : !workspace.nda ? "Send NDA" : financialApproved ? "Upload requested records" : "Open conversation"}</a>
             <small>{financialApproved ? `${workspace.requests.filter((request) => request.status === "requested").length} open document request${workspace.requests.filter((request) => request.status === "requested").length === 1 ? "" : "s"}` : "You can update the deal stage below"}</small>
           </div>}
         </section>}
         <div className="deal-overview-strip">
-          <div><span>Current stage</span><strong>{dealStages[currentStageIndex]?.[1] ?? "Inquiry sent"}</strong></div>
+          <div><span>Current stage</span><strong>{effectiveStatus==='declined'?'Declined':dealStages[currentStageIndex]?.[1] ?? "Inquiry sent"}</strong></div>
           <div><span>Your role</span><strong>{workspace.isBuyer ? "Buyer" : "Broker / seller"}</strong></div>
           <div><span>Next action</span><strong>{terminal ? (effectiveStatus === "closed" ? "Review closing records and transition" : "No purchase action required") : workspace.isBuyer
             ? effectiveStatus === "nda_sent"
@@ -350,6 +353,8 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
             <input type="hidden" name="locale" value={locale} /><input type="hidden" name="inquiry_id" value={id} />
             <input type="hidden" name="expected_updated_at" value={workspace.inquiry.updated_at} />
             <label>Next deal stage<select name="status">{allowedBrokerTransitions(effectiveStatus).map((key) => <option value={key} key={key}>{dealStages.find(([stage]) => stage === key)?.[1] ?? key.replaceAll("_", " ")}</option>)}</select></label>
+            <label>{locale==='es'?'Explicación para el comprador (obligatoria al rechazar)':'Explanation for the buyer (required when declining)'}<textarea name="stage_reason" minLength={10} maxLength={1000}/></label>
+            <p>{locale==='es'?'Explica el contexto y un próximo paso útil sin hacer juicios sobre la persona. La explicación se guarda en la conversación. Reabrir la revisión no concede acceso a documentos.':'Explain the situation and a useful next step without judging the person. The explanation is saved in the conversation. Reopening screening does not grant document access.'}</p>
             {allowedBrokerTransitions(effectiveStatus).includes("closed") && <label><input type="checkbox" name="closing_confirmed" />Only when marking closed: I confirm the closing occurred outside Crestview and the parties have their closing records.</label>}
             <button className="button button--primary" type="submit">Update stage</button>
           </form></section>}

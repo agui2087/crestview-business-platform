@@ -99,13 +99,11 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
   let userId: string | undefined;
   if (isSupabaseConfigured() && user.source === "supabase") userId = (await (await createSupabaseServerClient()).auth.getUser()).data.user?.id;
   const workspace = await getWorkspace(id, userId, locale);
-  // Treat the signed NDA record as the source of truth. Older workspaces can have
-  // a signed agreement while their inquiry stage still says `nda_sent`.
+  // Signature evidence governs access; the persisted stage governs actions.
+  // Migration 0073 repairs legacy mismatches and prevents non-atomic signing.
   const ndaSigned = workspace.nda?.status === "signed";
   const introductoryQuestion = workspace.inquiry.requested_items?.includes("Public listing question") && !workspace.nda;
-  const effectiveStatus = ndaSigned && workspace.inquiry.status === "nda_sent"
-    ? "nda_signed"
-    : workspace.inquiry.status;
+  const effectiveStatus = workspace.inquiry.status;
   const terminal = effectiveStatus === "closed" || effectiveStatus === "declined";
   const declineExplanation=effectiveStatus==='declined'?[...workspace.events].reverse().find(event=>event.to_status==='declined')?.note:null;
   const canChangeStage = !workspace.isBuyer && !workspace.isDemo && allowedBrokerTransitions(effectiveStatus).length > 0;

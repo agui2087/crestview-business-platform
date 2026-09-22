@@ -65,6 +65,25 @@ test('signing and document sharing enforce authorization, immutability, and atom
   assert.equal((await db.query<{status:string}>(`select status from deal_ndas where id='${nda}'`)).rows[0].status,'sent');
   await db.exec('alter table marketplace_notifications drop constraint injected_failure');
   await actor(buyer);await sign();await assert.rejects(sign());
+  // Reproduce the legacy bug with genuine signing evidence, then repair it.
+  await db.exec("reset role;select set_config('request.jwt.claim.role','service_role',false)");
+  await db.query("update deal_inquiries set status='nda_sent' where id=$1",[deal]);
+  const originalAgreement=(await db.query('select * from deal_ndas where id=$1',[nda])).rows[0];
+  const oldVersion=(await db.query<{updated_at:Date}>('select updated_at from deal_inquiries where id=$1',[deal])).rows[0].updated_at;
+  await db.exec(await migration('0073_signed_nda_stage_consistency'));
+  await db.exec(await migration('0071_atomic_deal_stage'));
+  assert.deepEqual((await db.query('select * from deal_ndas where id=$1',[nda])).rows[0],originalAgreement);
+  assert.equal((await db.query<{status:string}>("select status from deal_inquiries where id=$1",[deal])).rows[0].status,'nda_signed');
+  assert.equal((await db.query<{financial_access_status:string}>('select financial_access_status from deal_inquiries where id=$1',[deal])).rows[0].financial_access_status,'not_requested');
+  assert.equal((await db.query('select * from deal_stage_reconciliations')).rows.length,1);
+  await assert.rejects(db.query("update deal_inquiries set status='nda_sent' where id=$1",[deal]),/saved together/);
+  await actor(buyer);
+  await assert.rejects(db.query("select advance_my_broker_inquiry($1,(select updated_at from deal_inquiries where id=$1),'document_review')",[deal]));
+  await assert.rejects(db.query('select * from deal_stage_reconciliations'));
+  await actor(broker);
+  await assert.rejects(db.query("select advance_my_broker_inquiry($1,$2,'document_review')",[deal,oldVersion]));
+  await db.query("select advance_my_broker_inquiry($1,(select updated_at from deal_inquiries where id=$1),'document_review')",[deal]);
+  assert.equal((await db.query<{status:string}>('select status from deal_inquiries where id=$1',[deal])).rows[0].status,'document_review');
   await actor(broker);await assert.rejects(db.exec(`update deal_ndas set signer_name='Changed' where id='${nda}'`));
   const access=(expected:string,next:string)=>db.query('select change_deal_document_access($1,$2,$3)',[doc,expected,next]);
   await actor(buyer);await assert.rejects(access('broker_only','nda_signed'));

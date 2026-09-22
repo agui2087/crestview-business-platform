@@ -17,10 +17,7 @@ export default async function DocumentPage({ params }: { params: Promise<{ local
   // The session-bound client preserves RLS approval/NDA restrictions. Never use an admin client here.
   const { data: document, error } = await supabase.from("deal_room_documents").select("title,storage_path,mime_type").eq("id",documentId).eq("inquiry_id",id).eq("is_active",true).in("security_status",["basic_validated","malware_scanned"]).maybeSingle();
   if (error || !document?.storage_path || document.mime_type !== "application/pdf") notFound();
-  const [view, download] = await Promise.all([
-    supabase.storage.from("deal-files").createSignedUrl(document.storage_path, 900),
-    supabase.storage.from("deal-files").createSignedUrl(document.storage_path, 900, { download: true }),
-  ]);
+  const source = `/${locale}/dashboard/deals/${id}/documents/${documentId}/file`;
   const back = `/${locale}/dashboard/deals/${id}#deal-documents`;
-  return <main style={{padding:"clamp(16px,4vw,48px)"}}><a href={back}>{locale === "es" ? "Volver a los documentos" : "Back to secure documents"}</a><h1>{document.title}</h1>{view.data?.signedUrl && download.data?.signedUrl ? <SecurePdfViewer source={view.data.signedUrl} download={download.data.signedUrl} title={document.title} locale={locale}/> : <p role="alert">{locale === "es" ? "No se pudo abrir el documento. Vuelve a los documentos e inténtalo de nuevo." : "The document could not be opened. Return to secure documents and try again."}</p>}</main>;
+  return <main style={{padding:"clamp(16px,4vw,48px)"}}><a href={back}>{locale === "es" ? "Volver a los documentos" : "Back to secure documents"}</a><h1>{document.title}</h1><SecurePdfViewer source={source} download={`${source}?download=1`} title={document.title} locale={locale} sessionChecked/></main>;
 }

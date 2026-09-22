@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import "./secure-pdf-viewer.css";
 
-export function SecurePdfViewer({ source, download, title, locale }: { source: string; download: string; title: string; locale: string }) {
+export function SecurePdfViewer({ source, download, title, locale, sessionChecked = false }: { source: string; download: string; title: string; locale: string; sessionChecked?: boolean }) {
   const es = locale === "es";
   const canvas = useRef<HTMLCanvasElement>(null);
   const [document, setDocument] = useState<PDFDocumentProxy | null>(null);
@@ -63,7 +63,7 @@ export function SecurePdfViewer({ source, download, title, locale }: { source: s
       <button type="button" disabled={!document || page === document.numPages || busy} onClick={() => setPage(page + 1)}>{es ? "Siguiente" : "Next"}</button>
       <label>{es ? "Ampliación" : "Zoom"} <select value={zoom} disabled={busy || !document} onChange={e => setZoom(Number(e.target.value))}><option value={1}>100%</option><option value={1.5}>150%</option><option value={2}>200%</option></select></label>
     </div>
-    <p>{es ? "El enlace es temporal. Si caduca, recarga esta página para comprobar de nuevo tus permisos." : "Access links are temporary. If a link expires, reload this page to check your permissions again."}</p>
+    <p>{sessionChecked ? (es ? "Se comprueban tus permisos cada vez que abres o descargas el archivo. Las copias ya descargadas no se pueden retirar." : "Your permissions are checked each time you open or download the file. Previously downloaded copies cannot be recalled.") : (es ? "El enlace es temporal. Si caduca, recarga esta página para comprobar de nuevo tus permisos." : "Access links are temporary. If a link expires, reload this page to check your permissions again.")}</p>
     {busy && <p role="status">{es ? "Cargando página…" : "Loading page…"}</p>}
     {failed && <p role="alert">{es ? "No se pudo mostrar este PDF. Puede estar protegido, dañado o el enlace puede haber caducado. Recarga la página o descarga el archivo para abrirlo en tu lector de PDF." : "This PDF could not be displayed. It may be password-protected, damaged, or the link may have expired. Reload the page or download the file to open it in your PDF reader."}</p>}
     <div className="secure-pdf-sheet" hidden={failed} aria-busy={busy} tabIndex={0} role="region" aria-label={es ? "Página del documento, desplazable" : "Scrollable document page"}><canvas ref={canvas} role="img" aria-label={`${title} — ${es ? "página" : "page"} ${page}`} style={{ width: `${zoom * 100}%` }} /></div>

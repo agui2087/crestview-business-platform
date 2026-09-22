@@ -27,12 +27,14 @@ test("PDF access denies unauthenticated, unrelated, unavailable and non-PDF reco
     const h=await harness(options);await assert.rejects(h.run(),/NOT_FOUND/);assert.equal(h.signatures.length,0);
   }
 });
-test("PDF access scopes active screened evidence to current deal and signs view/download separately",async()=>{
-  const h=await harness();await h.run();
+test("PDF access scopes active screened evidence and uses session-checked file routes",async()=>{
+  const h=await harness();const output=JSON.stringify(await h.run());
   const filters=JSON.stringify(h.filters);
   for(const required of ['"inquiry_id","deal"','"id","doc"','"is_active",true','"security_status",["basic_validated","malware_scanned"]','buyer_id.eq.buyer,broker_id.eq.buyer'])assert.ok(filters.includes(required));
-  assert.equal(JSON.stringify(h.signatures),JSON.stringify([["scanned.pdf",900],["scanned.pdf",900,{download:true}]]));
+  assert.equal(h.signatures.length,0);
+  assert.ok(output.includes('/en/dashboard/deals/deal/documents/doc/file'));
+  assert.ok(output.includes('?download=1'));
 });
-test("PDF signing failure renders an error instead of an empty viewer",async()=>{
-  const h=await harness({signing:false});const output=JSON.stringify(await h.run());assert.ok(output.includes("could not be opened"));assert.ok(!output.includes('"type":"Viewer"'));
+test("PDF viewing does not depend on issuing a shareable storage token",async()=>{
+  const h=await harness({signing:false});const output=JSON.stringify(await h.run());assert.ok(output.includes('"type":"Viewer"'));assert.equal(h.signatures.length,0);
 });

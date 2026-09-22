@@ -81,8 +81,7 @@ async function getWorkspace(id: string, userId?: string, locale = "en"): Promise
     if (!canRelease) return { ...document, secure_url: null };
     if (!document.storage_path) return { ...document, secure_url: null };
     if (document.mime_type === "application/pdf") return { ...document, secure_url: `/${locale}/dashboard/deals/${id}/documents/${document.id}` };
-    const { data } = await supabase.storage.from("deal-files").createSignedUrl(document.storage_path, 60 * 15);
-    return { ...document, secure_url: data?.signedUrl ?? null };
+    return { ...document, secure_url: `/${locale}/dashboard/deals/${id}/documents/${document.id}/file?download=1` };
   }));
   return {
     inquiry: inquiry as unknown as typeof demoInquiries[number], title: listing?.title ?? inquiry.subject,
@@ -340,7 +339,7 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
               {!workspace.isBuyer && !workspace.isDemo && <details><summary>Manage access</summary><form action={changeDocumentAccess}>
                 <input type="hidden" name="locale" value={locale}/><input type="hidden" name="inquiry_id" value={id}/><input type="hidden" name="document_id" value={document.id}/><input type="hidden" name="expected_access" value={document.access_level}/>
                 <label>Who can access {document.title}?<select name="access_level" defaultValue={document.access_level}><option value="broker_only">Only me (remove buyer access)</option><option value="approved">Buyer after financial-access approval</option><option value="nda_signed">Buyer after signing the NDA</option></select></label>
-                <small>Changes apply to this deal only. Existing download links can remain usable for 15 minutes. Downloads and external-service access cannot be recalled.</small>
+                <small>Changes apply to this deal only. New file opens and downloads check current permissions. Previously issued temporary storage links may remain usable until expiry. Downloaded copies and external-service access cannot be recalled.</small>
                 <PendingAction>Save access</PendingAction>
               </form></details>}
             </div>{document.secure_url || document.external_url ? <a href={document.secure_url || document.external_url || "#"} target="_blank" rel="noreferrer">{document.external_url ? "Open external link" : "Open securely"}</a> : <span className="stage">Protected</span>}</article>;

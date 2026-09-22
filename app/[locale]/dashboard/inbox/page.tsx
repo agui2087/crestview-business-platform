@@ -20,21 +20,32 @@ export default async function InboxPage({ params, searchParams }: PageProps<"/[l
   let userId: string | undefined;
   let notifications: { id: string; title: string; body: string; inquiry_id: string | null; read_at: string | null; created_at: string }[] = [];
   let isBroker = false;
+  const pausedInquiries=new Set<string>();
   type BrokerBuyerSummary = { display_name: string | null; verification_status: string; acquisition_timeline: string | null; funding_status: string | null; proof_of_funds_status: string | null; buyer_summary: string | null; experience_level: string | null; available_cash: number | null; credit_readiness: string | null; financial_visibility: string; nda_complete: boolean; labels: { profile: string; verification: string; financial: string } };
   let buyerProfiles = new Map<string, BrokerBuyerSummary>();
   if (isSupabaseConfigured() && user.source === "supabase") {
     const supabase = await createSupabaseServerClient();
     userId = (await supabase.auth.getUser()).data.user?.id;
     if (userId) {
-      const [{ data: profile }, { data: notificationData }] = await Promise.all([
+      const [{ data: profile, error: profileError }, { data: notificationData, error: notificationError }] = await Promise.all([
         supabase.from("profiles").select("account_roles").eq("user_id", userId).maybeSingle(),
         supabase.from("marketplace_notifications").select("id,title,body,inquiry_id,read_at,created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(25),
       ]);
+      if(profileError||notificationError)throw new Error('Your inbox could not be loaded. Refresh before responding.');
       isBroker = ((profile?.account_roles as string[] | null) ?? []).includes("broker");
       notifications = notificationData ?? [];
     }
   }
   const inquiries = await getMyInquiries(userId);
+  if(userId&&inquiries.length){
+    const supabase=await createSupabaseServerClient();
+    const ids=inquiries.filter(item=>!item.id.startsWith('demo-')).map(item=>item.id);
+    for(let offset=0;offset<ids.length;offset+=100){
+      const {data,error}=await supabase.from('buyer_followup_preferences').select('inquiry_id').in('inquiry_id',ids.slice(offset,offset+100)).eq('paused',true);
+      if(error)throw new Error('Follow-up preferences could not be loaded. Refresh before responding.');
+      for(const row of data??[])pausedInquiries.add(row.inquiry_id);
+    }
+  }
   if (isBroker && userId && inquiries.length) {
     const supabase = await createSupabaseServerClient();
     const brokerInquiries = inquiries.filter((inquiry) => inquiry.broker_id === userId && !inquiry.id.startsWith("demo-"));
@@ -63,6 +74,7 @@ export default async function InboxPage({ params, searchParams }: PageProps<"/[l
             return <Link href={`/${locale}/dashboard/deals/${inquiry.id}`} key={inquiry.id}>
               <div><span>{action}</span><strong>{inquiry.marketplace_listings?.title ?? inquiry.subject}</strong></div>
               <p>{buyer?.display_name ?? "Prospective buyer"} · {buyer?.acquisition_timeline ?? inquiry.financial_request_timeline ?? "Timeline private or not provided"}</p>
+              {pausedInquiries.has(inquiry.id)&&<strong>{locale==='es'?'El comprador solicita una pausa de seguimiento':'Buyer requests a follow-up pause'}</strong>}
               <div className="buyer-readiness-tags"><small>{buyer?.funding_status ?? "Funding details private"}</small><small>Funds: {buyer?.proof_of_funds_status === 'available' ? 'buyer says evidence is available' : buyer?.proof_of_funds_status === 'verified' ? 'review the supporting evidence' : buyer?.proof_of_funds_status === 'not_provided' ? 'not provided yet' : 'private'}</small>{buyer?.experience_level && <small>Experience: {buyer.experience_level.replaceAll("_", " ")}</small>}</div>
               {buyer?.available_cash !== null && buyer?.available_cash !== undefined && <p className="buyer-financial-disclosure">Buyer-provided available cash: ${Number(buyer.available_cash).toLocaleString("en-US")} · not lender verified</p>}
               {buyer?.buyer_summary && <blockquote>{buyer.buyer_summary}</blockquote>}
@@ -103,7 +115,7 @@ export default async function InboxPage({ params, searchParams }: PageProps<"/[l
             {visibleInquiries.map((inquiry) => (
               <Link href={`/${locale}/dashboard/deals/${inquiry.id}`} key={inquiry.id}>
                 <span className="conversation-avatar">CV</span>
-                <div><strong>{inquiry.marketplace_listings?.title ?? inquiry.subject}</strong><span>{inquiry.marketplace_listings ? `${inquiry.marketplace_listings.city}, ${inquiry.marketplace_listings.state_code}` : "Deal workspace"}</span><small>{inquiry.initial_message.slice(0, 95)}</small></div>
+                <div><strong>{inquiry.marketplace_listings?.title ?? inquiry.subject}</strong><span>{inquiry.marketplace_listings ? `${inquiry.marketplace_listings.city}, ${inquiry.marketplace_listings.state_code}` : "Deal workspace"}</span><small>{inquiry.initial_message.slice(0, 95)}</small>{pausedInquiries.has(inquiry.id)&&<small>{locale==='es'?'Seguimiento en pausa':'Follow-up paused'}</small>}</div>
                 <span className="stage">{inquiry.status.replaceAll("_", " ")}</span>
               </Link>
             ))}
@@ -130,6 +142,7 @@ export default async function InboxPage({ params, searchParams }: PageProps<"/[l
               <Link className="button button--primary inbox-open-workspace" href={`/${locale}/dashboard/deals/${featured.id}`}>Open secure workspace →</Link>
             </> : <div className="empty-state"><strong>{inquiries.length ? "No conversations match these filters" : "Your deal inbox is ready"}</strong><p>{inquiries.length ? "Clear or change your filters to see other conversations." : "Ask a question or request information from a marketplace listing to start a secure conversation."}</p><Link className="button button--primary" href={inquiries.length ? `/${locale}/dashboard/inbox` : `/${locale}/dashboard/marketplace`}>{inquiries.length ? "Clear filters" : "Browse marketplace"}</Link></div>}
             {featured && !featured.id.startsWith("demo-") && <>
+              {pausedInquiries.has(featured.id)&&<p className="notice" role="status">{locale==='es'?'El comprador ha pedido una pausa del seguimiento rutinario. La conversación sigue disponible; los acuerdos, plazos y permisos no cambian.':'The buyer requested a pause in routine follow-up. The conversation remains available; agreements, deadlines and permissions are unchanged.'}</p>}
               <form className="quick-reply" action={sendMessage}>
                 <input type="hidden" name="locale" value={locale} /><input type="hidden" name="inquiry_id" value={featured.id} />
                 <label htmlFor="inbox-message">Message to the other participant</label><textarea id="inbox-message" name="body" placeholder="Write a secure message…" maxLength={5000} required />

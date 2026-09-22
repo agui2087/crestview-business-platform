@@ -12,7 +12,7 @@ import { isLocale } from "@/lib/i18n";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { calculateBuyerFit, calculateDealScore, type BuyerFitPreferences } from "@/lib/deal-score";
 import type { DocumentFinding } from "@/lib/deal-intelligence";
-import { financialFitForDeal } from "@/lib/buyer-finance";
+import { financialFitForDeal, savedBuyerFinanceInputs } from "@/lib/buyer-finance";
 import { addBrokerInteraction, addDiligenceItem, addDiligenceTemplate, addOpportunityNote, addOpportunityToList, beginAcquisition, saveOpportunity, updateDiligenceItem } from "../actions";
 
 export function generateStaticParams() {
@@ -115,7 +115,8 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
     }
   }
   const buyerFit = calculateBuyerFit(opportunity, buyerPreferences);
-  const financialFit = financialFitForDeal(opportunity.priceValue, opportunity.cashFlowValue, buyerFinancialProfile?.available_cash ? { availableCash: buyerFinancialProfile.available_cash, desiredOwnerIncome: buyerDesiredIncome, injectionPercent: buyerFinancialProfile.buyer_injection_percent, interestRate: buyerFinancialProfile.illustrative_interest_rate } : null);
+  const financialInputs=savedBuyerFinanceInputs(buyerFinancialProfile,buyerDesiredIncome);
+  const financialFit = financialFitForDeal(opportunity.priceValue, opportunity.cashFlowValue, financialInputs);
   // Visiting a later screen is not evidence of readiness. Count only explicitly
   // completed stages and verified diligence, never the current tab index.
   const dealReadiness = acquisitionReadiness(workspace?.checklist_progress ?? null, diligence);
@@ -184,7 +185,7 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
           <article><span>{es ? "CALIDAD DEL ANUNCIO" : "LISTING QUALITY"}</span><strong>{dealScore.score}</strong><small>{dealScore.confidence} confidence · public data</small></article>
           <article><span>{es ? "AJUSTE DEL COMPRADOR" : "BUYER FIT"}</span><strong>{buyerFit?.score ?? "—"}</strong><small>{buyerFit ? `${buyerFit.matched} criteria match` : "Complete your buyer profile"}</small></article>
           <article><span>{es ? "PREPARACIÓN DEL TRATO" : "DEAL READINESS"}</span><strong>{dealReadiness}</strong><small>{workspace ? "70% completed stages + 30% verified diligence; not approval to buy" : "Begin acquisition to track"}</small></article>
-          <article className={`is-${financialFit.status}`}><span>{es ? "AJUSTE FINANCIERO" : "FINANCIAL FIT"}</span><strong>{financialFit.score ?? "—"}</strong><small>{financialFit.score === null ? "Save private assumptions" : "Crestview estimate; lender review required"}</small></article>
+          <article className={`is-${financialFit.status}`}><span>{es ? "AJUSTE FINANCIERO" : "FINANCIAL FIT"}</span><strong>{financialFit.score ?? "—"}</strong><small>{financialFit.score === null ? financialInputs ? (es?'Falta un precio solicitado positivo para estimar.':'A positive asking price is needed to estimate.') : (es?'Guarda tus supuestos privados.':'Save private assumptions') : (es?'Estimación de Crestview; requiere revisión del prestamista.':'Crestview estimate; lender review required')}</small></article>
         </section>
         <section className="score-card">
           <div className="score-card__value"><span>{es ? "Puntaje explicable" : "Explainable score"}</span><strong>{dealScore.score}</strong><small>/ 100 · v{dealScore.version} · {es ? "confianza" : "confidence"} {dealScore.confidence}</small></div>

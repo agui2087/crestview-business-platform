@@ -147,5 +147,20 @@ try{
  await expect(buyer.page.locator('.metric-card').filter({has:buyer.page.getByText('Saved opportunities',{exact:true})}).locator('strong')).toHaveText('9');
  await expect(buyer.page.locator('.metric-card').filter({has:buyer.page.getByText('Active deals',{exact:true})}).locator('strong')).toHaveText('9');
  await expect(buyer.page.locator('.metric-card').filter({has:buyer.page.getByText('Open tasks',{exact:true})}).locator('strong')).toHaveText('8');
- console.log('PASS: broker and buyer profile/privacy journeys, introductory questions, seller preparation and public financial context, task create/complete/reopen and private formula-safe export, EN/ES desktop/mobile accessibility.');
+ await buyer.page.goto(`${base}/en/dashboard/settings`);
+ await buyer.page.getByRole('checkbox',{name:'New messages',exact:true}).uncheck();
+ await buyer.page.getByRole('button',{name:'Save notification preferences',exact:true}).click();
+ await expect(buyer.page.getByRole('status')).toContainText('Notification preferences saved to your account.');
+ await buyer.page.reload();await expect(buyer.page.getByRole('checkbox',{name:'New messages',exact:true})).not.toBeChecked();
+ expect((await broker.auth.from('buyer_notification_preferences').select('*').eq('user_id',buyer.id)).data).toEqual([]);
+ await broker.page.goto(`${base}/en/dashboard/deals/${inquiry.data!.id}`);
+ await broker.page.locator('#deal-message').fill('Synthetic muted notification test');
+ await broker.page.locator('form.quick-reply button').click();
+ await expect(broker.page).toHaveURL(/message=sent/);
+ expect((await buyer.auth.from('deal_messages').select('id').eq('inquiry_id',inquiry.data!.id).eq('body','Synthetic muted notification test')).data).toHaveLength(1);
+ expect((await buyer.auth.from('marketplace_notifications').select('id').eq('inquiry_id',inquiry.data!.id).eq('body','Synthetic muted notification test')).data).toHaveLength(0);
+ await buyer.page.goto(`${base}/en/dashboard/settings`);await buyer.page.getByRole('checkbox',{name:'New messages',exact:true}).check();
+ await buyer.page.getByRole('button',{name:'Save notification preferences',exact:true}).click();
+ await expect(buyer.page.getByRole('status')).toContainText('Notification preferences saved to your account.');
+ console.log('PASS: broker and buyer profile/privacy journeys, introductory questions, seller preparation and financial context, task lifecycle and private export, full dashboard counts, account notification save/reload and muted notice with preserved message, EN/ES desktop/mobile accessibility.');
 }finally{for(const id of ids)check(await admin.auth.admin.deleteUser(id));await browser.close();}

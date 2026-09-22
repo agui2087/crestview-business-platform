@@ -49,7 +49,7 @@ export default async function SettingsPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ saved?: string; error?: string; roles?: string; profile?: string }>;
+  searchParams: Promise<{ saved?: string; error?: string; roles?: string; profile?: string;notifications?:string }>;
 }) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
@@ -112,6 +112,8 @@ export default async function SettingsPage({
           <button className="button button--primary" type="submit">Save marketplace roles</button>
         </form>
         {hasBuyerWorkspace && <>
+        {messages.notifications&&<p role="status">{es?'Preferencias de notificaciones guardadas en tu cuenta.':'Notification preferences saved to your account.'}</p>}
+        {messages.error==='notifications'&&<p role="alert">{es?'No se pudieron guardar las preferencias. Inténtalo de nuevo.':'Notification preferences could not be saved. Please retry.'}</p>}
         <BuyerAlertPreferences locale={locale} />
         <form className="settings-panel" id="listing-alerts" action={saveBuyerPreferences}>
           <input type="hidden" name="locale" value={locale} />

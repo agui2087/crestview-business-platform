@@ -141,5 +141,11 @@ try{
  expect(exported.status()).toBe(200);expect(exported.headers()['cache-control']).toBe('private, no-store');
  const exportedText=await exported.text();expect(exportedText).toContain('Título');expect(exportedText).toContain("'=Synthetic task formula");expect(exportedText).not.toContain('OTHER-ACCOUNT-PRIVATE-TASK');
  expect((await visitor.request.get(`${base}/api/export/tasks`)).status()).toBe(401);
+ check(await admin.from('saved_opportunities').insert(Array.from({length:9},(_,i)=>({user_id:buyer.id,opportunity_key:`synthetic-count-${i}`,stage:'diligence'}))));
+ check(await admin.from('deal_tasks').insert(Array.from({length:7},(_,i)=>({user_id:buyer.id,title:`Synthetic count task ${i}`}))));
+ await buyer.page.goto(`${base}/en/dashboard`);
+ await expect(buyer.page.locator('.metric-card').filter({has:buyer.page.getByText('Saved opportunities',{exact:true})}).locator('strong')).toHaveText('9');
+ await expect(buyer.page.locator('.metric-card').filter({has:buyer.page.getByText('Active deals',{exact:true})}).locator('strong')).toHaveText('9');
+ await expect(buyer.page.locator('.metric-card').filter({has:buyer.page.getByText('Open tasks',{exact:true})}).locator('strong')).toHaveText('8');
  console.log('PASS: broker and buyer profile/privacy journeys, introductory questions, seller preparation and public financial context, task create/complete/reopen and private formula-safe export, EN/ES desktop/mobile accessibility.');
 }finally{for(const id of ids)check(await admin.auth.admin.deleteUser(id));await browser.close();}

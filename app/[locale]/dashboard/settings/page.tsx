@@ -49,14 +49,14 @@ export default async function SettingsPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ saved?: string; error?: string; roles?: string }>;
+  searchParams: Promise<{ saved?: string; error?: string; roles?: string; profile?: string }>;
 }) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
   const es = locale === "es";
   const messages = await searchParams;
   let preferences = defaults;
-  let profile = { display_name: "", job_title: "", phone: "", organization_name: "Crestview Holdings", account_roles: ["buyer"] as string[] };
+  let profile = { display_name: "", job_title: "", phone: "", organization_name: "", account_roles: ["buyer"] as string[] };
   let financialProfile = { available_cash: null as number | null, buyer_injection_percent: 15, illustrative_interest_rate: 11, credit_readiness: "not_provided", share_financial: "nda" };
 
   if (isSupabaseConfigured()) {
@@ -74,7 +74,7 @@ export default async function SettingsPage({
         display_name: profileData.display_name ?? "",
         job_title: profileData.job_title ?? "",
         phone: profileData.phone ?? "",
-        organization_name: profileData.organization_name ?? "Crestview Holdings",
+        organization_name: profileData.organization_name ?? "",
         account_roles: profileData.account_roles ?? ["buyer"],
       };
     }
@@ -87,12 +87,14 @@ export default async function SettingsPage({
         <PageHeading eyebrow={es ? "Preferencias" : "Preferences"} title={es ? "Configuración" : "Settings"} body={hasBuyerWorkspace ? (es ? "Enséñale a Crestview cómo es una adquisición sólida para ti." : "Teach Crestview what a strong acquisition looks like for you.") : (es ? "Administra tu perfil, organización y espacio de trabajo." : "Manage your profile, organization, and workspace.")} />
         <form className="settings-panel" action={saveAccountProfile}>
           <input type="hidden" name="locale" value={locale}/>
-          <div><span>{es ? "Cuenta y organización" : "Account and organization"}</span><h2>{es ? "Perfil público dentro de Crestview" : "Your Crestview profile"}</h2><p>{es ? "Tu nombre se usa en mensajes y borradores en toda la plataforma." : "Your name is used in messages and drafts throughout the platform."}</p></div>
+          <div><span>{es ? "Cuenta y organización" : "Account and organization"}</span><h2>{es ? "Tu perfil de Crestview" : "Your Crestview profile"}</h2><p>{es ? "Tu nombre se usa en mensajes y borradores en toda la plataforma. La organización y el teléfono son opcionales. Esto no publica un perfil de corredor." : "Your name is used in messages and drafts throughout the platform. Organization and phone are optional. This does not publish a broker profile."}</p></div>
+          {messages.profile === "1" && <p className="auth-success" role="status">{es ? "Tu perfil se guardó." : "Your profile was saved."}</p>}
+          {messages.error?.startsWith("profile_") && <p className="auth-error" role="alert">{es ? "No se pudo guardar el perfil. Revisa los campos e inténtalo de nuevo." : "Your profile could not be saved. Check the fields and try again."}</p>}
           <div className="preference-grid">
-            <label>{es ? "Nombre" : "Display name"}<input name="display_name" defaultValue={profile.display_name}/></label>
-            <label>{es ? "Organización" : "Organization"}<input name="organization_name" defaultValue={profile.organization_name}/></label>
-            <label>{es ? "Puesto" : "Job title"}<input name="job_title" defaultValue={profile.job_title}/></label>
-            <label>{es ? "Teléfono" : "Phone"}<input name="phone" defaultValue={profile.phone}/></label>
+            <label>{es ? "Nombre" : "Display name"}<input name="display_name" maxLength={100} autoComplete="name" defaultValue={profile.display_name}/></label>
+            <label>{es ? "Organización" : "Organization"}<input name="organization_name" maxLength={160} autoComplete="organization" defaultValue={profile.organization_name}/></label>
+            <label>{es ? "Puesto" : "Job title"}<input name="job_title" maxLength={120} autoComplete="organization-title" defaultValue={profile.job_title}/></label>
+            <label>{es ? "Teléfono" : "Phone"}<input name="phone" type="tel" maxLength={50} autoComplete="tel" defaultValue={profile.phone}/></label>
           </div>
           <button className="button button--primary">{es ? "Guardar perfil" : "Save profile"}</button>
         </form>
@@ -118,7 +120,7 @@ export default async function SettingsPage({
             <p>{es ? "Completa esto una vez para mejorar coincidencias y solicitudes futuras." : "Complete this once so brokers can understand your fit without making you repeat the same information."}</p>
           </div>
           {messages.saved && <p className="auth-success">{es ? "Tus preferencias fueron guardadas." : "Your buyer preferences were saved."}</p>}
-          {messages.error && <p className="auth-error">Crestview could not save these preferences. Please try again.</p>}
+          {messages.error === "save" && <p className="auth-error" role="alert">{es ? "No se pudieron guardar tus preferencias. Inténtalo de nuevo." : "Crestview could not save these preferences. Please try again."}</p>}
           <div className="preference-grid">
             <label>Cash available for an acquisition
               <input name="available_cash" defaultValue={financialProfile.available_cash ?? ""} inputMode="numeric" placeholder="100000" />

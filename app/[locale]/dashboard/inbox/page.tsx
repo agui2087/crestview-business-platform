@@ -7,6 +7,7 @@ import { getMyInquiries } from "@/lib/marketplace";
 import { isLocale } from "@/lib/i18n";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { markNotificationRead, sendMessage } from "../marketplace/actions";
+import { indexInquirySummaries } from "@/lib/inquiry-summary";
 
 export const metadata: Metadata = { title: "Deal inbox" };
 
@@ -37,7 +38,7 @@ export default async function InboxPage({ params, searchParams }: PageProps<"/[l
     const supabase = await createSupabaseServerClient();
     const brokerInquiries = inquiries.filter((inquiry) => inquiry.broker_id === userId && !inquiry.id.startsWith("demo-"));
     const summaries = await Promise.all(brokerInquiries.map(async (inquiry) => ({ inquiry, result: await supabase.rpc("get_broker_buyer_summary", { target_inquiry: inquiry.id }) })));
-    buyerProfiles = new Map(summaries.filter(({ result }) => result.data).map(({ inquiry, result }) => [inquiry.buyer_id, result.data as BrokerBuyerSummary]));
+    buyerProfiles = indexInquirySummaries(summaries.map(({ inquiry, result }) => ({ inquiry, result: { data: result.data as BrokerBuyerSummary | null } })));
   }
   const featured = inquiries[0];
   const brokerQueue = isBroker && userId ? inquiries.filter((inquiry) => inquiry.broker_id === userId && (
@@ -52,7 +53,7 @@ export default async function InboxPage({ params, searchParams }: PageProps<"/[l
         {isBroker && <section className="broker-action-queue">
           <div className="section-inline-heading"><div><span className="source-label">Broker workspace</span><h2>Action queue</h2></div><span>{brokerQueue.length} need attention</span></div>
           {brokerQueue.length ? <div className="broker-queue-grid">{brokerQueue.map((inquiry) => {
-            const buyer = buyerProfiles.get(inquiry.buyer_id);
+            const buyer = buyerProfiles.get(inquiry.id);
             const action = inquiry.financial_access_status === "requested" ? "Review financial request" : inquiry.status === "submitted" ? "Review new buyer" : inquiry.status === "nda_signed" ? "NDA signed — decide next step" : "Review offer or LOI";
             return <Link href={`/${locale}/dashboard/deals/${inquiry.id}`} key={inquiry.id}>
               <div><span>{action}</span><strong>{inquiry.marketplace_listings?.title ?? inquiry.subject}</strong></div>

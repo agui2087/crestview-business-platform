@@ -3,16 +3,16 @@
 Requested: all 25 workstreams plus a broker profile section. No workstream is complete merely because a page exists. Each needs implementation review, authorization tests, relevant browser rehearsal and verified production deployment. Human validation and independent reviews must not be represented as software deliverables.
 
 ## Added priority: broker profiles
-Implementation in progress: separate public-safe data, draft/publish controls, broker-only editing, public directory and profile, specialities/areas/languages/approach and welcome for preparing buyers. No automatic publication of account contact data, claims of verified credentials, fabricated reviews or deal counts.
+PR 96 implemented separate public-safe data, draft/publish controls, broker-only editing, public directory and profile, specialities/areas/languages/approach and welcome for preparing buyers. No automatic publication of account contact data, claims of verified credentials, fabricated reviews or deal counts. Migrations 0061/0062 applied to isolated and production databases; production row-level security and verification triggers checked. Connected synthetic rehearsal passed, including draft privacy, publish/unpublish, unauthorized edits, mobile/desktop, EN/ES and automated accessibility. CI passed 269 tests, 87 browser checks (3 skipped) and 10 purchase-navigation checks. Production deployment is separately verified in the release report.
 
 ## Workstream ledger
 | # | Workstream | Current evidence / remaining work |
 |---|---|---|
 |1|Existing feature audit|Started. Buyer settings already include preferences, funding, summary and financial-sharing controls. Continue full inventory.|
-|2|Welcoming buyer paths|Explicit preparing/active paths and tailored next steps need review and implementation.|
-|3|Reusable buyer profile|Existing settings; audit validation, reuse, defaults and visibility.|
-|4|Readiness checklist|Audit acquisition checklist versus buyer preparation; avoid rejection scores.|
-|5|Financial readiness/privacy|Existing funding and sharing fields; audit evidence labels, review provenance and expiry.|
+|2|Welcoming buyer paths|Private preparing/actively searching choice and welcoming marketplace copy added. Both paths retain access; deeper path-specific guidance remains.|
+|3|Reusable buyer profile|Existing settings. Account-profile validation, blank optional organization/contact values and truthful save outcomes added in follow-up; broader buyer-preference validation and atomic saves remain.|
+|4|Readiness checklist|Private reversible eight-step preparation checklist, progress and next step added. No readiness/rejection score or proof-of-funds gate. Further contextual education remains.|
+|5|Financial readiness/privacy|Self-asserted verified-account/funds claims blocked at database level. Inbox labels no longer imply proof or lender approval. Evidence provenance and expiry remain.|
 |6|Financing preparation|Existing financial scenarios; audit assumptions and lender-preparation workflow.|
 |7|Listing clarity|Audit financial periods, included assets, requirements and corrections.|
 |8|Inquiry types|Audit current inquiries; add preparing/public-question intent without granting confidential access.|

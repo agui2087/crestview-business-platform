@@ -57,10 +57,10 @@ export default async function InboxPage({ params, searchParams }: PageProps<"/[l
             return <Link href={`/${locale}/dashboard/deals/${inquiry.id}`} key={inquiry.id}>
               <div><span>{action}</span><strong>{inquiry.marketplace_listings?.title ?? inquiry.subject}</strong></div>
               <p>{buyer?.display_name ?? "Prospective buyer"} · {buyer?.acquisition_timeline ?? inquiry.financial_request_timeline ?? "Timeline private or not provided"}</p>
-              <div className="buyer-readiness-tags"><small>{buyer?.funding_status ?? "Funding details private"}</small><small className={buyer?.proof_of_funds_status === "verified" ? "is-verified" : ""}>Funds: {buyer?.proof_of_funds_status?.replaceAll("_", " ") ?? "private"}</small>{buyer?.experience_level && <small>Experience: {buyer.experience_level.replaceAll("_", " ")}</small>}</div>
+              <div className="buyer-readiness-tags"><small>{buyer?.funding_status ?? "Funding details private"}</small><small>Funds: {buyer?.proof_of_funds_status === 'available' ? 'buyer says evidence is available' : buyer?.proof_of_funds_status === 'verified' ? 'review the supporting evidence' : buyer?.proof_of_funds_status === 'not_provided' ? 'not provided yet' : 'private'}</small>{buyer?.experience_level && <small>Experience: {buyer.experience_level.replaceAll("_", " ")}</small>}</div>
               {buyer?.available_cash && <p className="buyer-financial-disclosure">Buyer-provided available cash: ${Number(buyer.available_cash).toLocaleString("en-US")} · not lender verified</p>}
               {buyer?.buyer_summary && <blockquote>{buyer.buyer_summary}</blockquote>}
-              <small className="buyer-source-label">{buyer?.labels?.profile ?? "Buyer provided"} · {buyer?.verification_status ?? "unverified"} account</small>
+              <small className="buyer-source-label">{buyer?.labels?.profile ?? "Buyer provided"} · Readiness is not loan approval. Missing funding today does not mean a buyer cannot prepare.</small>
               <b>Open workspace →</b>
             </Link>;
           })}</div> : <p className="panel-empty broker-queue-empty">Nothing needs your attention right now. Automated NDA requests and routine updates stay out of your queue.</p>}

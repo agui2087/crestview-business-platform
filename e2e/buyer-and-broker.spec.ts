@@ -7,7 +7,7 @@ test.beforeEach(async ({ page }, testInfo) => {
 
 test("buyer can filter the marketplace and begin an NDA request", async ({ page }) => {
   await page.goto("/en/dashboard/marketplace");
-  await expect(page.getByRole("heading", { name: "Businesses ready for serious buyers" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Explore businesses at your own pace" })).toBeVisible();
 
   await page.getByLabel("Location").selectOption({ label: "Portland, OR" });
   await page.getByRole("button", { name: "Show matches" }).click();

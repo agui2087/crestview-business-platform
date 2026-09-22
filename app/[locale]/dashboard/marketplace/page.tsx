@@ -29,9 +29,10 @@ export default async function MarketplacePage({ params, searchParams }: PageProp
       <div className="dashboard-content marketplace-page">
         <PageHeading
           eyebrow="Crestview marketplace"
-          title="Businesses ready for serious buyers"
+          title="Explore businesses at your own pace"
           body="Explore broker-posted opportunities, request confidential information, and move each conversation into one secure workspace."
         />
+        <p className="notice">{locale==='es'?'¿Todavía estás aprendiendo o ahorrando? Eres bienvenido. Explora información pública y prepara tus próximos pasos sin prometer fondos que aún no tienes.':'Still learning or building savings? You are welcome. Explore public information and prepare your next steps without claiming funds you do not yet have.'} <Link href={`/${locale}/dashboard/preparation`}>{locale==='es'?'Mi plan de preparación':'My preparation plan'}</Link></p>
         <div className="marketplace-trust">
           <div><strong>{listings.length}</strong><span>Active opportunities</span></div>
           <div><strong>Secure</strong><span>NDA-gated deal rooms</span></div>
@@ -68,7 +69,7 @@ export default async function MarketplacePage({ params, searchParams }: PageProp
         </div>
         <PromotionAnalytics locale={locale}><div className="marketplace-listings">
           {visibleListings.map((listing) => (
-            <article className="marketplace-card" key={listing.id}>
+            <article className="marketplace-card" key={listing.id} id={`listing-${listing.id}`}>
               <ListingPromotionLabel tier={listing.promotion?.tier} locale={locale}/>
               {listing.promotion && <PromotionEngagement listingId={listing.id}/>}
               <header>

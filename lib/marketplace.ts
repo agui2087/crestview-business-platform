@@ -14,6 +14,11 @@ export type MarketplaceListing = {
   asking_price: number | null;
   annual_revenue: number | null;
   cash_flow: number | null;
+  financial_period_start?: string | null;
+  financial_period_end?: string | null;
+  cash_flow_basis?: string;
+  financial_figure_type?: string;
+  financial_context_note?: string;
   financing_available: boolean;
   public_highlights: string[];
   status: string;
@@ -127,7 +132,7 @@ export async function getMarketplaceListings() {
     freshnessCutoff.setDate(freshnessCutoff.getDate() - (listingProductsEnabled()?60:30));
     const { data, error } = await supabase
       .from("marketplace_listings")
-      .select("id,broker_id,title,summary,industry,city,state_code,asking_price,annual_revenue,cash_flow,financing_available,public_highlights,status,updated_at,quality_score,listing_nda_templates(auto_send)")
+      .select("id,broker_id,title,summary,industry,city,state_code,asking_price,annual_revenue,cash_flow,financial_period_start,financial_period_end,cash_flow_basis,financial_figure_type,financial_context_note,financing_available,public_highlights,status,updated_at,quality_score,listing_nda_templates(auto_send)")
       .eq("status", "published")
       .gte("updated_at", freshnessCutoff.toISOString())
       .order("updated_at", { ascending: false });
@@ -158,7 +163,7 @@ export async function getMyListings(userId?: string) {
     const supabase = await createSupabaseServerClient();
     const { data, error } = await supabase
       .from("marketplace_listings")
-      .select("id,broker_id,title,summary,industry,city,state_code,asking_price,annual_revenue,cash_flow,financing_available,public_highlights,status,updated_at,quality_score,listing_nda_templates(auto_send)")
+      .select("id,broker_id,title,summary,industry,city,state_code,asking_price,annual_revenue,cash_flow,financial_period_start,financial_period_end,cash_flow_basis,financial_figure_type,financial_context_note,financing_available,public_highlights,status,updated_at,quality_score,listing_nda_templates(auto_send)")
       .eq("broker_id", userId)
       .order("updated_at", { ascending: false });
     if (error) throw new Error("Workspace records could not be loaded.");
@@ -199,7 +204,7 @@ export async function getMyInquiries(userId?: string) {
 }
 
 export function formatMoney(value: number | null) {
-  if (!value) return "Available after inquiry";
+  if (value === null || !Number.isFinite(value)) return "Not provided";
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value);
 }
 

@@ -101,6 +101,7 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
   // Treat the signed NDA record as the source of truth. Older workspaces can have
   // a signed agreement while their inquiry stage still says `nda_sent`.
   const ndaSigned = workspace.nda?.status === "signed";
+  const introductoryQuestion = workspace.inquiry.requested_items?.includes("Public listing question") && !workspace.nda;
   const effectiveStatus = ndaSigned && workspace.inquiry.status === "nda_sent"
     ? "nda_signed"
     : workspace.inquiry.status;
@@ -136,6 +137,7 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
         {query.error === "document_link" && <p className="notice" role="alert">{locale === "es" ? "Usa un enlace HTTPS válido sin usuario ni contraseña en la dirección." : "Use a valid HTTPS link without a username or password in the address."}</p>}
         {query.error && !String(query.error).startsWith("financial_") && !["document_file","document_upload","document_required","document_save","document_source","document_link","upload_limit","nda_changed","nda_unavailable","sharing_changed"].includes(String(query.error)) && <p className="notice" role="alert">{query.error === "message_invalid" ? "Enter a message between 1 and 5,000 characters." : query.error === "message_failed" ? "Your message was not sent. Please try again." : query.error === "closing_confirmation" ? "Confirm that the closing occurred outside Crestview before marking this deal closed." : query.error === "nda_send" ? "The NDA could not be sent. An existing agreement will not be replaced; review its current status below." : "We could not confirm the requested change. Review the current status and try again. Your documents and signed agreements remain protected."}</p>}
         {query.message === "sent" && <p className="notice" role="status">Your message was sent.</p>}
+        {introductoryQuestion && <p className="notice">{locale === "es" ? "Esta conversación comenzó con una pregunta sobre información pública. No se solicitó un NDA ni se concedió acceso a documentos privados. Puedes conversar antes de decidir el siguiente paso." : "This conversation started with a question about public information. No NDA was requested and no private document access was granted. You can discuss the opportunity before deciding on the next step."}</p>}
         {query.stage === "updated" && <p className="notice" role="status">The shared deal stage was updated.</p>}
         {terminal && <p className="data-notice"><strong>{effectiveStatus === "closed" ? "Reported closed" : "This inquiry was declined"}</strong><span>{effectiveStatus === "closed" ? "The broker marked this deal closed. Crestview records progress; it does not transfer ownership, process the purchase price, or confirm legal closing. Keep your final agreements and professional confirmations." : "No further purchase steps are expected unless the broker reopens screening. Existing records remain available according to their permissions."}</span></p>}
         {query.error && String(query.error).startsWith("financial_") && <p className="notice" role="alert">{query.error === "financial_conflict"
@@ -215,7 +217,7 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
         </div>
         <div className="deal-simple-flow" aria-label="Deal progress">
           <div className="is-done"><span>✓</span><div><strong>Inquiry</strong><small>Buyer connected</small></div></div>
-          <div className={ndaSigned ? "is-done" : "is-current"}><span>{ndaSigned ? "✓" : "2"}</span><div><strong>NDA</strong><small>{ndaSigned ? "Signed" : "Awaiting signature"}</small></div></div>
+          <div className={ndaSigned ? "is-done" : "is-current"}><span>{ndaSigned ? "✓" : "2"}</span><div><strong>NDA</strong><small>{ndaSigned ? "Signed" : workspace.nda ? "Awaiting signature" : "Not started"}</small></div></div>
           <div className={financialApproved ? "is-done" : ndaSigned ? "is-current" : ""}><span>{financialApproved ? "✓" : "3"}</span><div><strong>Documents</strong><small>{financialApproved ? "Access approved" : "Request and review"}</small></div></div>
           <div className={["offer","closed"].includes(effectiveStatus) ? "is-current" : ""}><span>4</span><div><strong>Offer &amp; close</strong><small>Move forward when ready</small></div></div>
         </div>

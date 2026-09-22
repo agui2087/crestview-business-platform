@@ -10,12 +10,12 @@ PR 96 implemented separate public-safe data, draft/publish controls, broker-only
 |---|---|---|
 |1|Existing feature audit|Started. Buyer settings already include preferences, funding, summary and financial-sharing controls. Continue full inventory.|
 |2|Welcoming buyer paths|Private preparing/actively searching choice and welcoming marketplace copy added. Both paths retain access; deeper path-specific guidance remains.|
-|3|Reusable buyer profile|Existing settings. Account-profile validation, blank optional organization/contact values and truthful save outcomes added in follow-up; broader buyer-preference validation and atomic saves remain.|
+|3|Reusable buyer profile|Account-profile validation and optional organization/contact values shipped. Follow-up adds strict buyer-preference validation, atomic self-only saves, zero/blank financial inputs, price-range checks and preservation of the explicitly chosen budget. Unit/database tests and connected browser save/reload passed; release tracked separately.|
 |4|Readiness checklist|Private reversible eight-step preparation checklist, progress and next step added. No readiness/rejection score or proof-of-funds gate. Further contextual education remains.|
 |5|Financial readiness/privacy|Self-asserted verified-account/funds claims blocked at database level. Inbox labels no longer imply proof or lender approval. Evidence provenance and expiry remain.|
 |6|Financing preparation|Existing financial scenarios; audit assumptions and lender-preparation workflow.|
 |7|Listing clarity|Audit financial periods, included assets, requirements and corrections.|
-|8|Inquiry types|Audit current inquiries; add preparing/public-question intent without granting confidential access.|
+|8|Inquiry types|Separate public-question action added without financial declarations, automatic NDA delivery or confidential access. Transactional message/notification, duplicate retry protection, bounded submissions and closed-conversation protection. Connected buyer/broker rehearsal passed; release tracked separately. Existing NDA path remains.|
 |9|Broker pipeline|Existing deal inbox and signing center; audit readiness context, actions and handoffs.|
 |10|Respectful follow-up|Audit pause/decline/reopen and preferences; no pressure or unlimited reminders.|
 |11|NDA/signing|Account signing and safe corrections live. External signers, packets and email activation unfinished.|

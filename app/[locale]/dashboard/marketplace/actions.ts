@@ -378,6 +378,19 @@ export async function confirmListingAvailability(formData: FormData) {
   redirect(`/${locale}/dashboard/listings?confirmed=1`);
 }
 
+export async function askListingQuestion(formData: FormData) {
+  const { locale, supabase, user } = await context(formData);
+  await requireRole(locale, supabase, user.id, "buyer");
+  const listing = z.string().uuid().safeParse(formData.get("listing_id"));
+  const question = z.string().trim().min(10).max(5000).safeParse(formData.get("question"));
+  if (!listing.success || !question.success) redirect(`/${locale}/dashboard/marketplace?error=question`);
+  const { data, error } = await supabase.rpc("ask_listing_question", { target_listing: listing.data, question: question.data, language: locale });
+  if (error || !data) redirect(`/${locale}/dashboard/marketplace?error=question`);
+  revalidatePath(`/${locale}/dashboard/inbox`);
+  revalidatePath(`/${locale}/dashboard/deals/${data}`);
+  redirect(`/${locale}/dashboard/deals/${data}?message=sent#deal-conversation`);
+}
+
 export async function createInquiry(formData: FormData) {
   const { locale, supabase, user } = await context(formData);
   await requireRole(locale, supabase, user.id, "buyer");

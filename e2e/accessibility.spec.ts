@@ -86,7 +86,7 @@ test("mobile dashboard navigation is keyboard operable", async ({ page }, testIn
 test("buyer marketplace meets the accessibility release gate", async ({ page }, testInfo) => {
   await createLocalAccount(page, `a11y-marketplace-${testInfo.project.name}`);
   await page.goto("/en/dashboard/marketplace");
-  await expect(page.getByRole("heading", { name: "Businesses ready for serious buyers" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Explore businesses at your own pace" })).toBeVisible();
   await expectAccessible(page);
 });
 

@@ -10,8 +10,10 @@ import type { Locale } from "@/lib/i18n";
 
 const navItems = [
   ["overview", "Overview", "Resumen", "home"],
+  ["preparation", "Buyer preparation", "Preparación del comprador", "check"],
   ["marketplace", "Marketplace", "Mercado", "search"],
   ["listings", "My listings", "Mis anuncios", "list"],
+  ["broker-profile", "Broker profile", "Perfil de corredor", "people"],
   ["inbox", "Deal inbox", "Bandeja de negocios", "inbox"],
   ["signing", "Signing center", "Centro de firmas", "document"],
   ["opportunities", "Browse listings", "Explorar anuncios", "search"],
@@ -28,10 +30,10 @@ const navItems = [
 ] as const;
 
 const navGroups = [
-  { label: ["Home", "Inicio"], slugs: ["overview", "inbox", "signing"] },
+  { label: ["Home", "Inicio"], slugs: ["overview", "preparation", "inbox", "signing"] },
   { label: ["Explore", "Explorar"], slugs: ["marketplace", "opportunities", "lists"] },
   { label: ["Workspace", "Espacio de trabajo"], slugs: ["pipeline", "tasks", "documents", "reports"] },
-  { label: ["Sell", "Vender"], slugs: ["listings", "workforce"] },
+  { label: ["Sell", "Vender"], slugs: ["listings", "broker-profile", "workforce"] },
   { label: ["Account", "Cuenta"], slugs: ["feedback", "real-estate", "plans", "settings"] },
 ] as const;
 
@@ -60,9 +62,9 @@ export async function PlatformShell({
   const isBuyer = roles.includes("buyer") || roles.includes("advisor");
   const visible = (slug: NavSlug) => {
     if (slug === "feedback") return pilotEnabled;
-    if (slug === "listings") return isBroker;
+    if (slug === "listings" || slug === "broker-profile") return isBroker;
     if (slug === "workforce") return isBroker || roles.includes("workforce");
-    if (["opportunities", "lists", "pipeline"].includes(slug)) return isBuyer;
+    if (["opportunities", "lists", "pipeline", "preparation"].includes(slug)) return isBuyer;
     return true;
   };
   const initials = user.displayName

@@ -7,7 +7,7 @@ import ts from "typescript";
 async function harness() {
   const source = await readFile(new URL("../app/[locale]/dashboard/deals/[id]/documents/[documentId]/file/route.ts", import.meta.url), "utf8");
   const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
-  const state = { signedIn: true, participant: true, visible: true, storageAllowed: true, mime: "application/pdf", downloads: 0 };
+  const state = { signedIn: true, participant: true, visible: true, storageAllowed: true, ndaSigned: true, approved: false, access: "nda_signed", mime: "application/pdf", downloads: 0 };
   const filters: unknown[] = [];
   const client = {
     auth: { getUser: async () => ({ data: { user: state.signedIn ? { id: "buyer" } : null }, error: null }) },
@@ -17,7 +17,7 @@ async function harness() {
         eq: (key: string, value: unknown) => { filters.push([table, key, value]); return q; },
         or: (value: string) => { filters.push([table, "or", value]); return q; },
         in: (key: string, value: unknown) => { filters.push([table, key, value]); return q; },
-        maybeSingle: async () => ({ error: null, data: table === "deal_inquiries" ? (state.participant ? { id: "deal" } : null) : state.visible ? { storage_path: "private.pdf", mime_type: state.mime } : null }),
+        maybeSingle: async () => ({ error: null, data: table === "deal_inquiries" ? (state.participant ? { id: "deal", broker_id: "broker", financial_access_status: state.approved ? "approved" : "not_requested" } : null) : table === "deal_ndas" ? (state.ndaSigned ? { id: "nda" } : null) : state.visible ? { storage_path: "private.pdf", mime_type: state.mime, access_level: state.access } : null }),
       }; return q;
     },
     storage: { from: () => ({ download: async () => { state.downloads++; return { data: state.storageAllowed ? new Blob(["synthetic document"]) : null, error: null }; } }) },
@@ -60,4 +60,15 @@ test("non-PDF files and explicit downloads are attachments, never active inline 
   assert.equal(response.headers.get("content-disposition"), 'attachment; filename="private.pdf"');
   assert.equal(response.headers.get("content-type"), "application/octet-stream");
   assert.equal(response.headers.get("x-content-type-options"), "nosniff");
+});
+test("file release independently requires signed evidence and financial approval", async () => {
+  const h = await harness();
+  h.state.ndaSigned = false;
+  assert.equal((await h.run()).status, 404);
+  h.state.ndaSigned = true; h.state.access = "approved";
+  assert.equal((await h.run()).status, 404);
+  h.state.approved = true;
+  assert.equal((await h.run()).status, 200);
+  h.state.access = "broker_only";
+  assert.equal((await h.run()).status, 404);
 });

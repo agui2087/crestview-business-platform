@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isLocale } from "@/lib/i18n";
+import { accountProfileSchema } from "@/lib/account-profile";
 
 function moneyValue(value: FormDataEntryValue | null) {
   const parsed = Number(String(value ?? "").replace(/[$,\s]/g, ""));
@@ -73,15 +74,19 @@ export async function saveAccountProfile(formData: FormData) {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect(`/${localeValue}/sign-in`);
-  await supabase.from("profiles").update({
-    display_name: String(formData.get("display_name") ?? "").trim() || null,
-    job_title: String(formData.get("job_title") ?? "").trim() || null,
-    phone: String(formData.get("phone") ?? "").trim() || null,
-    organization_name: String(formData.get("organization_name") ?? "").trim() || "Crestview Holdings",
+  const parsed = accountProfileSchema.safeParse({
+    display_name: formData.get("display_name") ?? "",
+    job_title: formData.get("job_title") ?? "",
+    phone: formData.get("phone") ?? "",
+    organization_name: formData.get("organization_name") ?? "",
+  });
+  if (!parsed.success) redirect(`/${localeValue}/dashboard/settings?error=profile_invalid`);
+  const { data, error } = await supabase.from("profiles").update({
+    ...parsed.data,
     locale: localeValue,
     onboarding_completed: true,
-    updated_at: new Date().toISOString(),
-  }).eq("user_id", user.id);
+  }).eq("user_id", user.id).select("user_id").maybeSingle();
+  if (error || !data) redirect(`/${localeValue}/dashboard/settings?error=profile_save`);
   revalidatePath(`/${localeValue}/dashboard`, "layout");
   redirect(`/${localeValue}/dashboard/settings?profile=1`);
 }

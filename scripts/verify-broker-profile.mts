@@ -38,11 +38,18 @@ try{
  await broker.page.getByRole('checkbox',{name:/Publish this profile/}).uncheck();await broker.page.getByRole('button',{name:'Save broker profile',exact:true}).click();await expect.poll(async()=>(await broker.auth.from('broker_profiles').select('published').eq('user_id',broker.id).single()).data?.published).toBe(false);
  expect((await visitor.goto(`${base}/en/brokers/${broker.id}`))?.status()).toBe(404);
  await buyer.page.goto(`${base}/en/dashboard/broker-profile`);await expect(buyer.page).toHaveURL(/dashboard\/settings/);
+ await buyer.page.getByLabel('Display name',{exact:true}).fill('Synthetic First-time Buyer');
+ await buyer.page.getByLabel('Organization',{exact:true}).fill('');
+ await buyer.page.getByLabel('Phone',{exact:true}).fill('');
+ await buyer.page.getByRole('button',{name:'Save profile',exact:true}).click();
+ await expect(buyer.page.getByRole('status')).toContainText('Your profile was saved.');
+ expect((await buyer.auth.from('profiles').select('display_name,organization_name,phone').eq('user_id',buyer.id).single()).data).toEqual({display_name:'Synthetic First-time Buyer',organization_name:null,phone:null});
+ await buyer.page.reload();await expect(buyer.page.getByLabel('Organization',{exact:true})).toHaveValue('');
  await buyer.page.goto(`${base}/en/dashboard/preparation`);await buyer.page.getByRole('checkbox',{name:'Define the business and location you want',exact:true}).check();await buyer.page.getByRole('radio',{name:'Actively searching',exact:true}).check();await buyer.page.getByRole('button',{name:'Save preparation',exact:true}).click();await expect(buyer.page.getByRole('status')).toContainText('Preparation saved.');
  await expect(buyer.page.getByRole('progressbar')).toHaveAttribute('value','1');expect((await broker.auth.from('buyer_preparation').select('user_id').eq('user_id',buyer.id)).data).toEqual([]);
  expect((await buyer.auth.from('profiles').update({verification_status:'verified'}).eq('user_id',buyer.id)).error).toBeTruthy();
  expect((await buyer.auth.from('buyer_preferences').upsert({user_id:buyer.id,proof_of_funds_status:'verified'})).error).toBeTruthy();
  await buyer.page.getByRole('radio',{name:'Preparing to buy',exact:true}).check();await buyer.page.getByRole('checkbox',{name:'Define the business and location you want',exact:true}).uncheck();await buyer.page.getByRole('button',{name:'Save preparation',exact:true}).click();await expect.poll(async()=>(await buyer.auth.from('buyer_preparation').select('path,completed_steps').eq('user_id',buyer.id).single()).data).toEqual({path:'preparing',completed_steps:[]});
  for(const locale of ['en','es']){await buyer.page.setViewportSize({width:390,height:900});await buyer.page.goto(`${base}/${locale}/dashboard/preparation`);expect(await buyer.page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);expect((await new AxeBuilder({page:buyer.page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze()).violations.map(v=>v.id)).toEqual([]);await buyer.page.screenshot({path:`/private/tmp/crestview-preparation-${locale}.png`,fullPage:true});}
- console.log('PASS: private draft, publish/unpublish, private account separation, ownership, buyer denial, private preparation without funds, reversible progress, verification spoof denial, EN/ES, desktop/mobile and automated accessibility.');
+ console.log('PASS: private draft, publish/unpublish, private account separation, ownership, buyer denial, optional account organization/contact save and reload, private preparation without funds, reversible progress, verification spoof denial, EN/ES, desktop/mobile and automated accessibility.');
 }finally{for(const id of ids)check(await admin.auth.admin.deleteUser(id));await browser.close();}

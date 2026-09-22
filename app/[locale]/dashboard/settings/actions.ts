@@ -7,6 +7,15 @@ import { isLocale } from "@/lib/i18n";
 import { accountProfileSchema } from "@/lib/account-profile";
 import { parseBuyerProfile } from "@/lib/buyer-profile";
 
+export async function saveNotificationPreferences(form:FormData) {
+ const locale=String(form.get('locale'));if(!isLocale(locale))redirect('/en/sign-in');
+ const db=await createSupabaseServerClient();const {data:{user}}=await db.auth.getUser();if(!user)redirect(`/${locale}/sign-in`);
+ const {error}=await db.from('buyer_notification_preferences').upsert({user_id:user.id,messages:form.get('messages')==='on',documents:form.get('documents')==='on',deal_status:form.get('deal_status')==='on',updated_at:new Date().toISOString()});
+ if(error)redirect(`/${locale}/dashboard/settings?error=notifications`);
+ revalidatePath(`/${locale}/dashboard/settings`);
+ redirect(`/${locale}/dashboard/settings?notifications=1`);
+}
+
 export async function saveBuyerPreferences(formData: FormData) {
   const localeValue = String(formData.get("locale") ?? "en");
   if (!isLocale(localeValue)) redirect("/en/sign-in");

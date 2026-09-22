@@ -24,6 +24,7 @@ export default async function DashboardPage({ params }: PageProps<"/[locale]/das
   let tasks: Task[] = [];
   let diligenceCount = 0;
   let flaggedCount = 0;
+  let savedCount=0,openTaskCount=0,activeDeals=0;
   let primaryRole = "buyer";
   let brokerQueueCount = 0;
   let brokerListingCount = 0;
@@ -37,18 +38,22 @@ export default async function DashboardPage({ params }: PageProps<"/[locale]/das
     if (authUser) {
       const accountRoles = "accountRoles" in user ? user.accountRoles : ["buyer"];
       primaryRole = accountRoles.includes("broker") ? "broker" : accountRoles.includes("advisor") ? "advisor" : "buyer";
-      const [{ data: dealData }, { data: taskData }, { count: diligence }, { count: flagged }, { count: brokerQueue }, { data: preferenceData }, { data: financeData }, { count: listingCount }, { count: publishedCount }, { count: inquiryCount }] = await Promise.all([
-        supabase.from("saved_opportunities").select("id,opportunity_key,stage,next_action,updated_at").eq("user_id", authUser.id).order("updated_at", { ascending: false }).limit(8),
-        supabase.from("deal_tasks").select("id,title,due_date,priority,opportunity_key").eq("user_id", authUser.id).eq("status", "open").order("due_date").limit(6),
-        supabase.from("diligence_items").select("*", { count: "exact", head: true }).eq("user_id", authUser.id).neq("status", "verified"),
+      const results=await Promise.all([
+        supabase.from("saved_opportunities").select("id,opportunity_key,stage,next_action,updated_at",{count:'exact'}).eq("user_id", authUser.id).order("updated_at", { ascending: false }).limit(8),
+        supabase.from("deal_tasks").select("id,title,due_date,priority,opportunity_key",{count:'exact'}).eq("user_id", authUser.id).eq("status", "open").order("due_date").limit(6),
+        supabase.from("diligence_items").select("*", { count: "exact", head: true }).eq("user_id", authUser.id).not("status", "in", "(verified,not_applicable)"),
         supabase.from("diligence_items").select("*", { count: "exact", head: true }).eq("user_id", authUser.id).eq("status", "flagged"),
-        supabase.from("deal_inquiries").select("*", { count: "exact", head: true }).eq("broker_id", authUser.id).or("status.in.(submitted,nda_signed,offer),financial_access_status.eq.requested"),
+        supabase.from("deal_inquiries").select("*", { count: "exact", head: true }).eq("broker_id", authUser.id).not('status','in','(closed,declined)').or("status.in.(submitted,nda_signed,offer),financial_access_status.eq.requested"),
         supabase.from("buyer_preferences").select("industries,locations,maximum_price,minimum_cash_flow,seller_financing_preferred,desired_owner_income,acquisition_timeline,funding_status,experience_level,buyer_summary").eq("user_id", authUser.id).maybeSingle(),
         supabase.from("buyer_financial_profiles").select("available_cash,buyer_injection_percent,illustrative_interest_rate").eq("user_id", authUser.id).maybeSingle(),
         supabase.from("marketplace_listings").select("id", { count: "exact", head: true }).eq("broker_id", authUser.id),
         supabase.from("marketplace_listings").select("id", { count: "exact", head: true }).eq("broker_id", authUser.id).in("status", ["published", "under_offer"]),
         supabase.from("deal_inquiries").select("id", { count: "exact", head: true }).eq("broker_id", authUser.id),
+        supabase.from('saved_opportunities').select('id',{count:'exact',head:true}).eq('user_id',authUser.id).not('stage','in','(saved,complete,passed)'),
       ]);
+      if(results.some(result=>result.error))throw new Error('Dashboard information could not be loaded. Please retry.');
+      const [{ data: dealData,count:savedTotal }, { data: taskData,count:taskTotal }, { count: diligence }, { count: flagged }, { count: brokerQueue }, { data: preferenceData }, { data: financeData }, { count: listingCount }, { count: publishedCount }, { count: inquiryCount },{count:activeTotal}]=results;
+      savedCount=savedTotal??0;openTaskCount=taskTotal??0;activeDeals=activeTotal??0;
       deals = (dealData ?? []) as Deal[];
       tasks = (taskData ?? []) as Task[];
       diligenceCount = diligence ?? 0;
@@ -61,7 +66,6 @@ export default async function DashboardPage({ params }: PageProps<"/[locale]/das
       buyerFinance = financeData;
     }
   }
-  const activeDeals = deals.filter((deal) => !["saved", "complete", "passed"].includes(deal.stage)).length;
   const buyerProfileStarted = Boolean(buyerFinance?.available_cash || buyerProfile);
   const resolved=await resolveOpportunities(deals.map(item=>item.opportunity_key),locale);
   return (
@@ -75,16 +79,16 @@ export default async function DashboardPage({ params }: PageProps<"/[locale]/das
         <section className={`role-home-card role-home-card--${primaryRole}`}>
           <div>
             <span>{primaryRole === "broker" ? "Broker workspace" : primaryRole === "advisor" ? "Advisor workspace" : "Buyer workspace"}</span>
-            <h2>{primaryRole === "broker" ? "Review qualified buyer activity without chasing routine NDA requests." : primaryRole === "advisor" ? "Keep client diligence, documents, and open questions together." : "Move from search to a confident acquisition decision."}</h2>
-            <p>{primaryRole === "broker" ? "NDA delivery is automatic. Your action queue only surfaces buyers, financial requests, and offers that need judgment." : primaryRole === "advisor" ? "Open the pipeline to review deal progress or continue a secure deal conversation." : "Complete your buyer profile once, then reuse it when requesting information from brokers."}</p>
+            <h2>{primaryRole === "broker" ? "Organize buyer questions, document requests and next steps." : primaryRole === "advisor" ? "Organize your own diligence notes and open questions." : "Move from search to a confident acquisition decision."}</h2>
+            <p>{primaryRole === "broker" ? "An inquiry is not a qualification or financing approval. Review each buyer’s questions and the information they choose to share." : primaryRole === "advisor" ? "Your workspace does not automatically grant access to another person’s transaction or documents." : "Complete your buyer profile once, then reuse it when requesting information from brokers."}</p>
           </div>
           <div className="role-home-actions">
             {primaryRole === "broker" && <><div className="role-home-count"><strong>{brokerQueueCount}</strong><span>items need attention</span></div><Link className="button button--primary" href={brokerListingCount ? `/${locale}/dashboard/listings` : `/${locale}/dashboard/listings?new=1#new-listing`}>{brokerListingCount ? "Manage listings" : "Create first listing"}</Link><Link className="button button--light" href={`/${locale}/dashboard/inbox`}>Open action queue</Link></>}
             {primaryRole === "buyer" && <><Link className="button button--primary" href={`/${locale}/dashboard/settings`}>{buyerProfileStarted ? "Review buyer profile" : "Complete buyer profile"}</Link><Link className="button button--light" href={`/${locale}/dashboard/marketplace`}>Browse broker listings</Link><Link className="role-home-tertiary" href={`/${locale}/dashboard/opportunities`}>Browse all opportunities →</Link></>}
-            {primaryRole === "advisor" && <><Link className="button button--primary" href={`/${locale}/dashboard/pipeline`}>Review client pipeline</Link><Link className="button button--light" href={`/${locale}/dashboard/inbox`}>Open deal inbox</Link></>}
+            {primaryRole === "advisor" && <><Link className="button button--primary" href={`/${locale}/dashboard/pipeline`}>Review your pipeline</Link><Link className="button button--light" href={`/${locale}/dashboard/inbox`}>Open deal inbox</Link></>}
           </div>
         </section>
-        {primaryRole === "buyer" && <BuyerCommandCenter locale={locale} profile={buyerProfile} finance={buyerFinance} activeDeals={activeDeals} openTasks={tasks.length} />}
+        {primaryRole === "buyer" && <BuyerCommandCenter locale={locale} profile={buyerProfile} finance={buyerFinance} activeDeals={activeDeals} openTasks={openTaskCount} />}
         {primaryRole === "broker" ? <>
           <section className="broker-onboarding-strip" aria-label="Broker setup progress">
             <div className={brokerListingCount ? "is-complete" : "is-current"}><span>{brokerListingCount ? "✓" : "1"}</span><strong>Create a listing</strong><small>Add the public business facts</small></div>
@@ -103,10 +107,10 @@ export default async function DashboardPage({ params }: PageProps<"/[locale]/das
           </div>
         </> : <><div className="metric-grid">
           {[
-            [text.overview.saved, String(deals.length), locale === "es" ? "Guardadas en tu cuenta" : "Stored in your account"],
+            [text.overview.saved, String(savedCount), locale === "es" ? "Guardadas en tu cuenta" : "Stored in your account"],
             [text.overview.active, String(activeDeals), `${flaggedCount} ${text.overview.attention.toLowerCase()}`],
             [text.overview.diligence, String(diligenceCount), locale === "es" ? "Pendientes de verificar" : "Awaiting verification"],
-            [text.overview.due, String(tasks.length), locale === "es" ? "En tu lista de trabajo" : "In your work queue"],
+            [text.overview.due, String(openTaskCount), locale === "es" ? "En tu lista de trabajo" : "In your work queue"],
           ].map(([label,value,detail]) => (
             <article className="metric-card" key={label}><span>{label}</span><strong>{value}</strong><small>{detail}</small></article>
           ))}

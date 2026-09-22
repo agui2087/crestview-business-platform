@@ -28,7 +28,7 @@ PR 96 implemented separate public-safe data, draft/publish controls, broker-only
 |18|Advisors/co-buyers|Audit actual transaction roles; explicit invitation and revocation required.|
 |19|Compatibility|Saved-opportunity and task CSV exports available. Task export now pages through records, fails explicitly instead of returning partial/empty success, neutralizes spreadsheet formulas and denies unrelated/anonymous access. Connected export test passed. CRM integrations/import mapping remain demand-dependent.|
 |20|Notifications|In-app active; email foundations disabled. Provider approval, sender verification, scheduling and rehearsal outstanding.|
-|21|Measurement|Audit events, privacy, definitions and reports; do not infer closing-rate uplift.|
+|21|Measurement|Dashboard saved/active/task totals now use full scoped database counts, not the 8/6-row display previews. Unavailable queries fail visibly; N/A diligence and finished inquiries are excluded from pending queues. Connected 9-plan/8-task regression passed. Broader funnel metrics remain; no closing-rate uplift claim.|
 |22|Fairness/privacy|No payment-linked credibility or opaque rejection scores. Review retention, sharing and human overrides.|
 |23|End-to-end testing|Extend synthetic rehearsals to both buyer paths and failure cases, EN/ES, accessibility and roles.|
 |24|Operations|Audit backup/restore evidence, monitoring, worker recovery, rollback, security and disclosures.|

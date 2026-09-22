@@ -9,17 +9,17 @@ PR 96 implemented separate public-safe data, draft/publish controls, broker-only
 | # | Workstream | Current evidence / remaining work |
 |---|---|---|
 |1|Existing feature audit|Started. Buyer settings already include preferences, funding, summary and financial-sharing controls. Continue full inventory.|
-|2|Welcoming buyer paths|Private preparing/actively searching choice and welcoming marketplace copy added. Both paths retain access; deeper path-specific guidance remains.|
+|2|Welcoming buyer paths|Private preparing/actively searching choice and welcoming marketplace copy added. Both paths retain access; tailored guidance and relevant next-step links added in the follow-up batch.|
 |3|Reusable buyer profile|Account-profile validation and optional organization/contact values shipped. Follow-up adds strict buyer-preference validation, atomic self-only saves, zero/blank financial inputs, price-range checks and preservation of the explicitly chosen budget. Unit/database tests and connected browser save/reload passed; release tracked separately.|
 |4|Readiness checklist|Private reversible eight-step preparation checklist, progress and next step added. No readiness/rejection score or proof-of-funds gate. Further contextual education remains.|
 |5|Financial readiness/privacy|Self-asserted verified-account/funds claims blocked at database level. Inbox labels no longer imply proof or lender approval. Evidence provenance and expiry remain.|
 |6|Financing preparation|Existing financial scenarios; audit assumptions and lender-preparation workflow.|
 |7|Listing clarity|Audit financial periods, included assets, requirements and corrections.|
 |8|Inquiry types|Separate public-question action added without financial declarations, automatic NDA delivery or confidential access. Transactional message/notification, duplicate retry protection, bounded submissions and closed-conversation protection. Connected buyer/broker rehearsal passed; release tracked separately. Existing NDA path remains.|
-|9|Broker pipeline|Existing deal inbox and signing center; audit readiness context, actions and handoffs.|
+|9|Broker pipeline|Stage and listing-name filters added, with introductory questions distinct from NDA, document review, offers and finished conversations. Shared zero cash remains visible; no wealth-ranking score. Corrected misleading active count. Follow-up batch verification/release tracked separately.|
 |10|Respectful follow-up|Audit pause/decline/reopen and preferences; no pressure or unlimited reminders.|
 |11|NDA/signing|Account signing and safe corrections live. External signers, packets and email activation unfinished.|
-|12|Confidential sharing|Existing protected documents; audit full permission and lifecycle matrix.|
+|12|Confidential sharing|Existing protected documents. Found private broker notes on buyer-readable listing rows; migration 0067 preserves them in owner-only storage and sanitizes future writes. Isolated direct-access tests passed; production RLS enabled, anonymous access denied and zero notes remain on listing rows. Historical access not assessed. Owner read/edit UI and strict signed-NDA display added in follow-up. Full lifecycle audit remains.|
 |13|Seller preparation|Audit requests, financial periods, add-backs and provenance.|
 |14|Acquisition checklist|Existing tailored tasks/NA/evidence/owners/deadlines; audit dependencies and reopening.|
 |15|Due-diligence questions|Audit linking, answers, unresolved exports and advisor permissions.|

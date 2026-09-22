@@ -11,7 +11,7 @@ import { getCrestviewUser } from "@/lib/current-user";
 import { formatMoney, getMyListings } from "@/lib/marketplace";
 import { isLocale } from "@/lib/i18n";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
-import { confirmListingAvailability, createListing, updateListingStatus } from "../marketplace/actions";
+import { confirmListingAvailability, createListing, savePrivateListingNote, updateListingStatus } from "../marketplace/actions";
 
 export const metadata: Metadata = { title: "Broker listings" };
 
@@ -27,6 +27,7 @@ export default async function ListingsPage({ params, searchParams }: PageProps<"
   let userId: string | undefined;
   let inquiryCount = 0;
   let awaitingSignatureCount = 0;
+  const privateNotes = new Map<string, string>();
   if (isSupabaseConfigured() && user.source === "supabase") {
     const supabase = await createSupabaseServerClient();
     userId = (await supabase.auth.getUser()).data.user?.id;
@@ -37,6 +38,9 @@ export default async function ListingsPage({ params, searchParams }: PageProps<"
       ]);
       inquiryCount = inquiries ?? 0;
       awaitingSignatureCount = awaiting ?? 0;
+      const {data: notes, error: notesError} = await supabase.from("listing_private_notes").select("listing_id,notes").eq("broker_id",userId);
+      if (notesError) throw new Error("Private notes could not be loaded. Please try again.");
+      for (const note of notes ?? []) privateNotes.set(note.listing_id,note.notes);
     }
   }
   const listings = await getMyListings(userId);
@@ -52,6 +56,7 @@ export default async function ListingsPage({ params, searchParams }: PageProps<"
           action={<Link className="button button--primary" href={`/${locale}/dashboard/listings?new=1#new-listing`}>+ Add a listing</Link>}
         />
         {query.created && <p className="notice">Your listing was saved successfully.</p>}
+        {query.notes_saved && <p className="notice" role="status">{locale === "es" ? "Nota privada guardada. Solo tú puedes verla." : "Private note saved. Only you can see it."}</p>}
         {query.updated && <p className="notice" role="status">{locale === "es" ? "Cambios guardados." : "Your listing changes were saved."}</p>}
         {query.nda_saved && <p className="notice" role="status">{locale === "es" ? "NDA guardado. Ahora puedes publicar el borrador con un plan activo." : "NDA saved. You can now publish the draft with an active broker plan."}</p>}
         {query.confirmed && <p className="notice">{locale==='es'?'Disponibilidad confirmada.':'Listing availability confirmed.'}</p>}
@@ -110,7 +115,7 @@ export default async function ListingsPage({ params, searchParams }: PageProps<"
             <details className="listing-optional-section">
               <summary>Add private notes and selling options</summary>
               <div className="listing-form-grid">
-                <label className="span-two confidential-field">Private broker notes<textarea name="confidential_notes" placeholder="Notes for the protected deal workspace. These never appear on the public listing." /></label>
+                <label className="span-two confidential-field">Private broker notes<textarea name="confidential_notes" maxLength={10000} placeholder="Owner-only notes. These are not shared with buyers or other brokers." /></label>
               </div>
               <div className="listing-form-options">
                 <label><input type="checkbox" name="financing_available" /> Seller financing may be available</label>
@@ -147,6 +152,12 @@ export default async function ListingsPage({ params, searchParams }: PageProps<"
               {!listing.id.startsWith('demo-')&&<Link className="button button--light" href={`/${locale}/dashboard/listings/${listing.id}/prepare-nda`}>{locale==='es'?'Colocar campos de firma del NDA':'Place NDA signature fields'}</Link>}
               {listing.id.startsWith("demo-") && <span className="stage">Example listing</span>}
               {!listing.id.startsWith("demo-") && listing.status === "draft" && <ListingDraftEditor listing={listing} locale={locale}/>}
+              {!listing.id.startsWith("demo-") && <details className="request-panel"><summary>{locale === "es" ? "Tus notas privadas" : "Your private notes"}</summary><form action={savePrivateListingNote}>
+                <input type="hidden" name="locale" value={locale}/><input type="hidden" name="listing_id" value={listing.id}/>
+                <label>{locale === "es" ? "Nota privada del corredor" : "Private broker note"}<textarea name="private_note" maxLength={10000} defaultValue={privateNotes.get(listing.id) ?? ""}/></label>
+                <p>{locale === "es" ? "Solo tú puedes ver esta nota. No se comparte con compradores ni otros corredores." : "Only you can see this note. It is not shared with buyers or other brokers."}</p>
+                <button className="button button--light" type="submit">{locale === "es" ? "Guardar nota privada" : "Save private note"}</button>
+              </form></details>}
             </article>
           ))}
         </div>

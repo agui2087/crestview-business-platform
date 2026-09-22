@@ -21,12 +21,12 @@ PR 96 implemented separate public-safe data, draft/publish controls, broker-only
 |11|NDA/signing|Account signing and safe corrections live. External signers, packets and email activation unfinished.|
 |12|Confidential sharing|Existing protected documents. Found private broker notes on buyer-readable listing rows; migration 0067 preserves them in owner-only storage and sanitizes future writes. Isolated direct-access tests passed; production RLS enabled, anonymous access denied and zero notes remain on listing rows. Historical access not assessed. Owner read/edit UI and strict signed-NDA display added in follow-up. Full lifecycle audit remains.|
 |13|Seller preparation|Eight-step owner-only reversible checklist covers authority, financial periods, reconciliation, add-backs, included assets, transfer questions, confidentiality and unresolved questions. Database owner/isolation tests and connected buyer denial, save/reload, EN/ES desktop/mobile accessibility passed. It is self-reported preparation, not a verification badge.|
-|14|Acquisition checklist|Existing tailored tasks/NA/evidence/owners/deadlines; audit dependencies and reopening.|
+|14|Acquisition checklist|Existing tailored tasks/NA/evidence/owners/deadlines. Follow-up task page now offers the buyer’s actual inquiries/saved plans, resolves real listing titles, validates inputs and reports save failures. Connected create/complete/reopen passed. Audit checklist dependencies separately.|
 |15|Due-diligence questions|Audit linking, answers, unresolved exports and advisor permissions.|
 |16|Buyer education|Existing guides; audit contextual explanations and EN/ES consistency.|
 |17|Future buyers|Audit saved preferences and opt-in re-engagement; no automatic sensitive disclosure.|
 |18|Advisors/co-buyers|Audit actual transaction roles; explicit invitation and revocation required.|
-|19|Compatibility|Inventory existing exports/imports; validate demand before new CRM integrations.|
+|19|Compatibility|Saved-opportunity and task CSV exports available. Task export now pages through records, fails explicitly instead of returning partial/empty success, neutralizes spreadsheet formulas and denies unrelated/anonymous access. Connected export test passed. CRM integrations/import mapping remain demand-dependent.|
 |20|Notifications|In-app active; email foundations disabled. Provider approval, sender verification, scheduling and rehearsal outstanding.|
 |21|Measurement|Audit events, privacy, definitions and reports; do not infer closing-rate uplift.|
 |22|Fairness/privacy|No payment-linked credibility or opaque rejection scores. Review retention, sharing and human overrides.|

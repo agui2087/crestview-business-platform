@@ -1,4 +1,9 @@
 export type SavedExport = { opportunity_key: string; stage: string; next_action: string | null; notes: string | null; updated_at: string };
+export type TaskExport = {title:string;opportunity_key:string|null;due_date:string|null;priority:string;status:string};
+export function tasksCsv(rows:TaskExport[],es:boolean) {
+ const header=es?['Título','Oportunidad','Fecha límite','Prioridad','Estado']:['Title','Opportunity','Due date','Priority','Status'];
+ return '\uFEFF'+[header,...rows.map(row=>[row.title,row.opportunity_key,row.due_date,row.priority,row.status])].map(row=>row.map(csvCell).join(',')).join('\r\n');
+}
 
 // Quoting alone does not prevent spreadsheet formula execution.
 export function csvCell(value: unknown) {

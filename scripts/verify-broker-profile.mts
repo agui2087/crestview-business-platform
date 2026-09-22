@@ -125,5 +125,21 @@ try{
  expect((await buyer.auth.from('buyer_preferences').upsert({user_id:buyer.id,proof_of_funds_status:'verified'})).error).toBeTruthy();
  await buyer.page.getByRole('radio',{name:'Preparing to buy',exact:true}).check();await buyer.page.getByRole('checkbox',{name:'Define the business and location you want',exact:true}).uncheck();await buyer.page.getByRole('button',{name:'Save preparation',exact:true}).click();await expect.poll(async()=>(await buyer.auth.from('buyer_preparation').select('path,completed_steps').eq('user_id',buyer.id).single()).data).toEqual({path:'preparing',completed_steps:[]});
  for(const locale of ['en','es'])for(const width of [1280,390]){await buyer.page.setViewportSize({width,height:900});await buyer.page.goto(`${base}/${locale}/dashboard/preparation`);await expect(buyer.page.getByRole('heading',{name:locale==='es'?'Prepárate a tu ritmo':'Prepare at your own pace',exact:true})).toBeVisible();await expect(buyer.page.getByRole('checkbox')).toHaveCount(8);expect(await buyer.page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);expect((await new AxeBuilder({page:buyer.page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze()).violations.map(v=>v.id)).toEqual([]);await buyer.page.screenshot({path:`/private/tmp/crestview-preparation-${locale}-${width}.png`,fullPage:true});}
- console.log('PASS: private draft, publish/unpublish, private account separation, ownership, buyer denial, optional account organization/contact save and reload, private preparation without funds, reversible progress, verification spoof denial, EN/ES, desktop/mobile and automated accessibility.');
+ await buyer.page.goto(`${base}/en/dashboard/tasks`);
+ await buyer.page.locator('input[name="title"]').fill('=Synthetic task formula');
+ await buyer.page.locator('select[name="opportunity_key"]').selectOption(`deal-${inquiry.data!.id}`);
+ await buyer.page.locator('form.task-create button[type="submit"]').click();
+ await expect(buyer.page.getByRole('status')).toContainText('Task saved.');
+ const taskCard=buyer.page.locator('.task-list article').filter({hasText:'=Synthetic task formula'});
+ await expect(taskCard).toContainText('Synthetic question rehearsal only');
+ await taskCard.getByRole('button',{name:'Complete',exact:true}).click();
+ await expect(taskCard.getByRole('button',{name:'Reopen',exact:true})).toBeVisible();
+ await taskCard.getByRole('button',{name:'Reopen',exact:true}).click();
+ await expect(taskCard.getByRole('button',{name:'Complete',exact:true})).toBeVisible();
+ check(await admin.from('deal_tasks').insert({user_id:broker.id,title:'OTHER-ACCOUNT-PRIVATE-TASK'}));
+ const exported=await buyer.page.request.get(`${base}/api/export/tasks?locale=es`);
+ expect(exported.status()).toBe(200);expect(exported.headers()['cache-control']).toBe('private, no-store');
+ const exportedText=await exported.text();expect(exportedText).toContain('Título');expect(exportedText).toContain("'=Synthetic task formula");expect(exportedText).not.toContain('OTHER-ACCOUNT-PRIVATE-TASK');
+ expect((await visitor.request.get(`${base}/api/export/tasks`)).status()).toBe(401);
+ console.log('PASS: broker and buyer profile/privacy journeys, introductory questions, seller preparation and public financial context, task create/complete/reopen and private formula-safe export, EN/ES desktop/mobile accessibility.');
 }finally{for(const id of ids)check(await admin.auth.admin.deleteUser(id));await browser.close();}

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { csvCell, savedOpportunitiesCsv,tasksCsv } from './customer-export.ts';
+import { csvCell, savedOpportunitiesCsv,tasksCsv,diligenceCsv } from './customer-export.ts';
 test('customer exports contain only supplied saved records and preserve quoting', () => {
   const csv = savedOpportunitiesCsv([{opportunity_key:'private-key',stage:'diligence',next_action:'Call',notes:'Private, "note"',updated_at:'2026-09-11'}], new Map([['private-key','Actual saved deal']]), false);
   assert.ok(csv.includes('Actual saved deal')); assert.ok(csv.includes('Private, ""note""')); assert.equal(csv.split('\r\n').length,2);
@@ -16,4 +16,10 @@ test('task exports neutralize formulas, preserve quotes and label Spanish column
  assert.ok(csv.includes('"\'=HYPERLINK(""https://example.invalid"")"'));
  assert.equal(csv.split('\r\n').length,2);
  assert.equal(tasksCsv([],false).split('\r\n').length,1);
+});
+test('diligence exports mark self-reported status and private notes without implying advisor access',()=>{
+ const csv=diligenceCsv([{category:'Financial',title:'=1+1',status:'received',due_date:null,assigned_role:'CPA',notes:'Private, "answer"'}],false);
+ assert.ok(csv.includes('Self-reported status'));assert.ok(csv.includes('not an invitation'));
+ assert.ok(csv.includes('"\'=1+1"'));assert.ok(csv.includes('Private, ""answer""'));
+ assert.ok(diligenceCsv([],true).includes('Notas privadas'));
 });

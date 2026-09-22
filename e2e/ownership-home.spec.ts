@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test("building motion eases across scroll steps and settles in both directions", async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name.startsWith("mobile"), "Mobile artwork is static.");
+  test.skip(testInfo.project.name.startsWith("mobile"), "Desktop sticky motion is tested separately from phone artwork.");
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/en");
   const scene = page.locator("section[aria-labelledby='ownership-title']");
@@ -16,6 +16,28 @@ test("building motion eases across scroll steps and settles in both directions",
   await expect.poll(() => scene.evaluate(el => Number(el.style.getPropertyValue("--journey")))).toBe(1);
   await page.evaluate(() => scrollTo(0, 0));
   await expect.poll(() => scene.evaluate(el => Number(el.style.getPropertyValue("--journey")))).toBe(0);
+});
+
+test("phone artwork moves while visible and respects reduced motion", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 664 });
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.goto("/en");
+  await page.evaluate(() => { document.documentElement.style.scrollBehavior = "auto"; });
+  for (const title of ["ownership-title", "evaluate-title", "own-title"]) {
+    const section = page.locator(`section[aria-labelledby='${title}']`);
+    const artwork = section.locator("svg").filter({ has: page.locator("g") }).first();
+    const part = artwork.locator(title === "ownership-title" ? "g[class*='office']" : "g[class]").first();
+    const top = await artwork.evaluate(el => el.getBoundingClientRect().top + scrollY);
+    await page.evaluate(y => scrollTo(0, y), Math.max(0, top - 560));
+    await page.waitForTimeout(800);
+    const before = await part.evaluate(el => getComputedStyle(el).transform);
+    await page.evaluate(y => scrollTo(0, y), Math.max(0, top - 150));
+    await expect.poll(() => part.evaluate(el => getComputedStyle(el).transform)).not.toBe(before);
+  }
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const office = page.locator("section[aria-labelledby='ownership-title'] g[class*='office']");
+  await expect.poll(() => office.evaluate(el => getComputedStyle(el).transform)).toBe("none");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
 test("desktop scene stays pinned without leaving an empty scroll tail", async ({ page }, testInfo) => {

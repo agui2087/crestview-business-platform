@@ -508,17 +508,10 @@ export async function advanceInquiry(formData: FormData) {
   }
   if (formData.get("expected_updated_at") !== inquiry.updated_at) redirect(`/${locale}/dashboard/deals/${inquiryId}?error=stage_conflict`);
   if (status === "closed" && formData.get("closing_confirmed") !== "on") redirect(`/${locale}/dashboard/deals/${inquiryId}?error=closing_confirmation`);
-  const {data: changed, error: changeError} = await supabase.from("deal_inquiries").update({status,updated_at:new Date().toISOString()}).eq("id",inquiryId).eq("broker_id",user.id).eq("updated_at",inquiry.updated_at).select("id").maybeSingle();
-  if (changeError || !changed) redirect(`/${locale}/dashboard/deals/${inquiryId}?error=stage_conflict`);
-  const followups = await Promise.all([
-    supabase.from("deal_status_events").insert({ inquiry_id: inquiryId, actor_id: user.id, from_status: inquiry.status, to_status: status }),
-    supabase.from("marketplace_notifications").insert({
-      user_id: inquiry.buyer_id === user.id ? inquiry.broker_id : inquiry.buyer_id,
-      inquiry_id: inquiryId, kind: "status", title: "Deal status updated",
-      body: `The deal moved to ${status.replaceAll("_", " ")}.`, href: `/${locale}/dashboard/deals/${inquiryId}`,
-    }),
-  ]);
-  if (followups.some(result => result.error)) await reportOperationalEvent({event:"deal.status_followup_failed",level:"error",route:"/dashboard/deals/[id]",message:"Stage saved, but activity or notification could not be recorded."});
+  const reason=String(formData.get('stage_reason')??'').trim();
+  if(reason.length>1000||(reason.length>0&&reason.length<10)||(status==='declined'&&reason.length<10))redirect(`/${locale}/dashboard/deals/${inquiryId}?error=stage_reason`);
+  const {error:changeError}=await supabase.rpc('advance_my_broker_inquiry',{p_inquiry:inquiryId,p_expected:inquiry.updated_at,p_status:status,p_reason:reason,p_closed_confirmed:formData.get('closing_confirmed')==='on',p_locale:locale});
+  if(changeError)redirect(`/${locale}/dashboard/deals/${inquiryId}?error=stage_conflict`);
   revalidatePath(`/${locale}/dashboard/inbox`);
   revalidatePath(`/${locale}/dashboard/deals/${inquiryId}`);
   redirect(`/${locale}/dashboard/deals/${inquiryId}?stage=updated`);

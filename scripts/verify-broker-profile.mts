@@ -162,5 +162,20 @@ try{
  await buyer.page.goto(`${base}/en/dashboard/settings`);await buyer.page.getByRole('checkbox',{name:'New messages',exact:true}).check();
  await buyer.page.getByRole('button',{name:'Save notification preferences',exact:true}).click();
  await expect(buyer.page.getByRole('status')).toContainText('Notification preferences saved to your account.');
- console.log('PASS: broker and buyer profile/privacy journeys, introductory questions, seller preparation and financial context, task lifecycle and private export, full dashboard counts, account notification save/reload and muted notice with preserved message, EN/ES desktop/mobile accessibility.');
+ await broker.page.goto(`${base}/en/dashboard/deals/${inquiry.data!.id}`);
+ await broker.page.locator('select[name="status"]').selectOption('declined');
+ await broker.page.locator('textarea[name="stage_reason"]').fill('The seller needs a different transition timeline. Please revisit when timing aligns.');
+ await broker.page.getByRole('button',{name:'Update stage',exact:true}).click();
+ await expect(broker.page.getByRole('status').filter({hasText:'The shared deal stage was updated.'})).toBeVisible();
+ await buyer.page.goto(`${base}/en/dashboard/deals/${inquiry.data!.id}`);
+ await expect(buyer.page.getByText('This inquiry was declined',{exact:true})).toBeVisible();
+ await expect(buyer.page.locator('.deal-overview-strip')).toContainText('Declined');
+ await expect(buyer.page.locator('.decline-explanation')).toContainText('The seller needs a different transition timeline. Please revisit when timing aligns.');
+ await expect(buyer.page.locator('.decline-explanation')).toBeVisible();
+ await broker.page.reload();await broker.page.locator('select[name="status"]').selectOption('screening');
+ await broker.page.locator('textarea[name="stage_reason"]').fill('We can discuss the revised transition timeline together.');
+ await broker.page.getByRole('button',{name:'Update stage',exact:true}).click();
+ await expect(broker.page.getByRole('status').filter({hasText:'The shared deal stage was updated.'})).toBeVisible();
+ await expect.poll(async()=>(await buyer.auth.from('deal_inquiries').select('status,financial_access_status').eq('id',inquiry.data!.id).single()).data).toEqual({status:'screening',financial_access_status:'not_requested'});
+ console.log('PASS: broker/buyer/seller/task/notification journeys, accurate counts, explained decline/reopen without document access, EN/ES desktop/mobile accessibility.');
 }finally{for(const id of ids)check(await admin.auth.admin.deleteUser(id));await browser.close();}

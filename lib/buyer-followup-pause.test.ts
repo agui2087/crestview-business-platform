@@ -1,0 +1,51 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {PGlite} from '@electric-sql/pglite';
+
+test('follow-up pause is buyer-controlled, inquiry-scoped, audited and preserves essential notices',async()=>{
+ const db=new PGlite();
+ const buyer='00000000-0000-4000-8000-000000000001',broker='00000000-0000-4000-8000-000000000002',outsider='00000000-0000-4000-8000-000000000003';
+ const inquiry='00000000-0000-4000-8000-000000000004',second='00000000-0000-4000-8000-000000000005';
+ try {
+  await db.exec(`create role anon;create role authenticated;create schema auth;
+   create table auth.users(id uuid primary key);insert into auth.users values('${buyer}'),('${broker}'),('${outsider}');
+   create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('test.uid',true),'')::uuid$$;
+   grant usage on schema auth to authenticated;
+   create table deal_inquiries(id uuid primary key,buyer_id uuid,broker_id uuid);
+   insert into deal_inquiries values('${inquiry}','${buyer}','${broker}'),('${second}','${buyer}','${broker}');
+   grant select on deal_inquiries to authenticated;
+   create table marketplace_notifications(user_id uuid,inquiry_id uuid,kind text);grant select,insert on marketplace_notifications to authenticated;`);
+  for(const file of ['0070_notification_preferences.sql','0072_buyer_followup_pause.sql'])await db.exec(await readFile(new URL(`../supabase/migrations/${file}`,import.meta.url),'utf8'));
+  await db.exec('set role authenticated');
+  const as=async(id:string)=>db.query("select set_config('test.uid',$1,false)",[id]);
+  await as(broker);
+  await assert.rejects(db.query('insert into buyer_followup_preferences(inquiry_id,buyer_id,paused) values($1,$2,true)',[inquiry,broker]));
+  await as(buyer);
+  await db.query('insert into buyer_followup_preferences(inquiry_id,buyer_id,paused) values($1,$2,true)',[inquiry,buyer]);
+  await db.exec('update buyer_followup_preferences set paused=true');
+  assert.equal((await db.query('select * from buyer_followup_events')).rows.length,1,'no duplicate event for unchanged preference');
+  await assert.rejects(db.query('update buyer_followup_preferences set inquiry_id=$1',[second]));
+  await assert.rejects(db.query('update buyer_followup_events set paused=false'));
+  await assert.rejects(db.query('delete from buyer_followup_events'));
+  await as(broker);
+  assert.equal((await db.query<{paused:boolean}>('select paused from buyer_followup_preferences')).rows[0].paused,true);
+  assert.equal((await db.query('update buyer_followup_preferences set paused=false returning *')).rows.length,0);
+  for(const kind of ['message','nda','security','financial_access','document'])await db.query('insert into marketplace_notifications values($1,$2,$3)',[buyer,inquiry,kind]);
+  assert.deepEqual((await db.query<{kind:string}>('select kind from marketplace_notifications')).rows.map(r=>r.kind),['nda','security','financial_access','document']);
+  await db.query("insert into marketplace_notifications values($1,$2,'message')",[buyer,second]);
+  assert.equal((await db.query("select * from marketplace_notifications where kind='message'")).rows.length,1,'other inquiry unaffected');
+  await as(outsider);
+  assert.equal((await db.query('select * from buyer_followup_preferences')).rows.length,0);
+  assert.equal((await db.query('select * from buyer_followup_events')).rows.length,0);
+  await assert.rejects(db.query('insert into buyer_followup_preferences(inquiry_id,buyer_id) values($1,$2)',[second,outsider]));
+  await as(buyer);await db.exec('update buyer_followup_preferences set paused=false');
+  assert.equal((await db.query('select * from buyer_followup_events')).rows.length,2);
+  await db.query("insert into marketplace_notifications values($1,$2,'message')",[buyer,inquiry]);
+  assert.equal((await db.query("select * from marketplace_notifications where kind='message'")).rows.length,2,'resume restores messages');
+  await db.query('insert into buyer_notification_preferences(user_id,messages) values($1,false)',[buyer]);
+  await db.query("insert into marketplace_notifications values($1,$2,'message')",[buyer,inquiry]);
+  assert.equal((await db.query("select * from marketplace_notifications where kind='message'")).rows.length,2,'account preference still respected');
+  await db.exec('reset role;set role anon');await assert.rejects(db.query('select * from buyer_followup_preferences'));
+ }finally{await db.close();}
+});

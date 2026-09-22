@@ -4,7 +4,7 @@ import {chromium,expect as baseExpect} from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import {randomUUID} from 'node:crypto';
 const expect=baseExpect.configure({timeout:60000});
-const url=process.env.NEXT_PUBLIC_SUPABASE_URL,key=process.env.SUPABASE_SERVICE_ROLE_KEY,base='http://127.0.0.1:3214';
+const url=process.env.NEXT_PUBLIC_SUPABASE_URL,key=process.env.SUPABASE_SERVICE_ROLE_KEY,base='http://127.0.0.1:3215';
 if(url!=='https://bxtrkycetuoqooammgpp.supabase.co'||!key)throw Error('Isolated test project only');
 const admin=createClient(url,key,{auth:{persistSession:false}}),browser=await chromium.launch();const ids:string[]=[];
 const check=(r:{error:unknown})=>{if(r.error){const issue=r.error as {code?:string;message?:string};throw Error(`Synthetic fixture operation failed: ${issue.code ?? ''} ${issue.message ?? ''}`);}};
@@ -177,5 +177,28 @@ try{
  await broker.page.getByRole('button',{name:'Update stage',exact:true}).click();
  await expect(broker.page.getByRole('status').filter({hasText:'The shared deal stage was updated.'})).toBeVisible();
  await expect.poll(async()=>(await buyer.auth.from('deal_inquiries').select('status,financial_access_status').eq('id',inquiry.data!.id).single()).data).toEqual({status:'screening',financial_access_status:'not_requested'});
- console.log('PASS: broker/buyer/seller/task/notification journeys, accurate counts, explained decline/reopen without document access, EN/ES desktop/mobile accessibility.');
+ await buyer.page.goto(`${base}/en/dashboard/deals/${inquiry.data!.id}`);
+ await buyer.page.getByRole('checkbox',{name:'Request a pause in routine follow-up',exact:true}).check();
+ await buyer.page.getByRole('button',{name:'Save follow-up preference',exact:true}).click();
+ await expect(buyer.page.getByRole('status').filter({hasText:'Follow-up preference saved.'})).toBeVisible();
+ await buyer.page.reload();await expect(buyer.page.getByRole('checkbox',{name:'Request a pause in routine follow-up',exact:true})).toBeChecked();
+ await broker.page.reload();await expect(broker.page.getByRole('heading',{name:'Buyer requests a pause',exact:true})).toBeVisible();
+ expect((await broker.auth.from('buyer_followup_preferences').update({paused:false}).eq('inquiry_id',inquiry.data!.id).select()).data).toEqual([]);
+ check(await broker.auth.from('deal_messages').insert({inquiry_id:inquiry.data!.id,sender_id:broker.id,recipient_id:buyer.id,body:'Synthetic paused follow-up test'}));
+ check(await broker.auth.from('marketplace_notifications').insert({inquiry_id:inquiry.data!.id,user_id:buyer.id,kind:'message',title:'Synthetic paused test',body:'Synthetic paused test',href:`/en/dashboard/deals/${inquiry.data!.id}`}));
+ expect((await buyer.auth.from('marketplace_notifications').select('id').eq('inquiry_id',inquiry.data!.id).eq('title','Synthetic paused test')).data).toEqual([]);
+ expect((await buyer.auth.from('deal_messages').select('id').eq('inquiry_id',inquiry.data!.id).eq('body','Synthetic paused follow-up test')).data?.length).toBe(1);
+ for(const locale of ['en','es'])for(const width of [1280,390]){
+  await buyer.page.setViewportSize({width,height:900});await buyer.page.goto(`${base}/${locale}/dashboard/deals/${inquiry.data!.id}`);
+  const form=buyer.page.locator('form').filter({has:buyer.page.locator('input[name="paused"]')});
+  await expect(form).toBeVisible();expect(await buyer.page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+  expect((await new AxeBuilder({page:buyer.page}).include('form:has(input[name="paused"])').withTags(['wcag2a','wcag2aa','wcag21aa']).analyze()).violations.map(v=>v.id)).toEqual([]);
+ }
+ await buyer.page.goto(`${base}/en/dashboard/deals/${inquiry.data!.id}`);
+ await buyer.page.getByRole('checkbox',{name:'Request a pause in routine follow-up',exact:true}).uncheck();
+ await buyer.page.getByRole('button',{name:'Save follow-up preference',exact:true}).click();
+ await expect(buyer.page.getByRole('status').filter({hasText:'Follow-up preference saved.'})).toBeVisible();
+ expect((await buyer.auth.from('buyer_followup_events').select('id').eq('inquiry_id',inquiry.data!.id)).data?.length).toBe(2);
+ expect((await buyer.auth.from('deal_inquiries').select('status,financial_access_status').eq('id',inquiry.data!.id).single()).data).toEqual({status:'screening',financial_access_status:'not_requested'});
+ console.log('PASS: broker/buyer/seller/task/notification journeys, accurate counts, explained decline/reopen, buyer pause/resume/privacy with unchanged document permissions, EN/ES desktop/mobile accessibility.');
 }finally{for(const id of ids)check(await admin.auth.admin.deleteUser(id));await browser.close();}

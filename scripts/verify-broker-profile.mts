@@ -200,5 +200,14 @@ try{
  await expect(buyer.page.getByRole('status').filter({hasText:'Follow-up preference saved.'})).toBeVisible();
  expect((await buyer.auth.from('buyer_followup_events').select('id').eq('inquiry_id',inquiry.data!.id)).data?.length).toBe(2);
  expect((await buyer.auth.from('deal_inquiries').select('status,financial_access_status').eq('id',inquiry.data!.id).single()).data).toEqual({status:'screening',financial_access_status:'not_requested'});
- console.log('PASS: broker/buyer/seller/task/notification journeys, accurate counts, explained decline/reopen, buyer pause/resume/privacy with unchanged document permissions, EN/ES desktop/mobile accessibility.');
+ const diligenceKey=`deal-${inquiry.data!.id}`;
+ for(const status of ['open','received','flagged','verified','not_applicable'])check(await buyer.auth.from('diligence_items').insert({user_id:buyer.id,opportunity_key:diligenceKey,category:'Financial',title:`=SYNTHETIC-${status}`,status,notes:`Private research ${status}`}));
+ const diligenceUrl=`${base}/api/export/diligence?opportunity=${diligenceKey}`;
+ const diligenceExport=await buyer.page.request.get(diligenceUrl);expect(diligenceExport.status()).toBe(200);
+ const diligenceText=await diligenceExport.text();expect(diligenceText).toContain('Self-reported status');expect(diligenceText).toContain("'=SYNTHETIC-open");expect(diligenceText).toContain('Private research verified');expect(diligenceExport.headers()['cache-control']).toBe('private, no-store');
+ const unresolved=await buyer.page.request.get(`${diligenceUrl}&unresolved=1&locale=es`);expect(unresolved.status()).toBe(200);
+ const unresolvedText=await unresolved.text();expect(unresolvedText).toContain('Notas privadas');expect(unresolvedText).toContain('Private research received');expect(unresolvedText).not.toContain('Private research verified');expect(unresolvedText).not.toContain('Private research not_applicable');
+ expect(await (await broker.page.request.get(diligenceUrl)).text()).not.toContain('Private research');
+ expect((await visitor.request.get(diligenceUrl)).status()).toBe(401);
+ console.log('PASS: broker/buyer/seller/task/notification journeys, explained decline/reopen, buyer pause/resume, private diligence/unresolved exports and isolation, EN/ES desktop/mobile accessibility.');
 }finally{for(const id of ids)check(await admin.auth.admin.deleteUser(id));await browser.close();}

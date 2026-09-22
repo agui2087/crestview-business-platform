@@ -11,6 +11,7 @@ const check=(r:{error:unknown})=>{if(r.error)throw Error('Synthetic fixture oper
 async function actor(role:string){
  const email=`profile-test-${randomUUID()}@crestview.test`,password=randomUUID()+randomUUID();
  const result=await admin.auth.admin.createUser({email,password,email_confirm:true});check(result);const id=result.data.user!.id;ids.push(id);
+ expect((await admin.from('profiles').select('organization_name').eq('user_id',id).single()).data?.organization_name).toBeNull();
  check(await admin.from('profiles').update({account_roles:[role],phone:'PRIVATE-NOT-FOR-PUBLIC',organization_name:'PRIVATE-ACCOUNT'}).eq('user_id',id));
  const jar=new Map<string,string>();const auth=createServerClient(url!,key!,{cookies:{getAll:()=>[...jar].map(([name,value])=>({name,value})),setAll:items=>items.forEach(({name,value})=>jar.set(name,value))}});
  check(await auth.auth.signInWithPassword({email,password}));const context=await browser.newContext();await context.addCookies([...jar].map(([name,value])=>({name,value,url:base,sameSite:'Lax'})));const page=await context.newPage();page.setDefaultTimeout(60000);return{id,page,auth};

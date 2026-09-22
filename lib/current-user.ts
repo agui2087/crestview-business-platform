@@ -21,7 +21,7 @@ export const getCrestviewUser = cache(async (locale: Locale) => {
     return {
       ...authUser,
       displayName: profile?.display_name ?? authUser.displayName,
-      organizationName: profile?.organization_name ?? "Crestview Holdings",
+      organizationName: profile?.organization_name?.trim() || (locale === "es" ? "Mi espacio de trabajo" : "My workspace"),
       accountRoles: profile?.account_roles ?? ["buyer"],
       locale: profile?.locale === "es" ? "es" : locale,
     };

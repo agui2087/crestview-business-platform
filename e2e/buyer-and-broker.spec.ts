@@ -15,9 +15,12 @@ test("buyer can filter the marketplace and begin an NDA request", async ({ page 
   await expect(page.locator(".marketplace-card")).toHaveCount(1);
 
   const listing = page.locator(".marketplace-card").first();
-  await listing.locator("summary").click();
+  await listing.locator("summary").filter({ hasText: /Review the NDA instantly|Request the listing NDA/ }).click();
   await expect(listing.getByLabel("Message to broker")).toContainText("interested");
   await expect(listing.getByRole("button", { name: /Open NDA|Request NDA/ })).toBeVisible();
+  await listing.locator("summary").filter({ hasText: "Ask a question before moving forward" }).click();
+  await expect(listing.getByRole("button", { name: "Send question", exact: true })).toBeVisible();
+  await expect(listing.getByLabel("Your question", { exact: true })).toBeVisible();
 });
 
 test("broker listing form is understandable and formats money", async ({ page }) => {

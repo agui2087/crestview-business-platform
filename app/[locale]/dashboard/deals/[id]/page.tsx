@@ -25,11 +25,12 @@ type WorkspaceData = {
   nda: { id?: string; status: string; document_name: string; template_body: string | null; storage_path?: string | null; template_version?: number; signing_layout?: unknown; signed_at: string | null; signer_name: string | null } | null;
   ndaUrl: string | null;
   ndaControls?: NdaControls|null;
-  documents: { id: string; title: string; category: string; external_url: string | null; secure_url?: string | null; storage_path?: string | null; original_filename?: string | null; mime_type?: string | null; file_size_bytes?: number | null; access_level?: string; permission_note?: string | null; security_status?: string | null; scan_provider?: string | null; scan_completed_at?: string | null; version: number; created_at: string }[];
+  documents: { id: string; title: string; category: string; external_url: string | null; secure_url?: string | null; storage_path?: string | null; original_filename?: string | null; mime_type?: string | null; file_size_bytes?: number | null; access_level?: string; permission_note?: string | null; security_status?: string | null; scan_provider?: string | null; scan_completed_at?: string | null; replacement_note?: string | null; version: number; created_at: string }[];
   requests: { id: string; item_name: string; note: string | null; status: string; document_id: string | null; created_at: string; resolved_at: string | null }[];
   events: { id: string; to_status: string; note: string | null; created_at: string }[];
   listingFinancials?: { asking_price: number | null; annual_revenue: number | null; cash_flow: number | null };
   isDemo: boolean;
+  archivedDocuments?: {id:string;title:string;version:number;superseded_at:string|null}[];
 };
 
 async function getWorkspace(id: string, userId?: string, locale = "en"): Promise<WorkspaceData> {
@@ -62,12 +63,15 @@ async function getWorkspace(id: string, userId?: string, locale = "en"): Promise
   const results = await Promise.all([
     supabase.from("deal_messages").select("id,body,sender_id,created_at").eq("inquiry_id", id).order("created_at"),
     supabase.from("deal_ndas").select("id,status,document_name,template_body,storage_path,template_version,signing_layout,signed_at,signer_name").eq("inquiry_id", id).maybeSingle(),
-    supabase.from("deal_room_documents").select("id,title,category,storage_path,original_filename,mime_type,file_size_bytes,external_url,access_level,permission_note,security_status,scan_provider,scan_completed_at,version,created_at").eq("inquiry_id", id).eq("is_active", true).order("created_at"),
+    supabase.from("deal_room_documents").select("id,title,category,storage_path,original_filename,mime_type,file_size_bytes,external_url,access_level,permission_note,security_status,scan_provider,scan_completed_at,replacement_note,version,created_at").eq("inquiry_id", id).eq("is_active", true).order("created_at"),
     supabase.from("deal_document_requests").select("id,item_name,note,status,document_id,created_at,resolved_at").eq("inquiry_id", id).order("created_at"),
     supabase.from("deal_status_events").select("id,to_status,note,created_at").eq("inquiry_id", id).order("created_at"),
   ]);
   if (results.some(result => result.error)) throw new Error("The complete deal workspace could not be loaded. Please try again.");
   const [{ data: messages }, { data: nda }, { data: documents }, { data: requests }, { data: events }] = results;
+  const archived = inquiry.broker_id === userId ? await supabase.from("deal_room_documents")
+    .select("id,title,version,superseded_at").eq("inquiry_id", id).eq("is_active", false).order("created_at", {ascending:false}) : {data:[],error:null};
+  if (archived.error) throw new Error("Document history could not be loaded.");
   const {data:ndaControls,error:controlsError}=nda?await supabase.from('deal_nda_controls').select('*').eq('nda_id',nda.id).maybeSingle():{data:null,error:null};
   if(controlsError)throw new Error('Agreement status could not be verified. Please refresh.');
   const listing = inquiry.marketplace_listings as unknown as { title: string; asking_price?: number | null; annual_revenue?: number | null; cash_flow?: number | null } | null;
@@ -86,6 +90,7 @@ async function getWorkspace(id: string, userId?: string, locale = "en"): Promise
   return {
     inquiry: inquiry as unknown as typeof demoInquiries[number], title: listing?.title ?? inquiry.subject,
     isBuyer: inquiry.buyer_id === userId, isDemo: false, messages: messages ?? [], nda, ndaUrl, ndaControls, documents: documentsWithUrls, requests: requests ?? [], events: events ?? [],
+    archivedDocuments: archived.data ?? [],
     listingFinancials: { asking_price: listing?.asking_price ?? null, annual_revenue: listing?.annual_revenue ?? null, cash_flow: listing?.cash_flow ?? null },
   };
 }
@@ -131,7 +136,7 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
         <div className="workspace-back"><Link href={`/${locale}/dashboard/inbox`}>← Back to deal inbox</Link><span>Private workspace</span></div>
         <PageHeading eyebrow={workspace.isBuyer ? "Buyer workspace" : "Broker workspace"} title={workspace.title} body={workspace.isBuyer ? "Your guided path from first inquiry through diligence and closing." : "Review the buyer, share records securely, and move the deal forward from one place."} />
         {query.nda && <p className="notice">The NDA was {query.nda === "signed" ? "signed and the deal room is unlocked" : "sent successfully"}.</p>}
-        {query.document && <p className="notice" role="status">{query.document === "sharing" ? "Document access updated. Existing download links may remain usable for up to 15 minutes; downloaded copies cannot be recalled." : "Document saved. Check its access setting below before sharing."}</p>}
+        {query.document && <p className="notice" role="status">{query.document === "replaced" ? (locale === "es" ? "Nueva versión guardada. Se conservaron el original y los permisos." : "New version saved. The original and sharing permissions were preserved.") : query.document === "sharing" ? "Document access updated. New opens check permissions; previously issued temporary links may remain usable until expiry. Downloaded copies cannot be recalled." : "Document saved. Check its access setting below before sharing."}</p>}
         {query.signing&&<p className="notice" role="status">{['invalid','unavailable'].includes(String(query.signing))?(locale==='es'?'No se confirmó el cambio. Revisa el estado, el plazo y el límite de recordatorios antes de reintentar.':'The change could not be confirmed. Check the current status, deadline, and reminder cooldown before retrying.'):(locale==='es'?'Solicitud actualizada. Los recordatorios se entregan dentro de Crestview, no por correo.':'Signature request updated. Reminders are delivered inside Crestview, not by email.')}</p>}
         {query.error && ["document_file","document_upload","document_required","document_save","document_source","upload_limit","nda_changed","nda_unavailable","sharing_changed"].includes(String(query.error)) && <p className="notice" role="alert">{query.error === "document_file" ? "The file was not accepted. Use a supported file up to 3.5 MB. Security scanning must succeed before it can be saved." : query.error === "document_source" ? "Choose either a file or an external link, not both." : query.error === "nda_unavailable" ? "The agreement file could not be retrieved. Nothing was signed; please try again." : query.error === "nda_changed" ? "Signing could not be confirmed. Review the current agreement and status before trying again." : query.error === "sharing_changed" ? "Sharing could not be updated. Refresh and check the current permissions before trying again." : "The document could not be saved. Check the file and storage limit, then try again."}</p>}
         {query.error === "document_link" && <p className="notice" role="alert">{locale === "es" ? "Usa un enlace HTTPS válido sin usuario ni contraseña en la dirección." : "Use a valid HTTPS link without a username or password in the address."}</p>}
@@ -342,9 +347,12 @@ export default async function DealWorkspacePage({ params, searchParams }: { para
                 <small>Changes apply to this deal only. New file opens and downloads check current permissions. Previously issued temporary storage links may remain usable until expiry. Downloaded copies and external-service access cannot be recalled.</small>
                 <PendingAction>Save access</PendingAction>
               </form></details>}
+              {!workspace.isBuyer && !workspace.isDemo && document.storage_path && <details><summary>{locale === "es" ? "Reemplazar con una nueva versión" : "Replace with a new version"}</summary><DealDocumentUpload action={addDealRoomDocument} locale={locale} inquiryId={id} ndaSigned={ndaSigned} approved={financialApproved} requests={[]} replacement={{id:document.id,version:document.version,access:document.access_level ?? "broker_only",title:document.title,category:document.category}}/></details>}
+              {document.replacement_note && <p>{locale === "es" ? "Cambios: " : "Changes: "}{document.replacement_note}</p>}
             </div>{document.secure_url || document.external_url ? <a href={document.secure_url || document.external_url || "#"} target="_blank" rel="noreferrer">{document.external_url ? "Open external link" : "Open securely"}</a> : <span className="stage">Protected</span>}</article>;
           })}</div></section> : null)}<details className="empty-document-folders"><summary>Show empty folders ({documentGroups.filter((group) => !group.documents.length).length})</summary><div>{documentGroups.filter((group) => !group.documents.length).map((group) => <span key={group.category}>{group.category}</span>)}</div></details></div>}
           {!workspace.isBuyer && !workspace.isDemo && <details className="room-upload" id="deal-upload" open><summary>Upload a secure document</summary><DealDocumentUpload action={addDealRoomDocument} locale={locale} inquiryId={id} ndaSigned={ndaSigned} approved={financialApproved} requests={workspace.requests.filter(r=>r.status==='requested')}/></details>}
+          {!workspace.isBuyer && Boolean(workspace.archivedDocuments?.length) && <details><summary>{locale === "es" ? "Historial de versiones anteriores" : "Previous version history"}</summary><p>{locale === "es" ? "Los originales se conservan, pero ya no están disponibles para el comprador." : "Originals are preserved but are no longer available to the buyer."}</p><ul>{workspace.archivedDocuments?.map(d=><li key={d.id}>{d.title} · {locale === "es" ? "Versión" : "Version"} {d.version} · {d.superseded_at ? new Date(d.superseded_at).toLocaleDateString(locale) : "Archived"}</li>)}</ul></details>}
         </section>
         </section>
         <div className="deal-bottom-grid">

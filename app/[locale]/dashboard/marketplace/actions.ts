@@ -701,12 +701,23 @@ export async function addDealRoomDocument(formData: FormData) {
   const inquiryId = z.string().uuid().parse(formData.get("inquiry_id"));
   const { data: inquiry } = await supabase.from("deal_inquiries").select("buyer_id,status,financial_access_status").eq("id", inquiryId).eq("broker_id", user.id).maybeSingle();
   if (!inquiry) redirect(`/${locale}/dashboard/deals/${inquiryId}?error=forbidden`);
+  const replacementRaw = String(formData.get("replace_document_id") ?? "");
+  const replacementId = replacementRaw ? z.string().uuid().parse(replacementRaw) : null;
+  const replacementVersion = replacementId ? z.coerce.number().int().positive().parse(formData.get("replace_version")) : null;
+  const replacementAccess = replacementId ? z.enum(["broker_only","approved","nda_signed"]).parse(formData.get("replace_access")) : null;
+  const replacementNote = replacementId ? z.string().trim().min(3).max(500).parse(formData.get("replacement_note")) : null;
+  if (replacementId) {
+    const { data: original } = await supabase.from("deal_room_documents").select("id").eq("id", replacementId)
+      .eq("inquiry_id", inquiryId).eq("uploaded_by", user.id).eq("is_active", true).maybeSingle();
+    if (!original) redirect(`/${locale}/dashboard/deals/${inquiryId}?error=replacement_changed#deal-documents`);
+  }
   const title = z.string().trim().min(2).max(160).parse(formData.get("title"));
   const accessLevel = z.enum(["nda_signed","approved","broker_only"]).parse(formData.get("access_level"));
   const category = z.string().trim().min(2).max(80).parse(formData.get("category"));
   const externalUrlRaw = String(formData.get("external_url") ?? "").trim();
   if (externalUrlRaw && !secureExternalLink(externalUrlRaw)) redirect(`/${locale}/dashboard/deals/${inquiryId}?error=document_link`);
   const externalUrl = externalUrlRaw || null;
+  if (replacementId && externalUrl) redirect(`/${locale}/dashboard/deals/${inquiryId}?error=document_source`);
   const requestId = z.string().uuid().nullable().catch(null).parse(formData.get("request_id"));
   const documentFile = formData.get("document_file");
   if (externalUrl && documentFile instanceof File && documentFile.size > 0) redirect(`/${locale}/dashboard/deals/${inquiryId}?error=document_source`);
@@ -759,7 +770,7 @@ export async function addDealRoomDocument(formData: FormData) {
       mime_type: mimeType,
       file_size_bytes: fileSizeBytes,
       external_url: externalUrl,
-      access_level: accessLevel,
+      access_level: replacementId ? "broker_only" : accessLevel,
       permission_note: accessLevel === "approved" ? "Buyer access requires broker approval" : accessLevel === "broker_only" ? "Broker only" : "Available after NDA",
       security_status: documentScan ? securityStatusForScan(documentScan) : "basic_validated",
       scan_provider: documentScan?.provider ?? "external_link",
@@ -771,6 +782,19 @@ export async function addDealRoomDocument(formData: FormData) {
     redirect(`/${locale}/dashboard/deals/${inquiryId}?error=document_save`);
   }
   if (documentScan) await admin.from("document_security_events").insert({ scope: "deal_room", document_id: document.id, actor_id: user.id, status: securityStatusForScan(documentScan), provider: documentScan.provider, sha256: documentScan.sha256 });
+  if (replacementId) {
+    const { error: replacementError } = await supabase.rpc("replace_deal_document", {
+      p_original: replacementId, p_candidate: document.id, p_version: replacementVersion,
+      p_access: replacementAccess, p_note: replacementNote,
+    });
+    if (replacementError) {
+      // A lost response may follow a committed swap. Never delete either file
+      // on an uncertain RPC outcome; refresh shows the authoritative version.
+      redirect(`/${locale}/dashboard/deals/${inquiryId}?error=replacement_changed#deal-documents`);
+    }
+    revalidatePath(`/${locale}/dashboard/deals/${inquiryId}`);
+    redirect(`/${locale}/dashboard/deals/${inquiryId}?document=replaced#deal-documents`);
+  }
   const {data: signedAgreement} = await supabase.from("deal_ndas").select("id").eq("inquiry_id",inquiryId).eq("status","signed").maybeSingle();
   const buyerCanRead = buyerCanReadDocument(accessLevel,Boolean(signedAgreement),inquiry.financial_access_status === "approved");
   await Promise.all([

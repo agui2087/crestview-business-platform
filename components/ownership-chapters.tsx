@@ -16,8 +16,10 @@ export function OwnershipChapters({ locale }: { locale: string }) {
     const draw = () => {
       frame = 0;
       sections.forEach(section => {
-        const top = section.getBoundingClientRect().top;
-        const progress = motion.matches ? 1 : Math.max(0, Math.min(1, (innerHeight - top) / (innerHeight * 1.1)));
+        // On stacked layouts the artwork can sit well below the section heading.
+        // Animate when the artwork enters view, not before the visitor sees it.
+        const box = (section.querySelector(`.${styles.illustration}`) ?? section).getBoundingClientRect();
+        const progress = motion.matches ? 1 : Math.max(0, Math.min(1, (innerHeight - box.top) / (innerHeight * .5 + box.height * .5)));
         section.style.setProperty("--reveal", `${progress}`);
       });
     };

@@ -12,13 +12,17 @@ export function OwnershipScene({ locale }: { locale: string }) {
     const section = root.current;
     if (!section) return;
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const mobile = window.matchMedia("(max-width: 760px)");
     let frame = 0;
     let current = 0;
     let target = 0;
     let lastTime = 0;
     const measure = () => {
       const box = section.getBoundingClientRect();
-      const progress = Math.max(0, Math.min(1, -box.top / Math.max(1, box.height - window.innerHeight)));
+      const art = section.querySelector(`.${styles.art}`)?.getBoundingClientRect();
+      const progress = Math.max(0, Math.min(1, mobile.matches && art
+        ? (window.innerHeight - art.top) / Math.max(1, window.innerHeight * .5 + art.height * .5)
+        : -box.top / Math.max(1, box.height - window.innerHeight)));
       // Ease into and out of assembly instead of stopping at a linear boundary.
       return reduced.matches ? 1 : progress * progress * (3 - 2 * progress);
     };

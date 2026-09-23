@@ -1,3 +1,5 @@
+import {MarketplaceFilters} from '@/components/marketplace-filters';
+import {searchListings} from '@/lib/marketplace-search';
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -16,13 +18,7 @@ export default async function MarketplacePage({ params, searchParams }: PageProp
   const query = await searchParams;
   if (!isLocale(locale)) notFound();
   const listings = await getMarketplaceListings();
-  const city = typeof query.city === "string" ? query.city : "";
-  const industry = typeof query.industry === "string" ? query.industry : "";
-  const visibleListings = listings.filter((listing) => {
-    const matchesCity = !city || `${listing.city}, ${listing.state_code}` === city;
-    const matchesIndustry = !industry || listing.industry === industry;
-    return matchesCity && matchesIndustry;
-  });
+  const {results: visibleListings, errors} = searchListings(listings, query);
   const cities = [...new Set(listings.map((listing) => `${listing.city}, ${listing.state_code}`))];
   const industries = [...new Set(listings.map((listing) => listing.industry))];
   return (
@@ -47,26 +43,9 @@ export default async function MarketplacePage({ params, searchParams }: PageProp
           <span><strong>4</strong> Broker reviews your request</span>
         </div>
         <p className="marketplace-disclosure"><strong>Know the source:</strong> Listing facts and documents are provided by the broker or seller. Crestview records access and workflow history but does not independently verify every claim. Confirm material information with qualified legal, accounting, and lending professionals before relying on it.</p>
-        <form className="marketplace-filter" method="get">
-          <label>
-            <span>Location</span>
-            <select name="city" defaultValue={city}>
-              <option value="">All major markets</option>
-              {cities.map((value) => <option value={value} key={value}>{value}</option>)}
-            </select>
-          </label>
-          <label>
-            <span>Industry</span>
-            <select name="industry" defaultValue={industry}>
-              <option value="">All industries</option>
-              {industries.map((value) => <option value={value} key={value}>{value}</option>)}
-            </select>
-          </label>
-          <button className="button button--primary" type="submit">Show matches</button>
-          {(city || industry) && <Link className="filter-reset" href={`/${locale}/dashboard/marketplace`}>Clear filters</Link>}
-        </form>
+        <MarketplaceFilters query={query} cities={cities} industries={industries} locale={locale} path={`/${locale}/dashboard/marketplace`} errors={errors}/>
         <div className="results-heading">
-          <div><strong>{visibleListings.length} {visibleListings.length === 1 ? "opportunity" : "opportunities"}</strong><span>Broker-posted and ready for review</span></div>
+          <div><strong>{visibleListings.length} {locale==='es'?'oportunidades':visibleListings.length === 1 ? "opportunity" : "opportunities"}</strong><span>{locale==='es'?'Anuncios publicados por corredores':'Broker-posted listings'}</span></div>
           <Link href={`/${locale}/dashboard/settings#listing-alerts`}>Set listing alerts →</Link>
         </div>
         <PromotionAnalytics locale={locale}><div className="marketplace-listings">
@@ -137,7 +116,7 @@ export default async function MarketplacePage({ params, searchParams }: PageProp
             </article>
           ))}
         </div></PromotionAnalytics>
-        {!visibleListings.length && <div className="empty-state"><strong>No exact matches yet</strong><p>Clear a filter or set a listing alert and Crestview will keep watch for you.</p><Link className="button button--primary" href={`/${locale}/dashboard/settings#listing-alerts`}>Set listing alert</Link></div>}
+        {!visibleListings.length && <div className="empty-state"><strong>{locale==='es'?'No hay resultados':'No matching listings'}</strong><p>{locale==='es'?'Prueba otros filtros. Si no hay anuncios publicados disponibles, vuelve más tarde.':'Try different filters. If no published listings are available, check back later.'}</p><Link className="button button--primary" href={`/${locale}/dashboard/marketplace`}>{locale==='es'?'Borrar todos los filtros':'Clear all filters'}</Link></div>}
       </div>
     </PlatformShell>
   );

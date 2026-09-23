@@ -1139,6 +1139,16 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .marketplace-filter label { display:grid; gap:6px; color:var(--muted); font-size:.6rem; font-weight:760; }
 .marketplace-filter select { min-height:42px; padding:0 38px 0 12px; border:1px solid var(--line); border-radius:9px; background:var(--paper); color:var(--ink); font:inherit; font-size:.7rem; }
 .marketplace-filter .button { min-height:42px; }
+.buyer-filters { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.buyer-filters label { min-width:0; font-size:.85rem; }
+.buyer-filters input,.buyer-filters select { width:100%; min-width:0; min-height:44px; padding:10px; border:1px solid var(--line); border-radius:9px; background:var(--paper); color:var(--ink); font:inherit; }
+.buyer-filters details,.buyer-filters .buyer-filter-help,.buyer-filters .notice,.buyer-filter-actions { grid-column:1/-1; }
+.buyer-filters summary { cursor:pointer; padding:12px 0; font-weight:700; }
+.buyer-filter-numbers { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.buyer-filter-help { font-size:.85rem; margin:4px 0; }
+.buyer-filter-actions { display:flex; align-items:center; flex-wrap:wrap; gap:18px; }
+.buyer-filters :is(input,select,summary,a,button):focus-visible { outline:3px solid var(--green); outline-offset:3px; }
+@media(max-width:600px) { .buyer-filters,.buyer-filter-numbers { grid-template-columns:minmax(0,1fr); } }
 .filter-reset { min-height:42px; display:flex; align-items:center; padding:0 8px; color:var(--brand); font-size:.65rem; font-weight:780; }
 .results-heading { display:flex; align-items:end; justify-content:space-between; gap:16px; margin:4px 1px 12px; }
 .results-heading > div { display:grid; gap:3px; }

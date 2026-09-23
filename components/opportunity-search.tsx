@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import {matchesLocation, parseAmount} from "@/lib/marketplace-search";
 import type { Opportunity } from "@/lib/demo-data";
 
 const PAGE_SIZE = 30;
@@ -21,38 +22,7 @@ const LOCATION_SUGGESTIONS = [
   "Seattle, WA",
 ] as const;
 
-const STATE_NAMES: Record<string, string> = {
-  alabama: "AL", alaska: "AK", arizona: "AZ", arkansas: "AR", california: "CA",
-  colorado: "CO", connecticut: "CT", delaware: "DE", florida: "FL", georgia: "GA",
-  hawaii: "HI", idaho: "ID", illinois: "IL", indiana: "IN", iowa: "IA",
-  kansas: "KS", kentucky: "KY", louisiana: "LA", maine: "ME", maryland: "MD",
-  massachusetts: "MA", michigan: "MI", minnesota: "MN", mississippi: "MS",
-  missouri: "MO", montana: "MT", nebraska: "NE", nevada: "NV",
-  "new hampshire": "NH", "new jersey": "NJ", "new mexico": "NM", "new york": "NY",
-  "north carolina": "NC", "north dakota": "ND", ohio: "OH", oklahoma: "OK",
-  oregon: "OR", pennsylvania: "PA", "rhode island": "RI", "south carolina": "SC",
-  "south dakota": "SD", tennessee: "TN", texas: "TX", utah: "UT", vermont: "VT",
-  virginia: "VA", washington: "WA", "west virginia": "WV", wisconsin: "WI",
-  wyoming: "WY", "district of columbia": "DC",
-};
-
-function normalize(value: string) {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-}
-
-function locationParts(value: string) {
-  const [city = "", regionInput = ""] = value.split(",").map((part) => normalize(part));
-  const region = STATE_NAMES[regionInput] ?? regionInput.toUpperCase();
-  return { city, region };
-}
-
-function listingRegion(value: string) {
-  const normalized = normalize(value);
-  const abbreviation = value.match(/,\s*([A-Za-z]{2})(?:\s|$)/)?.[1]?.toUpperCase();
-  if (abbreviation) return abbreviation;
-  const state = Object.entries(STATE_NAMES).find(([name]) => normalized.includes(name));
-  return state?.[1] ?? "";
-}
+function normalize(value: string) { return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim(); }
 
 function score(item: Opportunity, query: string) {
   const phrase = normalize(query);
@@ -94,7 +64,7 @@ function buyerMatch(item: Opportunity, preferences: BuyerPreferences) {
   }
   if (preferences.locations.length) {
     possible += 25;
-    if (preferences.locations.some((value) => normalize(item.location).includes(normalize(value)))) {
+    if (preferences.locations.some((value) => { const [city = '', state = ''] = item.location.split(','); return matchesLocation(city, state, value); })) {
       earned += 25;
       reasons.push("preferred location");
     }
@@ -141,7 +111,6 @@ export function OpportunitySearch({
   const [sortBy, setSortBy] = useState("relevance");
   const [maxPrice, setMaxPrice] = useState("");
   const [location, setLocation] = useState("");
-  const [locationFocused, setLocationFocused] = useState(false);
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<string[]>([]);
   const es = locale === "es";
@@ -153,47 +122,27 @@ export function OpportunitySearch({
     () => ["All sources", ...Array.from(new Set(items.map((item) => item.source))).sort()],
     [items],
   );
-  const locationSuggestions = useMemo(() => {
-    const phrase = normalize(location);
-    if (!phrase) return LOCATION_SUGGESTIONS.slice(0, 8);
-    return LOCATION_SUGGESTIONS
-      .filter((suggestion) => normalize(suggestion).startsWith(phrase) || normalize(suggestion).includes(phrase))
-      .slice(0, 8);
-  }, [location]);
+  const locationSuggestions = Array.from(new Set([...items.map(item => item.location), ...LOCATION_SUGGESTIONS])).sort();
+  const invalidPrice = parseAmount(maxPrice) === undefined;
   const searchResult = useMemo(
     () => {
-      const ceiling = Number(maxPrice.replace(/[$,\s]/g, ""));
+      const ceiling = parseAmount(maxPrice);
       const eligible = items
         .map((item) => ({ item, rank: score(item, query), match: buyerMatch(item, preferences) }))
         .filter(({ item, rank }) =>
           rank > 0
           && (industry === "All industries" || item.industry === industry)
           && (source === "All sources" || item.source === source)
-          && (!ceiling || (item.priceValue !== null && item.priceValue <= ceiling)),
+          && ceiling !== undefined && (ceiling === null || (item.priceValue !== null && item.priceValue <= ceiling)),
         );
-      const requested = locationParts(location);
-      const exact = requested.city
-        ? eligible.filter(({ item }) => {
-          const itemLocation = normalize(item.location);
-          return itemLocation.includes(requested.city)
-            && (!requested.region || listingRegion(item.location) === requested.region);
-        })
-        : eligible;
-      const filtered = requested.city ? exact : eligible;
+      const exact = eligible.filter(({item}) => { const [city = "", state = ""] = item.location.split(","); return matchesLocation(city, state, location); });
+      const filtered = exact;
 
       const sorted = filtered.sort((a, b) => {
         if (sortBy === "price-low") return (a.item.priceValue ?? Number.MAX_SAFE_INTEGER) - (b.item.priceValue ?? Number.MAX_SAFE_INTEGER);
         if (sortBy === "price-high") return (b.item.priceValue ?? -1) - (a.item.priceValue ?? -1);
         if (sortBy === "cash-flow") return (b.item.cashFlowValue ?? -1) - (a.item.cashFlowValue ?? -1);
         if (sortBy === "revenue") return (b.item.revenueValue ?? -1) - (a.item.revenueValue ?? -1);
-        if (requested.city) {
-          const aExact = normalize(a.item.location).includes(requested.city) ? 1 : 0;
-          const bExact = normalize(b.item.location).includes(requested.city) ? 1 : 0;
-          if (aExact !== bExact) return bExact - aExact;
-          const aRegional = requested.region && normalize(a.item.location).includes(requested.region) ? 1 : 0;
-          const bRegional = requested.region && normalize(b.item.location).includes(requested.region) ? 1 : 0;
-          if (aRegional !== bRegional) return bRegional - aRegional;
-        }
         if (a.match?.score !== b.match?.score) return (b.match?.score ?? -1) - (a.match?.score ?? -1);
         return b.rank - a.rank;
       });
@@ -225,61 +174,33 @@ export function OpportunitySearch({
           <input
             value={location}
             onChange={(event) => updateFilters(() => setLocation(event.target.value))}
-            onFocus={() => setLocationFocused(true)}
-            onBlur={() => setLocationFocused(false)}
             placeholder={es ? "Ciudad, Estado (ejemplo: Portland, OR)" : "City, State (example: Portland, OR)"}
             aria-label={es ? "Buscar ubicación" : "Search location"}
-            aria-autocomplete="list"
-            aria-expanded={locationFocused && locationSuggestions.length > 0}
-            aria-controls="crestview-location-suggestions"
-            role="combobox"
+            list="crestview-location-suggestions"
             autoComplete="off"
           />
-          {locationFocused && locationSuggestions.length > 0 && (
-            <div className="location-suggestions" id="crestview-location-suggestions" role="listbox">
-              {locationSuggestions.map((suggestion) => (
-                <button
-                  key={suggestion}
-                  type="button"
-                  role="option"
-                  aria-selected={location === suggestion}
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => {
-                    updateFilters(() => setLocation(suggestion));
-                    setLocationFocused(false);
-                  }}
-                >
-                  <span aria-hidden="true">⌖</span>
-                  {suggestion}
-                </button>
-              ))}
-            </div>
-          )}
+          <datalist id="crestview-location-suggestions">{locationSuggestions.map(value=><option key={value} value={value}/>)}</datalist>
         </label>
         <div>
           <strong>{es ? "Búsqueda por ubicación" : "Location-first search"}</strong>
-          <span>{es ? "Elige una ciudad cubierta para ver solo publicaciones verificadas en esa ciudad. Nunca mezclamos resultados de otras áreas." : "Choose a covered city to see only verified listings in that city. Results from other areas are never mixed in."}</span>
+          <span>{es ? "Busca una ciudad exacta o un estado completo/abreviado. Confirma la disponibilidad con la fuente." : "Search an exact city or a full/abbreviated state. Confirm availability with the listing source."}</span>
         </div>
       </div>
-      <div className="opportunity-filters" aria-label="Opportunity filters">
-        <label>Industry<select value={industry} onChange={(event) => updateFilters(() => setIndustry(event.target.value))}>{industries.map((item) => <option key={item}>{item}</option>)}</select></label>
-        <label>Source<select value={source} onChange={(event) => updateFilters(() => setSource(event.target.value))}>{sources.map((item) => <option key={item}>{item}</option>)}</select></label>
-        <label>Maximum price<input value={maxPrice} onChange={(event) => updateFilters(() => setMaxPrice(event.target.value))} inputMode="numeric" placeholder="No maximum" /></label>
-        <label>Sort by<select value={sortBy} onChange={(event) => updateFilters(() => setSortBy(event.target.value))}>
-          <option value="relevance">Closest match</option>
-          <option value="price-low">Price: low to high</option>
-          <option value="price-high">Price: high to low</option>
-          <option value="cash-flow">Highest cash flow</option>
-          <option value="revenue">Highest revenue</option>
+      <div className="opportunity-filters" aria-label={es ? "Filtros de oportunidades" : "Opportunity filters"}>
+        <label>{es ? "Industria" : "Industry"}<select value={industry} onChange={(event) => updateFilters(() => setIndustry(event.target.value))}>{industries.map((item) => <option key={item} value={item}>{item === "All industries" && es ? "Todas las industrias" : item}</option>)}</select></label>
+        <label>{es ? "Fuente" : "Source"}<select value={source} onChange={(event) => updateFilters(() => setSource(event.target.value))}>{sources.map((item) => <option key={item} value={item}>{item === "All sources" && es ? "Todas las fuentes" : item}</option>)}</select></label>
+        <label>{es ? "Precio máximo" : "Maximum price"}<input value={maxPrice} onChange={(event) => updateFilters(() => setMaxPrice(event.target.value))} inputMode="decimal" aria-invalid={invalidPrice} aria-describedby={invalidPrice ? "search-price-error" : undefined} placeholder={es ? "Sin máximo" : "No maximum"} /></label>
+        <label>{es ? "Ordenar por" : "Sort by"}<select value={sortBy} onChange={(event) => updateFilters(() => setSortBy(event.target.value))}>
+          <option value="relevance">{es ? "Mejor coincidencia" : "Closest match"}</option>
+          <option value="price-low">{es ? "Precio: menor a mayor" : "Price: low to high"}</option>
+          <option value="price-high">{es ? "Precio: mayor a menor" : "Price: high to low"}</option>
+          <option value="cash-flow">{es ? "Mayor flujo de caja" : "Highest cash flow"}</option>
+          <option value="revenue">{es ? "Mayores ingresos" : "Highest revenue"}</option>
         </select></label>
-        <button type="button" onClick={() => { setIndustry("All industries"); setSource("All sources"); setMaxPrice(""); setSortBy("relevance"); setLocation(""); setPage(1); }}>Reset filters</button>
+        <button type="button" onClick={() => { setQuery(""); setIndustry("All industries"); setSource("All sources"); setMaxPrice(""); setSortBy("relevance"); setLocation(""); setPage(1); }}>{es ? "Borrar todos los filtros" : "Reset filters"}</button>
       </div>
-      {location.trim() && (
-        <div className="location-expansion" role="status">
-          <strong>{exactCount} exact city {exactCount === 1 ? "match" : "matches"}.</strong>
-          <span>{exactCount ? ` Every result shown is in ${location}.` : ` Crestview does not currently have a verified listing in ${location}; try another covered city.`}</span>
-        </div>
-      )}
+      {invalidPrice && <p id="search-price-error" role="alert">{es ? "Introduce un precio válido de cero o más, por ejemplo 500,000." : "Enter a valid price of zero or more, for example 500,000."}</p>}
+      {location.trim() && <div className="location-expansion" role="status">{exactCount} {es ? "resultados para" : "results for"} {location}</div>}
       <div className="comparison-toolbar" aria-live="polite">
         <span>{selected.length} {es ? "seleccionados (máximo 4)" : "selected (maximum 4)"}</span>
         <Link className={`button button--light ${selected.length < 2 ? "is-disabled" : ""}`} aria-disabled={selected.length < 2} href={selected.length >= 2 ? `/${locale}/dashboard/opportunities/compare?ids=${selected.join(",")}` : `/${locale}/dashboard/opportunities`}>
@@ -287,7 +208,7 @@ export function OpportunitySearch({
         </Link>
         {selected.length > 0 && <button type="button" onClick={() => setSelected([])}>{es ? "Borrar selección" : "Clear selection"}</button>}
       </div>
-      <div className="result-count"><strong>{results.length}</strong> verified opportunities currently available · showing {visibleResults.length} on page {safePage} of {pageCount}</div>
+      <div className="result-count" role="status"><strong>{results.length}</strong> {es ? "resultados de las fuentes" : "source listings"} · {visibleResults.length} {es ? "en esta página" : "on this page"} · {safePage}/{pageCount}</div>
       <div className="opportunity-list">
         {visibleResults.map(({ item, match }) => (
           <article className="opportunity-row" key={item.id}>
@@ -301,28 +222,28 @@ export function OpportunitySearch({
               <span className="sr-only">{es ? `Comparar ${item.title}` : `Compare ${item.title}`}</span>
             </label>
             <div className="opportunity-row__main">
-              <span className="source-label">{item.source} · checked {item.lastChecked}</span>
+              <span className="source-label">{item.source} · {es ? "revisado" : "checked"} {item.lastChecked}</span>
               <h2><Link href={`/${locale}/dashboard/opportunities/${item.id}`}>{item.title}</Link></h2>
               <p>{item.industry} · {item.location}</p>
-              {match && <span className="match-explanation"><strong>{match.score}% match</strong>{match.reasons.length ? ` · ${match.reasons.join(", ")}` : " · criteria need review"}</span>}
+              {match && <span className="match-explanation"><strong>{match.score}% {es ? "coincidencia" : "match"}</strong>{match.reasons.length ? ` · ${match.reasons.map(reason => es ? ({'preferred industry':'industria preferida','preferred location':'ubicación preferida','within budget':'dentro del presupuesto','cash flow target':'objetivo de flujo de caja','seller financing':'financiación del vendedor'}[reason] ?? reason) : reason).join(", ")}` : (es ? " · revisar criterios" : " · criteria need review")}</span>}
             </div>
-            <div><span>Asking price</span><strong>{item.price}</strong></div>
-            <div><span>Revenue</span><strong>{item.revenue}</strong></div>
-            <div><span>Cash flow / SDE</span><strong>{item.cashFlow}</strong></div>
-            <div className="listing-status"><strong>{item.status}</strong><span>{item.publicBusinessName ? "Name public" : "Confidential"}</span></div>
+            <div><span>{es ? "Precio" : "Asking price"}</span><strong>{item.price}</strong></div>
+            <div><span>{es ? "Ingresos" : "Revenue"}</span><strong>{item.revenue}</strong></div>
+            <div><span>{es ? "Flujo de caja / SDE" : "Cash flow / SDE"}</span><strong>{item.cashFlow}</strong></div>
+            <div className="listing-status"><strong>{item.status}</strong><span>{item.publicBusinessName ? (es ? "Nombre público" : "Name public") : (es ? "Confidencial" : "Confidential")}</span></div>
             <Link className="save-button" href={`/${locale}/dashboard/opportunities/${item.id}`}>{es ? "Ver" : "View"}</Link>
           </article>
         ))}
-        {results.length === 0 && <div className="empty-state"><h2>No close matches yet</h2><p>Try fewer words, a location, an industry, or one unusual word from the listing title.</p></div>}
+        {results.length === 0 && <div className="empty-state"><h2>{es ? "No hay coincidencias" : "No close matches yet"}</h2><p>{es ? "Prueba otros filtros o borra todos los filtros." : "Try different filters or reset all filters."}</p></div>}
       </div>
       {pageCount > 1 && (
-        <nav className="opportunity-pagination" aria-label="Opportunity result pages">
-          <button type="button" disabled={safePage === 1} onClick={() => setPage((current) => Math.max(1, current - 1))}>← Previous</button>
-          <span>Page {safePage} of {pageCount}</span>
-          <button type="button" disabled={safePage === pageCount} onClick={() => setPage((current) => Math.min(pageCount, current + 1))}>Next →</button>
+        <nav className="opportunity-pagination" aria-label={es ? "Páginas de resultados" : "Opportunity result pages"}>
+          <button type="button" disabled={safePage === 1} onClick={() => setPage((current) => Math.max(1, current - 1))}>{es ? "Anterior" : "Previous"}</button>
+          <span>{es ? "Página" : "Page"} {safePage} / {pageCount}</span>
+          <button type="button" disabled={safePage === pageCount} onClick={() => setPage((current) => Math.min(pageCount, current + 1))}>{es ? "Siguiente" : "Next"}</button>
         </nav>
       )}
-      {!storageReady && <p className="search-help">Saving searches and opportunities will activate after Supabase is connected.</p>}
+      {!storageReady && <p className="search-help">{es ? "Guardar búsquedas y oportunidades requiere conexión de almacenamiento." : "Saving searches and opportunities requires a storage connection."}</p>}
     </>
   );
 }
